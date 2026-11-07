@@ -155,8 +155,9 @@
   #mapZoom { position: fixed; right: 12px; bottom: calc(176px + var(--safe-b)); z-index: 12; display: flex; flex-direction: column; gap: 8px; }
   #mapZoom button { width: 44px; height: 44px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 22px; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
   #mapHelp { position: fixed; left: 12px; right: 12px; bottom: calc(18px + var(--safe-b)); z-index: 12; background: rgba(29,26,23,.86); color: #fff; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.4; }
-  #mapHelp .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  #mapHelp button { height: 36px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.14); font-size: 13px; font-weight: 500; }
+  #mapHelp .row { display: flex; gap: 8px; margin: 10px -14px 0; padding: 0 14px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  #mapHelp .row::-webkit-scrollbar { display: none; }
+  #mapHelp button { flex: none; height: 36px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.14); font-size: 13px; font-weight: 500; white-space: nowrap; }
 
   /* ---------- toast + loader ---------- */
   #toast { position: fixed; left: 50%; top: calc(64px + var(--safe-t)); transform: translateX(-50%); z-index: 40; background: rgba(29,26,23,.92); color: #fff;
@@ -165,7 +166,7 @@
   #scan { position: fixed; left: 0; right: 0; height: 2px; top: 44%; z-index: 6; background: linear-gradient(90deg, transparent, #f0a48f, transparent); opacity: 0; }
   #scan.on { animation: scan 0.9s ease-in-out infinite; opacity: 1; }
   @keyframes scan { 0% { transform: translateY(-120px); } 50% { transform: translateY(120px); } 100% { transform: translateY(-120px); } }
-  .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
+  .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; pointer-events: none; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
 
   /* aerial photo on card */
   .aerial { margin: 8px 0 6px; border-radius: 16px; overflow: hidden; position: relative; background: #cfc6b5; aspect-ratio: 2 / 1; }
@@ -194,6 +195,44 @@
   #shareView .sv { width: 100%; max-width: 420px; text-align: center; }
   #shareImg { width: 100%; max-height: 66vh; object-fit: contain; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.5); -webkit-touch-callout: default; }
   .sv-tip { color: #cfc6ba; font-size: 13px; margin: 12px 0 6px; }
+  /* flood zone + elevation on the card */
+  .flood { margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; background: #fffaf1; border: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
+  .flood .zb { flex: none; min-width: 54px; height: 54px; padding: 0 6px; border-radius: 12px; display: grid; place-items: center; background: var(--paper-2); color: var(--ink);
+    font-family: var(--serif); font-weight: 700; font-size: 20px; }
+  .flood .zb small { display: block; font-family: var(--sans); font-size: 9.5px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; margin-top: -2px; opacity: .8; text-align: center; }
+  .flood.high .zb { background: var(--brick); color: #fff; }
+  .flood.moderate .zb { background: #f2d58a; }
+  .flood.low .zb { background: #dfe8da; color: #2f4a2c; }
+  .flood .t1 { font-weight: 600; font-size: 15px; line-height: 1.3; }
+  .flood .t2 { font-size: 13px; color: var(--mute); margin-top: 3px; line-height: 1.4; }
+  .flood.loading .zb { color: var(--mute); }
+
+  /* map coloring */
+  #mapColor { position: fixed; left: 12px; right: 12px; top: calc(66px + var(--safe-t)); z-index: 12; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; pointer-events: none; }
+  .seg { pointer-events: auto; display: flex; padding: 3px; gap: 2px; border-radius: 12px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
+  .seg button { height: 32px; padding: 0 12px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .seg button.on { background: var(--ink); color: var(--paper); }
+  #legend { pointer-events: none; width: 100%; max-width: 420px; background: rgba(255,255,255,.94); color: var(--ink); border-radius: 12px; padding: 8px 10px 7px; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
+  #legend .lt { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  #legend .lt span { color: var(--mute); font-weight: 500; }
+  #legend .lr { display: flex; gap: 2px; }
+  #legend .li { flex: 1; min-width: 0; }
+  #legend .li.nd { flex: .8; margin-left: 6px; }
+  #legend .sw { height: 10px; border-radius: 3px; }
+  #legend .li:first-child .sw { border-radius: 4px 3px 3px 4px; }
+  #legend .nd .sw { background: #fff; box-shadow: inset 0 0 0 1px rgba(29,26,23,.45); }
+  #legend .ll { font-size: 10.5px; color: #52514e; margin-top: 3px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+  /* AR labels over the camera */
+  #ar { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+  .arc { position: absolute; left: 0; top: 0; pointer-events: auto; display: flex; flex-direction: column; align-items: center; padding: 5px 10px 6px; border-radius: 11px;
+    background: rgba(246,241,231,.93); color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.3); transition: opacity .2s; will-change: transform; white-space: nowrap; opacity: 0; }
+  .arc::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: rgba(246,241,231,.93); }
+  .arc .y { font-family: var(--serif); font-weight: 700; font-size: 15px; line-height: 1.15; display: flex; align-items: center; gap: 5px; }
+  .arc .y i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .arc .m { font-size: 11.5px; color: var(--mute); font-weight: 500; }
+  #arPill.off { opacity: .6; }
+  body.mapmode .demo-flag { left: auto; right: 14px; transform: none; top: calc(76px + var(--safe-t)); }
   #debug { position: fixed; left: 8px; top: calc(160px + var(--safe-t)); z-index: 45; background: rgba(0,0,0,.72); color: #9ff59a; font: 11px/1.45 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 8px; pointer-events: none; white-space: pre; max-width: 70vw; }
 </style>
 </head>
@@ -225,9 +264,11 @@
     <div class="pill" id="brandPill">Housepoint</div>
     <div class="pill" id="gpsPill"><span class="dot"></span><span id="gpsTxt">Finding you…</span></div>
     <div class="pill" id="hdgPill"><span id="hdgTxt">Compass…</span></div>
+    <button class="pill" id="arPill" aria-pressed="true">Labels on</button>
   </div>
   <div id="radarWrap"><svg id="radar" viewBox="-100 -100 200 200"></svg></div>
 </div>
+<div id="ar"></div>
 <div id="reticle" class="hidden"></div>
 <div id="scan"></div>
 <div id="liveLabel" class="dim"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
@@ -248,6 +289,12 @@
 <div id="mapTop" class="hidden">
   <form id="search"><input id="q" type="search" placeholder="Address, town" autocomplete="off" enterkeyhint="search"><button type="submit">Go</button></form>
   <button class="round" id="mapToPoint" aria-label="Point mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg></button>
+</div>
+<div id="mapColor" class="hidden">
+  <div class="seg" id="colorSeg" role="group" aria-label="Color the map by">
+    <button data-c="plain">Photo</button><button data-c="age">Age</button><button data-c="value">Value</button><button data-c="sold">Sold</button>
+  </div>
+  <div id="legend" class="hidden"></div>
 </div>
 <div id="mapZoom" class="hidden"><button id="zin">+</button><button id="zout">−</button></div>
 <div id="mapHelp" class="hidden">
@@ -955,10 +1002,12 @@ function renderCard(cand, total, idx) {
     <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
+    ${floodBoxHtml(L)}
     ${grid}
     ${unitList}
-    <div class="note">${esc(s.region.source(s.fy))} Owner names are never shown.</div>`;
+    <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
   attachImageryFallback($('#cardBody'));
+  paintFlood(L);
   $('#prevC').disabled = idx <= 0;
   $('#nextC').disabled = idx >= total - 1;
   $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
@@ -973,6 +1022,132 @@ function shareText(cand) {
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`Assessed ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
   return bits.join('\n') + '\n\nFound with Housepoint';
+}
+
+/* =========================================================================
+   Flood zone (FEMA flood maps) + ground elevation (USGS), looked up when a card opens.
+   Both are free public services; nothing about the house is sent except its location.
+   ========================================================================= */
+const FLOOD_SOURCES = [
+  'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28',                                              // FEMA National Flood Hazard Layer
+  'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Flood_Hazard_Reduced_Set_gdb/FeatureServer/0',   // Esri's hosted copy of it
+];
+const EPQS_URL = 'https://epqs.nationalmap.gov/v1/json';
+let floodSrc = 0;            // the source that answered last; tried first next time
+const ENV = new Map();       // parcel key -> Promise<{ flood, elev }>
+
+function floodClass(a) {
+  const z = String(a.FLD_ZONE ?? '').trim().toUpperCase(), st = String(a.ZONE_SUBTY ?? '').toUpperCase();
+  if (!z || z === 'AREA NOT INCLUDED') return null;
+  if (z === 'OPEN WATER') return { rank: 0, badge: 'Water', risk: 'water' };
+  if (/^V/.test(z)) return { rank: 5, badge: z, risk: 'high', coastal: true };
+  if (/^A/.test(z)) return { rank: 4, badge: z, risk: 'high' };
+  if (/0\.2 ?(PCT|PERCENT)|500/.test(z + ' ' + st) || z === 'B') return { rank: 3, badge: 'X', risk: 'moderate', shaded: true };
+  if (z === 'X' && /LEVEE/.test(st)) return { rank: 3, badge: 'X', risk: 'moderate', levee: true };
+  if (z === 'D') return { rank: 2, badge: 'D', risk: 'unknown' };
+  if (z === 'X' || z === 'C') return { rank: 1, badge: 'X', risk: 'low' };
+  return { rank: 1.5, badge: z.slice(0, 4), risk: 'unknown' };
+}
+
+async function floodQuery(geometry, geometryType) {
+  const body = new URLSearchParams({ geometry, geometryType, inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'false', f: 'json' }).toString();
+  const order = [floodSrc, ...FLOOD_SOURCES.keys()].filter((v, i, a) => a.indexOf(v) === i);
+  let err;
+  for (const i of order) {
+    try {
+      const j = await getJSON(FLOOD_SOURCES[i] + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }, 12000);
+      floodSrc = i;
+      return (j.features || []).map((ft) => Object.fromEntries(Object.entries(ft.attributes || {}).map(([k, v]) => [k.toUpperCase(), v])));
+    } catch (e) { err = e; console.warn('flood source failed', FLOOD_SOURCES[i], e); }
+  }
+  throw err;
+}
+const riskiest = (zs) => zs.reduce((m, z) => (z.c.rank > m.c.rank ? z : m));
+
+async function lookupFlood(L) {
+  const rings = L.p.ringsLL, nv = rings.reduce((n, r) => n + r.length, 0);
+  let zones;
+  if (nv <= 400) {
+    const g = JSON.stringify({ rings: rings.map((r) => r.map(([x, y]) => [+(+x).toFixed(7), +(+y).toFixed(7)])), spatialReference: { wkid: 4326 } });
+    zones = await floodQuery(g, 'esriGeometryPolygon');
+  } else {
+    let w = Infinity, so = Infinity, e = -Infinity, n = -Infinity;
+    for (const r of rings) for (const [x, y] of r) { w = Math.min(w, x); e = Math.max(e, x); so = Math.min(so, y); n = Math.max(n, y); }
+    zones = await floodQuery(`${w},${so},${e},${n}`, 'esriGeometryEnvelope');
+  }
+  zones = zones.map((a) => ({ a, c: floodClass(a) })).filter((z) => z.c);
+  if (!zones.length) return { none: true };
+  const top = riskiest(zones);
+  let here = top;
+  if (new Set(zones.map((z) => z.c.rank)).size > 1) {
+    // The lot crosses a zone line: check the middle of the lot too, where the house usually sits.
+    const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+    try {
+      const mid = (await floodQuery(`${lon.toFixed(7)},${lat.toFixed(7)}`, 'esriGeometryPoint')).map((a) => ({ a, c: floodClass(a) })).filter((z) => z.c);
+      if (mid.length) here = riskiest(mid);
+    } catch (e) { /* keep the riskiest */ }
+  }
+  const bfes = zones.filter((z) => z.c.risk === 'high').map((z) => num(z.a.STATIC_BFE)).filter((v) => v != null && v > -9000 && v < 2000);
+  return { here: here.c, top: top.c, partial: top.c.rank > here.c.rank, bfe: bfes.length ? Math.max(...bfes) : null };
+}
+
+async function lookupElev(L) {
+  const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+  const j = await getJSON(`${EPQS_URL}?x=${lon.toFixed(6)}&y=${lat.toFixed(6)}&wkid=4326&units=Feet&includeDate=false`, {}, 10000);
+  const v = num(j.value);
+  return v != null && v > -1000 && v < 21000 ? v : null;   // -1000000 means "no data"
+}
+
+function demoEnv(L) {
+  let h = 7; for (const ch of L.p.key) h = (h * 31 + ch.charCodeAt(0)) | 0; h = Math.abs(h);
+  const r = h % 100, elev = 6 + (h % 120);
+  const here = floodClass(r < 14 ? { FLD_ZONE: 'AE' } : r < 26 ? { FLD_ZONE: 'X', ZONE_SUBTY: '0.2 PCT ANNUAL CHANCE FLOOD HAZARD' } : { FLD_ZONE: 'X', ZONE_SUBTY: 'AREA OF MINIMAL FLOOD HAZARD' });
+  return { flood: { here, top: here, partial: false, bfe: here.risk === 'high' ? elev + 3 : null }, elev };
+}
+
+function envFor(L) {
+  const k = L.p.key;
+  if (ENV.has(k)) return ENV.get(k);
+  const p = DEMO ? Promise.resolve(demoEnv(L)) : Promise.allSettled([lookupFlood(L), lookupElev(L)]).then(([fl, el]) => {
+    const out = { flood: fl.status === 'fulfilled' ? fl.value : null, elev: el.status === 'fulfilled' ? el.value : null };
+    if (!out.flood || fl.status !== 'fulfilled' || el.status !== 'fulfilled') ENV.delete(k);   // something failed: try again next time
+    return out;
+  });
+  ENV.set(k, p);
+  return p;
+}
+
+function floodView(env) {
+  const fl = env.flood, el = env.elev, lines = [];
+  let cls = '', badge = '—', small = 'zone', t1;
+  if (!fl) { t1 = 'Flood map didn’t load'; badge = '?'; small = ''; }
+  else if (fl.none) { t1 = 'No FEMA flood map for this spot'; small = ''; }
+  else {
+    const c = fl.here; badge = c.badge; cls = c.risk === 'water' ? '' : c.risk;
+    if (c.risk === 'water') small = '';
+    t1 = { high: c.coastal ? 'High flood risk · coastal' : 'High flood risk', moderate: c.levee ? 'Moderate risk · behind a levee' : 'Moderate flood risk',
+      low: 'Minimal flood risk', unknown: 'Flood risk not mapped', water: 'Open water' }[c.risk];
+    if (c.risk === 'high') lines.push('Flood insurance is usually required with a mortgage');
+    if (c.shaded) lines.push('In the 500-year floodplain');
+    if (fl.partial) {
+      if (fl.top.risk === 'high' && c.risk !== 'high') { t1 = 'Next to a high-risk flood zone'; cls = 'moderate'; }
+      lines.push(`Part of the lot is in zone ${fl.top.shaded ? 'X (500-year)' : fl.top.badge}`);
+    }
+  }
+  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString()} ft above sea level` : `Ground ≈ ${Math.round(-el)} ft below sea level`);
+  if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft`);
+  return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
+}
+function floodBoxHtml(L) {
+  return `<div class="flood loading" id="floodBox" data-k="${esc(L.p.key)}"><div class="zb">…</div><div><div class="t1">Checking flood maps…</div><div class="t2">FEMA flood zone and ground elevation</div></div></div>`;
+}
+function paintFlood(L) {
+  const key = L.p.key;
+  envFor(L).then((env) => {
+    const box = $('#floodBox'); if (!box || box.dataset.k !== key) return;   // the card has moved on
+    const v = floodView(env);
+    box.className = 'flood ' + v.cls; box.innerHTML = v.html;
+  });
 }
 
 /* =========================================================================
@@ -1071,19 +1246,20 @@ async function startSensors() {
    ========================================================================= */
 let rafOn = false, lastLive = 0;
 function startPointMode() {
-  S.mode = 'point';
+  S.mode = 'point'; document.body.classList.remove('mapmode');
   const cam = $('#cam');
   if (cam.srcObject) { show(cam); show($('#fakecam'), false); cam.play().catch(() => {}); }
   else if (S.sensorsStarted) show($('#fakecam'));
   show($('#start'), false); [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint')].forEach((el) => show(el));
-  [$('#mapView'), $('#mapTop'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el, false));
+  [$('#mapView'), $('#mapTop'), $('#mapColor'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el, false));
   if (!rafOn) { rafOn = true; requestAnimationFrame(tick); }
   if (!startPointMode.tipped) { startPointMode.tipped = true; setTimeout(() => toast('Aim the circle at a house, then tap the button. Wrong house? Tap “Not it”.', 4200), 1200); }
 }
 
 function tick(ts) {
-  if (S.mode !== 'point') { rafOn = false; return; }
+  if (S.mode !== 'point') { rafOn = false; arClear(); return; }
   requestAnimationFrame(tick);
+  arFrame(ts);                         // tags move every frame; everything else updates ~11 times a second
   if (ts - lastLive < 90) return; lastLive = ts;
 
   // status pills
@@ -1115,6 +1291,7 @@ function tick(ts) {
       `tilt(beta) ${S.beta == null ? '—' : S.beta.toFixed(0)}°`,
       `gps ${S.pos ? S.pos.lat.toFixed(5) + ', ' + S.pos.lon.toFixed(5) : '—'}  ±${S.acc == null ? '—' : Math.round(S.acc)} m`,
       `lots loaded ${S.local.length}${S.failAt ? '  (last load failed)' : ''}`,
+      `view ${viewFovDeg().toFixed(0)}° wide${Number.isFinite(FOV_OVERRIDE) ? ' (set by ?fov)' : ''}  video ${$('#cam').videoWidth || '—'}×${$('#cam').videoHeight || '—'}  tags ${AR.items.filter((i) => !i.hidden).length}`,
       `target ${top ? summarize(top.L.p).addr + (top.inside ? ' [on lot, ' + Math.round(top.across) + ' m across]' : ' @ ' + Math.round(top.dist) + ' m') : '—'}`,
     ].join('\n');
   }
@@ -1174,14 +1351,147 @@ function drawRadar() {
 }
 
 /* =========================================================================
+   AR tags: a small label floats over each house in the camera view.
+   Where a house sits on screen comes from its compass bearing and the camera's field of view.
+   ========================================================================= */
+const FOV_OVERRIDE = qs.has('fov') ? parseFloat(qs.get('fov')) : NaN;   // side-to-side view in degrees, if the default is off for a phone
+const CAM_HALF_LONG = 33.7;    // half the view across the long side of a phone's main (1x) camera, degrees
+const AR_MAX = 7, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
+const AR = { on: true, items: [], els: new Map(), at: 0, proj: null, f: 0, liveRect: null };
+try { AR.on = localStorage.getItem('housepoint.ar') !== '0'; } catch (e) {}
+const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// Screen pixels per unit of tan(angle) for the camera picture as shown (it fills the screen, so the sides are cropped).
+function camFocalPx() {
+  const W = innerWidth, H = innerHeight;
+  if (Number.isFinite(FOV_OVERRIDE) && FOV_OVERRIDE > 5 && FOV_OVERRIDE < 170) return (W / 2) / Math.tan(rad(FOV_OVERRIDE / 2));
+  const v = $('#cam'); let vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh || v.classList.contains('hidden')) { vw = W < H ? 1080 : 1920; vh = W < H ? 1920 : 1080; }
+  const scale = Math.max(W / vw, H / vh);
+  return scale * Math.max(vw, vh) / (2 * Math.tan(rad(CAM_HALF_LONG)));
+}
+const viewFovDeg = () => 2 * Math.atan(innerWidth / 2 / camFocalPx()) * 180 / Math.PI;
+const arPitch = () => (S.beta == null ? 0 : clamp(S.beta - 90, -50, 50));   // phone upright = 90; tipped back to look up > 90
+function arY(dist, f, pitch, H) {
+  const elev = Math.atan2(AR_TAG - AR_EYE, Math.max(dist, 4)) * 180 / Math.PI;   // nearer houses sit higher in the picture
+  return clamp(H / 2 - f * Math.tan(rad(elev - pitch)), 150, H - 180);
+}
+
+// Sweep rays across the view; the first house lot each ray reaches is one you can see.
+function arScan(ox, oy, heading, half) {
+  const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < MAX_RANGE + 80 && !pointInRings(ox, oy, L.rings));
+  const hits = new Map();
+  for (let a = -half; a <= half + 1e-6; a += AR_STEP) {
+    const h = rad(heading + a), dx = Math.sin(h), dy = Math.cos(h);
+    let best = null, bt = Infinity;
+    for (const L of near) { const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE); if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; } }
+    if (!best) continue;
+    const e = hits.get(best) || { L: best, sx: 0, sy: 0, n: 0, t: Infinity };
+    e.sx += dx; e.sy += dy; e.n++; e.t = Math.min(e.t, bt); hits.set(best, e);
+  }
+  return [...hits.values()].map((e) => {
+    const cd = Math.hypot(e.L.c[0] - ox, e.L.c[1] - oy);
+    return { L: e.L, n: e.n, t: e.t, cdist: cd, dist: clamp(cd, e.t + 3, e.t + 20), bearing: norm(Math.atan2(e.sx, e.sy) * 180 / Math.PI) };
+  });
+}
+
+function arChipHtml(L) {
+  const s = summarize(L.p), m = lotMetrics(L);
+  const top = s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? 'Condos' : 'House';
+  const sub = (s.condo || s.commonOnly) ? `${s.units} units` : (money(s.r0.TOTAL_VAL) || '');
+  const dot = ageColor(m.year, L.p.region);
+  return `<span class="y">${dot ? `<i style="background:${dot}"></i>` : ''}${esc(top)}</span>${sub ? `<span class="m">${esc(sub)}</span>` : ''}`;
+}
+
+function arRelayout(f, half) {
+  const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
+  const liveKey = S.live ? S.live.L.p.key : null;          // the big label already covers the house in the circle
+  const seen = arScan(ox, oy, S.heading, half + 12).filter((v) => v.L.p.key !== liveKey);
+  const rank = (a, b) => (b.n - a.n) || (a.dist - b.dist);
+  const inView = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) <= half).sort(rank).slice(0, AR_MAX);
+  const edge = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) > half).sort(rank).slice(0, 4);   // just outside, so they slide in smoothly
+  const keep = inView.concat(edge);
+  const box = $('#ar'), next = new Map();
+  for (const v of keep) {
+    const k = v.L.p.key;
+    let el = AR.els.get(k);
+    if (!el) {
+      el = document.createElement('button'); el.className = 'arc'; el.dataset.k = k; el.innerHTML = arChipHtml(v.L);
+      el.addEventListener('click', () => arOpen(k)); box.appendChild(el);
+    }
+    next.set(k, el);
+    const prev = AR.items.find((i) => i.k === k);
+    Object.assign(v, { k, el, x: prev ? prev.x : null, y: prev ? prev.y : null, w: el.offsetWidth || 72, h: el.offsetHeight || 40 });
+  }
+  for (const [k, el] of AR.els) if (!next.has(k)) el.remove();
+  AR.els = next;
+  // Tags that would overlap: the bigger/nearer house keeps its spot, the other moves up a row (up to three), or sits out.
+  const W = innerWidth, H = innerHeight, pitch = arPitch(), placed = [];
+  for (const v of keep) {
+    const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.dist, f, pitch, H);
+    const hit = (lift) => placed.some((p) => Math.abs(p.x - x) < (p.w + v.w) / 2 + 6 && Math.abs(p.y - (y0 - lift)) < (p.h + v.h) / 2 + 4);
+    v.lift = 0;
+    while (hit(v.lift) && v.lift < 3 * (v.h + 6)) v.lift += v.h + 6;
+    v.hidden = hit(v.lift);
+    if (!v.hidden) placed.push({ x, y: y0 - v.lift, w: v.w, h: v.h });
+  }
+  AR.items = keep;
+  const ll = $('#liveLabel');
+  AR.liveRect = ll.classList.contains('dim') ? null : ll.getBoundingClientRect();
+}
+
+function arFrame(ts) {
+  const ok = AR.on && S.mode === 'point' && !S.locked && !$('#panel').classList.contains('open') && S.pos && S.proj && S.heading != null && S.local.length;
+  if (!ok) { arClear(); return; }
+  const f = camFocalPx(), W = innerWidth, H = innerHeight, half = Math.atan(W / 2 / f) * 180 / Math.PI;
+  if (ts - AR.at > 280 || AR.proj !== S.proj || Math.abs(AR.f - f) > 0.5) { AR.at = ts; AR.proj = S.proj; AR.f = f; arRelayout(f, half); }
+  const pitch = arPitch(), lr = AR.liveRect;
+  for (const v of AR.items) {
+    const rel = angDiff(v.bearing, S.heading);
+    if (v.hidden || Math.abs(rel) > half + 1) { v.el.style.opacity = '0'; v.el.style.pointerEvents = 'none'; v.x = null; continue; }
+    const tx = W / 2 + f * Math.tan(rad(rel)), ty = arY(v.dist, f, pitch, H) - v.lift;
+    if (v.x == null) { v.x = tx; v.y = ty; } else { v.x += (tx - v.x) * 0.5; v.y += (ty - v.y) * 0.5; }
+    const left = v.x - v.w / 2, top = v.y - v.h - 6;
+    const underLive = lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top;
+    v.el.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
+    v.el.style.opacity = underLive ? '0' : Math.abs(rel) > half - 3 ? '0.5' : '1';
+    v.el.style.pointerEvents = underLive ? 'none' : 'auto';
+  }
+}
+function arClear() {
+  if (!AR.els.size && !AR.items.length) return;
+  for (const el of AR.els.values()) el.remove();
+  AR.els.clear(); AR.items = []; AR.at = 0;
+}
+function arOpen(k) {
+  const v = AR.items.find((i) => i.k === k); if (!v || !S.pos) return;
+  const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
+  const mk = (i) => ({ L: i.L, dist: i.t, cdist: Math.hypot(i.L.c[0] - ox, i.L.c[1] - oy), bearing: norm(Math.atan2(i.L.c[0] - ox, i.L.c[1] - oy) * 180 / Math.PI) });
+  const others = AR.items.filter((i) => i !== v && !i.hidden).sort((a, b) => Math.abs(angDiff(a.bearing, v.bearing)) - Math.abs(angDiff(b.bearing, v.bearing))).slice(0, 4);
+  if (navigator.vibrate) navigator.vibrate(12);
+  openSheet([v, ...others].map(mk), 0);
+}
+function syncArPill() {
+  const b = $('#arPill'); b.textContent = AR.on ? 'Labels on' : 'Labels off';
+  b.classList.toggle('off', !AR.on); b.setAttribute('aria-pressed', String(AR.on));
+}
+$('#arPill').onclick = () => {
+  AR.on = !AR.on; try { localStorage.setItem('housepoint.ar', AR.on ? '1' : '0'); } catch (e) {}
+  syncArPill(); if (!AR.on) arClear();
+};
+syncArPill();
+
+/* =========================================================================
    Map mode
    ========================================================================= */
 async function startMapMode(center, msg) {
-  S.mode = 'map'; closeSheet();
+  S.mode = 'map'; document.body.classList.add('mapmode'); closeSheet();
   try { $('#cam').pause(); } catch (e) {}
   [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint'), $('#cam'), $('#fakecam'), $('#sim')].forEach((el) => show(el, false));
   $('#liveLabel').classList.add('dim');
-  show($('#start'), false); [$('#mapView'), $('#mapTop'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el));
+  show($('#start'), false); [$('#mapView'), $('#mapTop'), $('#mapColor'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el));
+  arClear();
   if (msg) $('#mapHelpTxt').textContent = msg;
   if (center) await centerMap(center.lat, center.lon, center.selectKey);
   else drawMap();
@@ -1217,9 +1527,84 @@ function refreshMapImagery() {
   S.map.img = { ext, href: imageryHref(ext, pw, ph, 0), alt: imageryHref(ext, pw, ph, 1) };
 }
 
+/* Map coloring: Photo / Age / Value / Sold. One blue ramp, light to dark (checked as an ordinal ramp
+   against the paper background; the photo is faded behind it so the colors read). */
+const RAMP = ['#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'];
+const CKEY = 'housepoint.colorBy';
+try { S.map.color = localStorage.getItem(CKEY) || 'plain'; } catch (e) { S.map.color = 'plain'; }
+if (!['plain', 'age', 'value', 'sold'].includes(S.map.color)) S.map.color = 'plain';
+
+function lotMetrics(L) {
+  if (L.m) return L.m;
+  const s = summarize(L.p);
+  const val = s.commonOnly ? null : s.condo ? median(s.vals) : num(s.r0.TOTAL_VAL);
+  const sale = s.sales.find((q) => q.p >= 10000);
+  return (L.m = { year: s.year || s.approxYear || null, val: val && val > 1000 ? val : null, sold: sale ? sale.d.getFullYear() : null });
+}
+const yrRange = (a, b) => `${a}–${Math.floor(a / 100) === Math.floor(b / 100) ? String(b).slice(2) : b}`;
+function ageScale(rid) {
+  const b = rid === 'FL' ? [1940, 1970, 1990, 2010] : [1850, 1900, 1940, 1980];   // Florida's houses are mostly postwar
+  return { mode: 'age', title: 'Year built', get: (m) => m.year, colors: RAMP.slice().reverse(),            // older = darker
+    cls: (y) => (y < b[0] ? 0 : y < b[1] ? 1 : y < b[2] ? 2 : y < b[3] ? 3 : 4),
+    labels: [`Pre-${b[0]}`, yrRange(b[0], b[1] - 1), yrRange(b[1], b[2] - 1), yrRange(b[2], b[3] - 1), `${b[3]}+`] };
+}
+function ageColor(year, rid) { if (!year) return null; const sc = ageScale(rid); return sc.colors[sc.cls(year)]; }
+const ridAt = (pt) => (DEMO || !pt ? 'MA' : (regionFor(pt.lat, pt.lon) || REGIONS.MA).id);
+
+function mapScale() {
+  const mode = S.map.color;
+  if (mode === 'plain' || !S.local.length) return null;
+  const rid = ridAt(S.map.center || S.center);
+  const old = S.map.sc;
+  if (old && old.mode === mode && old.local === S.local && old.rid === rid) return old;
+  const built = S.local.filter((L) => L.p.built).map(lotMetrics);
+  let sc;
+  if (mode === 'age') {
+    sc = ageScale(rid);
+    const m = median(built.map((x) => x.year).filter(Boolean)); sc.sub = m ? `typical ${m}` : '';
+  } else if (mode === 'value') {
+    const vals = built.map((x) => x.val).filter(Boolean).sort((a, z) => a - z);
+    const nice = (v) => { const p = 10 ** (Math.floor(Math.log10(v)) - 1); return Math.round(v / p) * p; };
+    let b = vals.length >= 5 ? [0.2, 0.4, 0.6, 0.8].map((q) => nice(vals[Math.floor(q * vals.length)])) : [250e3, 500e3, 750e3, 1e6];
+    b = b.filter((v, i) => i === 0 || v > b[i - 1]);                                         // fifths of the neighborhood
+    const k = b.length + 1;
+    sc = { mode, title: rid === 'FL' ? 'County value' : 'Assessed value', sub: vals.length ? `typical ${money(median(vals))}` : '', get: (m) => m.val,
+      colors: Array.from({ length: k }, (_, i) => RAMP[Math.round(i * 4 / (k - 1))]),
+      cls: (v) => { let i = 0; while (i < b.length && v >= b[i]) i++; return i; },
+      labels: [`<${money(b[0])}`, ...b.slice(0, -1).map((v) => `${money(v)}`), `${money(b[b.length - 1])}+`] };   // each step is labeled with where it starts
+  } else {
+    const b = [1990, 2000, 2010, 2020];
+    const recent = built.filter((x) => x.sold && x.sold >= THIS_YEAR - 4).length;
+    sc = { mode, title: 'Last sold', sub: `${recent} sold since ${THIS_YEAR - 4}`, get: (m) => m.sold, colors: RAMP,      // more recent = darker
+      cls: (y) => (y < b[0] ? 0 : y < b[1] ? 1 : y < b[2] ? 2 : y < b[3] ? 3 : 4), labels: ['Pre-1990', '1990s', '2000s', '2010s', '2020+'] };
+  }
+  sc.mode = mode; sc.local = S.local; sc.rid = rid;
+  return (S.map.sc = sc);
+}
+function drawLegend(sc) {
+  const el = $('#legend');
+  if (!sc) { show(el, false); el.dataset.sig = ''; return; }
+  const sig = [sc.mode, sc.sub, ...sc.labels].join('|');
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  el.innerHTML = `<div class="lt">${esc(sc.title)}${sc.sub ? ` <span>· ${esc(sc.sub)}</span>` : ''}</div><div class="lr">` +
+    sc.labels.map((l, i) => `<div class="li"><div class="sw" style="background:${sc.colors[i]}"></div><div class="ll">${esc(l)}</div></div>`).join('') +
+    `<div class="li nd"><div class="sw"></div><div class="ll">${sc.mode === 'sold' ? 'No sale' : 'No data'}</div></div></div>`;
+  show(el);
+}
+function syncColorSeg() { document.querySelectorAll('#colorSeg button').forEach((b) => b.classList.toggle('on', b.dataset.c === S.map.color)); }
+$('#colorSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.map.color = b.dataset.c; try { localStorage.setItem(CKEY, S.map.color); } catch (err) {}
+  syncColorSeg(); drawMap();
+});
+syncColorSeg();
+
 function drawMap() {
   const svg = $('#mapSvg');
-  if (!S.map.center || !S.proj) { svg.innerHTML = ''; return; }
+  if (!S.map.center || !S.proj) { svg.innerHTML = ''; drawLegend(null); return; }
+  const sc = mapScale();
+  drawLegend(sc);
   const [cx, cy] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
   const w = svg.clientWidth || innerWidth, hgt = svg.clientHeight || innerHeight;
   const R = S.map.R, aspect = hgt / w;
@@ -1231,19 +1616,32 @@ function drawMap() {
   }
   const bg = svg.querySelector('#mBg');
   bg.setAttribute('x', -R * 4); bg.setAttribute('y', -R * 4 * aspect); bg.setAttribute('width', R * 8); bg.setAttribute('height', R * 8 * aspect);
+  bg.setAttribute('fill', sc ? '#f6f1e7' : '#34322c');
   const im = svg.querySelector('#mImg');
+  im.style.opacity = sc ? '0.3' : '1';
   if (S.map.img) {
     if (im.dataset.src !== S.map.img.href) { im.dataset.src = S.map.img.href; im.dataset.alt = S.map.img.alt; im.setAttribute('href', S.map.img.href); }
     const e = S.map.img.ext;
     im.setAttribute('x', (e.x0 - cx).toFixed(1)); im.setAttribute('y', (-(e.y0 + e.h - cy)).toFixed(1));
     im.setAttribute('width', e.w.toFixed(1)); im.setAttribute('height', e.h.toFixed(1)); im.style.display = '';
   } else im.style.display = 'none';
-  let out = '';
+  let out = '', selOut = '';
   for (const L of S.local) {
     const sel = L.p.key === S.map.selectedKey;
-    out += `<path data-k="${esc(L.p.key)}" d="${ringsPath(L.rings, cx, cy)}" fill-rule="evenodd" fill="${sel ? 'rgba(180,67,44,.5)' : L.p.built ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.02)'}" stroke="${sel ? '#f0a48f' : 'rgba(255,255,255,.7)'}" stroke-width="${sel ? 2.4 : .8}" vector-effect="non-scaling-stroke"/>`;
+    let fill, stroke, sw;
+    if (sc) {
+      const v = L.p.built ? sc.get(lotMetrics(L)) : null;
+      const k = v == null ? -1 : sc.cls(v);
+      fill = k >= 0 ? sc.colors[k] : L.p.built ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.25)';
+      stroke = sel ? '#b4432c' : k >= 0 ? '#f6f1e7' : 'rgba(29,26,23,.4)'; sw = sel ? 3 : 1;
+    } else {
+      fill = sel ? 'rgba(180,67,44,.5)' : L.p.built ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.02)';
+      stroke = sel ? '#f0a48f' : 'rgba(255,255,255,.7)'; sw = sel ? 2.4 : 0.8;
+    }
+    const path = `<path data-k="${esc(L.p.key)}" d="${ringsPath(L.rings, cx, cy)}" fill-rule="evenodd" fill="${fill}"${sc ? ' fill-opacity=".88"' : ''} stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`;
+    if (sel) selOut = path; else out += path;      // selected lot last, so its outline sits on top
   }
-  svg.querySelector('#mParcels').innerHTML = out;
+  svg.querySelector('#mParcels').innerHTML = out + selOut;
   let me = '';
   if (S.pos) {
     const [ux, uy] = S.proj.fwd(S.pos.lat, S.pos.lon);
@@ -1563,7 +1961,8 @@ if (DEMO) {
 }
 
 // test hooks
-window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler };
+window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler,
+  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
 })();
 </script>
 </body>
