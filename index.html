@@ -310,11 +310,6 @@ const MIN_RANGE = 2;
 const INSIDE_FIRST_M = 12;      // standing on a lot and pointing across >= this many meters of it? then it's probably the one you mean
 const CONE = [[-11, .4], [-5.5, .8], [0, 1], [5.5, .8], [11, .4]]; // ray offsets (deg) and weights
 
-// Only these assessor fields are ever requested. Owner name and mailing
-// address fields are deliberately excluded, so they never reach the phone.
-const SAFE_FIELDS = new Set(['LOC_ID','PROP_ID','MAP_PAR_ID','POLY_TYPE','SITE_ADDR','ADDR_NUM','FULL_STR','LOCATION','CITY','ZIP','TOWN_ID',
-  'FY','TOTAL_VAL','BLDG_VAL','LAND_VAL','OTHER_VAL','LOT_SIZE','LOT_UNITS','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','BLD_AREA',
-  'UNITS','RES_AREA','STYLE','STORIES','NUM_ROOMS']);
 
 // Aerial imagery for the card and map. Esri first (sharpest), USGS NAIP (public domain) as backup.
 const IMAGERY = [
@@ -382,6 +377,7 @@ const USE_CODES = {
 };
 const USE_FIRST = { '0': 'Mixed use', '1': 'Residential', '2': 'Open space', '3': 'Commercial', '4': 'Industrial',
   '6': 'Forest land', '7': 'Farm land', '8': 'Recreation land', '9': 'Tax-exempt property' };
+const flCondoCode = (code) => /^0*(4|9)$/.test(String(code || '').replace(/\D/g, ''));   // condo, or residential common area
 function flUseLabel(code) {
   const d = String(code || '').replace(/\D/g, ''); if (!d) return null;
   const n = parseInt(d, 10);
@@ -540,14 +536,16 @@ const REGIONS = {
     bbox: [-87.65, 24.39, -79.97, 31.0],
     declination: (lat, lon) => -6.8 - 0.625 * (lon + 80),      // ~ -6.8 on the Atlantic coast, ~ -2.3 in Pensacola
     // Florida Geographic Information Office's statewide parcel items (Dept. of Revenue tax roll joined to county parcel maps).
-    items: ['55e830fd6c8948baae1601fbfc33a3b2', 'ff7b985e139c4c7ba844500053e8e185'],
-    discover: `type:"Feature Service" AND (title:"Statewide Parcels" OR title:"Florida Parcels" OR title:"FDOR Parcels")`,
-    detect: ['JV', 'ACT_YR_BLT', 'DOR_UC'],
+    services: ['https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer'],
+    items: ['efa909d6b1c841d298b0a649e7f71cf2', '55e830fd6c8948baae1601fbfc33a3b2', 'ff7b985e139c4c7ba844500053e8e185'],
+    discover: `type:"Feature Service" AND (title:Cadastral OR title:"Statewide Parcels" OR title:"Florida Parcels" OR title:"FDOR Parcels")`,
+    detect: ['JV', 'ACT_YR_BLT', 'DOR_UC', 'ACTYRBLT', 'DORUC', 'PHY_ADDR1', 'PHYADDR1'],
     fields: {
-      PROP_ID: ['PARCEL_ID', 'PARCELNO'], SITE_ADDR: ['PHY_ADDR1'], CITY: ['PHY_CITY'], ZIP: ['PHY_ZIPCD', 'PHY_ZIP'], FY: ['ASMNT_YR'],
-      TOTAL_VAL: ['JV'], LAND_VAL: ['LND_VAL'], LS_PRICE: ['SALE_PRC1'], SALE_YR: ['SALE_YR1'], SALE_MO: ['SALE_MO1'],
-      USE_CODE: ['DOR_UC'], YEAR_BUILT: ['ACT_YR_BLT'], EFF_YEAR: ['EFF_YR_BLT'], RES_AREA: ['TOT_LVG_AREA', 'TOT_LVG_AR'],
-      UNITS: ['NO_RES_UNTS', 'NO_RES_UNT'], BLDGS: ['NO_BULDNG'],
+      PROP_ID: ['PARCEL_ID', 'PARCELNO', 'PARCELID'], SITE_ADDR: ['PHY_ADDR1', 'PHYADDR1'], CITY: ['PHY_CITY', 'PHYCITY'], ZIP: ['PHY_ZIPCD', 'PHY_ZIP', 'PHYZIP'],
+      FY: ['ASMNT_YR'], TOTAL_VAL: ['JV'], LAND_VAL: ['LND_VAL', 'LNDVAL'], LS_PRICE: ['SALE_PRC1', 'SALEPRC1'], SALE_YR: ['SALE_YR1', 'SALEYR1'],
+      SALE_MO: ['SALE_MO1', 'SALEMO1'], MULTI_SALE: ['MULTI_PAR_SAL1', 'MULTI_PAR_', 'MULTIPAR1'], USE_CODE: ['DOR_UC', 'DORUC'],
+      YEAR_BUILT: ['ACT_YR_BLT', 'ACTYRBLT'], EFF_YEAR: ['EFF_YR_BLT', 'EFFYRBLT'], RES_AREA: ['TOT_LVG_AREA', 'TOT_LVG_AR', 'TOTLVGAREA'],
+      UNITS: ['NO_RES_UNTS', 'NO_RES_UNT', 'NORESUNTS'], BLDGS: ['NO_BULDNG', 'NOBULDNG'],
     },
     valueLabel: 'County market value (“just value”)', deltaWord: 'value',
     yearLabel: (fy) => `${fy} tax roll`,
@@ -572,8 +570,10 @@ const SVC = {};   // region id -> { layerUrl, rev (service field -> our name), c
 const svcFor = (rid) => SVC[rid] || (SVC[rid] = { ready: null });
 const anyServiceUp = () => Object.values(SVC).some((x) => x.layerUrl);
 
-async function getJSON(url, opts) {
-  const r = await fetch(url, opts);
+async function getJSON(url, opts = {}, ms = 20000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  let r;
+  try { r = await fetch(url, { ...opts, signal: ctl.signal }); } finally { clearTimeout(t); }
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
   if (j && j.error) throw new Error(j.error.message || 'Service error');
@@ -592,7 +592,7 @@ async function tryLayer(region, url) {
   for (const lurl of layerUrls.slice(0, 6)) {
     const lm = await getJSON(lurl + '?f=json');
     const upper = new Map((lm.fields || []).map((fd) => [fd.name.toUpperCase(), fd.name]));
-    if (!region.detect.some((d) => upper.has(d))) continue;
+    if (region.detect.filter((d) => upper.has(d)).length < Math.min(2, region.detect.length)) continue;
     const sv = svcFor(region.id);
     sv.rev = new Map(); sv.canon = new Map();
     for (const [canon, cands] of Object.entries(region.fields)) {
@@ -650,6 +650,13 @@ function normalizeRecord(attrs, rid) {
   return out;
 }
 
+// Stable id for an outline: identical (stacked) condo polygons match, neighbors that share a corner don't.
+function shapeHash(rings) {
+  let h = 5381;
+  for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
+  return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
+}
+
 // Turn features into parcels: one per lot, holding every record on it (condo units stack on one lot).
 function buildParcels(features, rid = 'MA') {
   const byKey = new Map();
@@ -658,15 +665,15 @@ function buildParcels(features, rid = 'MA') {
     const rec = normalizeRecord(ft.attributes || {}, rid);
     const pt = String(rec.POLY_TYPE || '').toUpperCase();
     if (pt && pt !== 'FEE' && pt !== 'TAX') continue; // skip roads, rail and water
-    const first = g.rings[0][0];
-    const key = rec.LOC_ID || `${rid}:${first[0].toFixed(6)},${first[1].toFixed(6)},${g.rings[0].length}`;
+    const key = rec.LOC_ID || `${rid}:${shapeHash(g.rings)}`;
     let p = byKey.get(key);
     if (!p) { p = { key, region: rid, ringsLL: g.rings, records: [] }; byKey.set(key, p); }
     p.records.push(rec);
   }
   return [...byKey.values()].map((p) => {
     const recs = p.records;
-    const built = recs.some((r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600 || (num(r.BLDG_VAL) || 0) > 0);
+    const built = recs.some((r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600 || (num(r.BLDG_VAL) || 0) > 0
+      || (num(r.EFF_YEAR) || 0) > 1600 || (flCondoCode(r.USE_CODE) && ((num(r.BLDGS) || 0) > 0 || (num(r.UNITS) || 0) > 0)));
     return { ...p, built };
   });
 }
@@ -724,7 +731,7 @@ async function searchIn(region, addr, town) {
   tries.push(`UPPER(${A}) LIKE '${sqlq(addr)}%'`);
   for (const where of tries) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: '5', f: 'json' });
-    const j = await getJSON(sv.layerUrl + '/query?' + params.toString());
+    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, 12000);
     const ps = buildParcels(j.features || [], region.id);
     if (ps.length) {
       const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
@@ -868,8 +875,14 @@ function summarize(p) {
   const units = recs.length > 1 ? recs.length : (num(r0.UNITS) || 1);
   const region = REGIONS[p.region] || REGIONS.MA;
   const eff = recs.map((r) => num(r.EFF_YEAR)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
-  return { r0, recs, year, sales, vals, addr, town, units, condo: recs.length > 1, use: region.useLabel(r0.USE_CODE), fy: num(r0.FY), region,
-    updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null };
+  const unitsListed = num(r0.UNITS) || 1;
+  // Florida: some counties publish only the condo's common-area lot (no value, no units) and keep unit records elsewhere.
+  const commonOnly = region.id === 'FL' && flCondoCode(r0.USE_CODE) && !vals.some((v) => v > 1000);
+  return { r0, recs, year, sales, vals, addr, town, units: recs.length > 1 ? recs.length : unitsListed, condo: recs.length > 1, use: region.useLabel(r0.USE_CODE),
+    fy: num(r0.FY), region, commonOnly,
+    approxYear: !year && eff.length ? Math.max(...eff) : null,
+    updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null,
+    multiSale: recs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))) };
 }
 
 function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); return Math.abs(a) * 10.7639; }
@@ -884,13 +897,17 @@ function renderCard(cand, total, idx) {
   const style = r.STYLE ? titleCase(r.STYLE) : null;
   const chips = [];
   if (s.year) chips.push(`<span class="chip">Built ${s.year} · ${THIS_YEAR - s.year} yrs</span>`);
+  else if (s.approxYear) chips.push(`<span class="chip">Built around ${s.approxYear} (effective year)</span>`);
   if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
   const ot = olderThan(s.year); if (ot) chips.push(`<span class="chip fun">${esc(ot)}</span>`);
   const era = eraLabel(s.year); if (era && s.year < 1942) chips.push(`<span class="chip green">${esc(era)}</span>`);
   if (s.updated) chips.push(`<span class="chip">Updated around ${s.updated}</span>`);
 
   let valueBlock = '';
-  if (s.condo) {
+  if (s.commonOnly) {
+    valueBlock = `<div class="value"><div class="k">Condo building</div><div class="v">${s.units > 1 ? s.units + ' units' : 'Condo'}</div>
+      <div class="s">This county doesn’t publish individual unit records on the statewide map, so unit values and sales aren’t available here.</div></div>`;
+  } else if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
       <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>
@@ -901,9 +918,10 @@ function renderCard(cand, total, idx) {
     if (sale) {
       const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
       if (sale.p && sale.p >= 10000) {
-        const ch = v ? Math.round((v / sale.p - 1) * 100) : null;
+        const ratio = v ? v / sale.p : null;
+        const ch = ratio && !s.multiSale && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
-        saleLine = `Last sold <b>${moneyFull(sale.p)}</b> · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
+        saleLine = `Last sold <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else {
         saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
       }
@@ -1081,6 +1099,7 @@ function tick(ts) {
   else if (!DEMO && !regionFor(S.pos.lat, S.pos.lon)) hint = 'Housepoint covers Massachusetts and Florida for now.';
   else if (S.heading == null) hint = 'Waiting for the compass…';
   else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
+  else if (!DEMO && S.center && !S.loading && !S.failAt && !S.local.length) hint = 'No property records here. Housepoint covers Massachusetts and Florida for now.';
   else if (S.beta != null && Math.abs(S.beta) < 35 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';
   else if (S.acc > 35) hint = 'GPS is fuzzy right now. Results may be off.';
   $('#hint').textContent = hint;
