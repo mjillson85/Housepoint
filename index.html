@@ -6,10 +6,13 @@
 <meta name="theme-color" content="#14110f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Housepoint</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* Fonts are served from this site (SIL Open Font License), so no third party sees your visit. */
+  @font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url(fonts/inter-latin-400-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Inter"; font-weight: 500; font-display: swap; src: url(fonts/inter-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url(fonts/inter-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Fraunces"; font-weight: 500; font-display: swap; src: url(fonts/fraunces-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Fraunces"; font-weight: 700; font-display: swap; src: url(fonts/fraunces-latin-700-normal.woff2) format("woff2"); }
   :root {
     --ink: #1d1a17;
     --paper: #f6f1e7;
@@ -63,7 +66,21 @@
   .btn-primary:active { transform: scale(.985); }
   .btn-ghost { width: 100%; height: 50px; margin-top: 10px; border-radius: 14px; color: #e9e1d6; font-weight: 500; font-size: 15px;
     border: 1px solid rgba(255,255,255,.18); }
-  .fine { margin-top: 18px; font-size: 12px; line-height: 1.5; color: #8f857a; }
+  .fine { margin-top: 14px; font-size: 12px; line-height: 1.5; color: #8f857a; }
+  .fine b { color: #d8cfc3; font-weight: 600; }
+  .fine a { color: #f0a48f; }
+  .btn-link { width: 100%; height: 44px; margin-top: 4px; color: #f0a48f; font-weight: 600; font-size: 15px; }
+  #shutter.fuzzy { opacity: .55; }
+  .chip.star { background: var(--ink); color: var(--paper); }
+  /* about & sources */
+  #about { position: fixed; inset: 0; z-index: 55; background: rgba(10,9,8,.6); display: flex; align-items: flex-end; }
+  #about .card { width: 100%; max-height: 90vh; max-height: 90dvh; }
+  #about h2 { font-family: var(--serif); font-size: 24px; margin: 8px 0 6px; }
+  #about h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--mute); margin: 18px 0 6px; }
+  #about p, #about li { font-size: 14px; line-height: 1.5; color: var(--ink); }
+  #about ul { padding-left: 18px; margin: 6px 0; }
+  #about a { color: var(--brick); }
+  #aboutClose { width: 100%; height: 46px; border-radius: 12px; background: var(--ink); color: var(--paper); font-weight: 600; margin: 8px 0 4px; }
 
   /* ---------- HUD ---------- */
   #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(12px + var(--safe-t)) 14px 0; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
@@ -182,11 +199,13 @@
   #scan { position: fixed; left: 0; right: 0; height: 2px; top: 44%; z-index: 6; background: linear-gradient(90deg, transparent, #f0a48f, transparent); opacity: 0; }
   #scan.on { animation: scan 0.9s ease-in-out infinite; opacity: 1; }
   @keyframes scan { 0% { transform: translateY(-120px); } 50% { transform: translateY(120px); } 100% { transform: translateY(-120px); } }
-  .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; pointer-events: none; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
+  .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; text-decoration: none; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
 
   /* aerial photo on card */
   .aerial { margin: 8px 0 6px; border-radius: 16px; overflow: hidden; position: relative; background: #cfc6b5; aspect-ratio: 2 / 1; }
   .aerial svg { width: 100%; height: 100%; display: block; }
+  .aerial .sv { position: absolute; left: 8px; top: 8px; padding: 6px 10px; border-radius: 999px; background: rgba(20,17,15,.72); color: #fff;
+    font-size: 12px; font-weight: 600; text-decoration: none; }
   .aerial .attr { position: absolute; right: 8px; bottom: 6px; font-size: 9.5px; color: rgba(255,255,255,.9); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
   #mapAttr { position: fixed; left: 14px; bottom: calc(166px + var(--safe-b)); z-index: 12; font-size: 10px; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.8); }
 
@@ -279,7 +298,9 @@
     Start pointing
   </button>
   <button class="btn-ghost" id="goMap">Use the map instead</button>
-  <div class="fine">Uses your camera, location and compass on this device only. Property facts come from public assessor records (MassGIS in Massachusetts, the Dept. of Revenue in Florida). Owner names are never shown.</div>
+  <button class="btn-link" id="goDemo">Try a sample neighborhood</button>
+  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera, location and compass stay on this device. Covers Massachusetts and Florida.
+    <a href="#" id="openAbout">About &amp; sources</a> · <a href="privacy.html">Privacy</a></div>
 </section>
 
 <!-- POINT MODE -->
@@ -344,7 +365,7 @@
   </div>
 </div></div>
 
-<div id="mapAttr" class="hidden">Imagery © Esri, Maxar · USGS</div>
+<div id="mapAttr" class="hidden">Imagery: USGS NAIP</div>
 
 <!-- HIGHLIGHTS / HISTORY PANEL -->
 <div id="panel"><div class="card">
@@ -363,6 +384,8 @@
   <button class="btn-ghost" id="svClose">Close</button>
 </div></div>
 
+<div id="about" class="hidden"><div class="card"><div class="card-scroll" id="aboutBody"></div>
+  <div class="card-actions"><button id="aboutClose">Close</button></div></div></div>
 <div id="toast" class="off"></div>
 
 <script>
@@ -382,11 +405,14 @@ const INSIDE_FIRST_M = 12;      // standing on a lot and pointing across >= this
 const CONE = [[-11, .4], [-5.5, .8], [0, 1], [5.5, .8], [11, .4]]; // ray offsets (deg) and weights
 
 
-// Aerial imagery for the card and map. Esri first (sharpest), USGS NAIP (public domain) as backup.
-const IMAGERY = [
-  { url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export', attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' },
-  { url: 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage', attribution: 'Imagery: USGS NAIP' },
+// Aerial photos. Massachusetts: MassGIS's own spring 2025 photos (15 cm per pixel, taken before the leaves come in), served as
+// map tiles, with the 2023 set as a backup. Everywhere else, and when those fail: USGS NAIP, which is public domain.
+const MA_TILES = [
+  'https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Aerial_Imagery_2025/MapServer/tile',
+  'https://tiles.arcgis.com/tiles/hGdibHYSPO59RG1h/arcgis/rest/services/orthos2023/MapServer/tile',
 ];
+const NAIP = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage';
+const IMG_CREDIT = { MA: 'Imagery: MassGIS 2025', NAIP: 'Imagery: USGS NAIP' };
 
 const qs = new URLSearchParams(location.search);
 const DEMO = qs.has('demo');
@@ -554,10 +580,37 @@ function aerialExtent(L, aspect = 2, pad = 1.7) {
   if (w < 70) { w = 70; h = w / aspect; }
   return { x0: cx - w / 2, y0: cy - h / 2, w, h };
 }
-function imageryHref(ext, pw, ph, i = 0, proj = S.proj) {
+const tileY = (lat, n) => (1 - Math.log(Math.tan(rad(lat)) + 1 / Math.cos(rad(lat))) / Math.PI) / 2 * n;
+const tileLat = (y, n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+// Photo pieces covering a rectangle in local meters: { credit, parts: [{ href, alt, x0, y0, w, h }], naip }.
+function imagerySet(ext, pw, ph, proj = S.proj, maxTiles = 96) {
   const [la0, lo0] = proj.inv(ext.x0, ext.y0), [la1, lo1] = proj.inv(ext.x0 + ext.w, ext.y0 + ext.h);
-  const [x0, y0] = merc(la0, lo0), [x1, y1] = merc(la1, lo1);
-  return `${IMAGERY[i].url}?bbox=${x0.toFixed(2)},${y0.toFixed(2)},${x1.toFixed(2)},${y1.toFixed(2)}&bboxSR=3857&imageSR=3857&size=${pw},${ph}&format=jpg&f=image`;
+  const [mx0, my0] = merc(la0, lo0), [mx1, my1] = merc(la1, lo1);
+  const naip = { href: `${NAIP}?bbox=${mx0.toFixed(2)},${my0.toFixed(2)},${mx1.toFixed(2)},${my1.toFixed(2)}&bboxSR=3857&imageSR=3857&size=${pw},${ph}&format=jpg&f=image`,
+    x0: ext.x0, y0: ext.y0, w: ext.w, h: ext.h };
+  const rg = regionFor((la0 + la1) / 2, (lo0 + lo1) / 2);
+  if (!rg || rg.id !== 'MA') return { credit: IMG_CREDIT.NAIP, parts: [naip], naip: null, key: naip.href };
+  // Pick the tile zoom whose pixels are about as fine as the screen's, with a cap on how many tiles one view needs.
+  const want = ext.w / pw;
+  let z = Math.max(12, Math.min(20, Math.ceil(Math.log2(40075016.686 * Math.cos(rad((la0 + la1) / 2)) / 256 / want))));
+  let n, xa, xb, ya, yb;
+  for (;;) {
+    n = 2 ** z;
+    xa = Math.floor((lo0 + 180) / 360 * n); xb = Math.floor((lo1 + 180) / 360 * n);
+    ya = Math.floor(tileY(la1, n)); yb = Math.floor(tileY(la0, n));
+    if ((xb - xa + 1) * (yb - ya + 1) <= maxTiles || z <= 12) break;
+    z--;
+  }
+  const parts = [];
+  for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) {
+    const [px0, py0] = proj.fwd(tileLat(y + 1, n), x / n * 360 - 180), [px1, py1] = proj.fwd(tileLat(y, n), (x + 1) / n * 360 - 180);
+    parts.push({ href: `${MA_TILES[0]}/${z}/${y}/${x}`, alt: `${MA_TILES[1]}/${z}/${y}/${x}`, x0: px0, y0: py0, w: px1 - px0, h: py1 - py0 });
+  }
+  return { credit: IMG_CREDIT.MA, parts, naip, key: `${z}/${xa}/${ya}/${xb}/${yb}` };
+}
+// <image> tags for a set, in the SVG's local-meter frame (y flipped: north is up).
+function imageTags(set) {
+  return set.parts.map((p) => `<image href="${esc(p.href)}"${p.alt ? ` data-alt="${esc(p.alt)}"` : ''} x="${p.x0.toFixed(2)}" y="${(-(p.y0 + p.h)).toFixed(2)}" width="${(p.w + 0.08).toFixed(2)}" height="${(p.h + 0.08).toFixed(2)}" preserveAspectRatio="none"/>`).join('');
 }
 function ringsPath(rings, ox = 0, oy = 0) {
   return rings.map((r) => 'M' + r.map(([x, y]) => `${(x - ox).toFixed(1)},${(-(y - oy)).toFixed(1)}`).join('L') + 'Z').join('');
@@ -567,17 +620,25 @@ function aerialSvg(L) {
   const top = -(ext.y0 + ext.h);
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const pw = Math.round(Math.min(innerWidth, 520) * dpr), ph = Math.round(pw / 2);
+  const set = imagerySet(ext, pw, ph, L.proj); aerialSvg.last = set;
+  const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
   return `<div class="aerial"><svg viewBox="${ext.x0.toFixed(1)} ${top.toFixed(1)} ${ext.w.toFixed(1)} ${ext.h.toFixed(1)}" preserveAspectRatio="xMidYMid slice">
-    <image href="${esc(imageryHref(ext, pw, ph, 0, L.proj))}" data-alt="${esc(imageryHref(ext, pw, ph, 1, L.proj))}" x="${ext.x0.toFixed(1)}" y="${top.toFixed(1)}" width="${ext.w.toFixed(1)}" height="${ext.h.toFixed(1)}" preserveAspectRatio="none"/>
+    <g class="imgs">${imageTags(set)}</g>
     <path d="${ringsPath(L.rings)}" fill="rgba(180,67,44,.16)" fill-rule="evenodd" stroke="#f0a48f" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-  </svg><span class="attr">${esc(IMAGERY[0].attribution)}</span></div>`;
+  </svg><a class="sv" href="https://www.google.com/maps/@?api=1&amp;map_action=pano&amp;viewpoint=${lat.toFixed(6)},${lon.toFixed(6)}" target="_blank" rel="noopener">Street view ↗</a><span class="attr">${esc(set.credit)}</span></div>`;
 }
-function attachImageryFallback(root) {
-  root.querySelectorAll('image[data-alt]').forEach((im) => im.addEventListener('error', () => {
-    const alt = im.getAttribute('data-alt'); if (!alt) return;
-    im.removeAttribute('data-alt'); im.setAttribute('href', alt);
-    const at = root.querySelector('.attr'); if (at) at.textContent = IMAGERY[1].attribution;
-  }, { once: true }));
+// A tile that fails tries the backup set; if that fails too, the USGS photo fills in underneath.
+function attachImageryFallback(group, set, credit) {
+  if (!group || !set) return;
+  group.querySelectorAll('image').forEach((im) => im.addEventListener('error', function onErr() {
+    const alt = im.getAttribute('data-alt');
+    if (alt) { im.removeAttribute('data-alt'); im.setAttribute('href', alt); return; }
+    im.removeEventListener('error', onErr); im.remove();
+    if (set.naip && !group.querySelector('image.naip')) {
+      group.insertAdjacentHTML('afterbegin', imageTags({ parts: [set.naip] }).replace('<image ', '<image class="naip" '));
+      if (credit) credit.textContent = IMG_CREDIT.NAIP;
+    }
+  }));
 }
 
 /* =========================================================================
@@ -847,7 +908,16 @@ function demoParcels(lat0, lon0) {
     }
   }
   const ps = buildParcels(feats);
-  demoParcels.cache = { key: `${lat0.toFixed(3)},${lon0.toFixed(3)}`, ps };
+  // a house on each lot: 12 m wide, set back 6 m from the lot line
+  const bldgs = feats.map((ft) => {
+    const r = ft.geometry.rings[0].map(([lo, la]) => proj.fwd(la, lo));
+    const x0 = Math.min(...r.map((q) => q[0])), y0 = Math.min(...r.map((q) => q[1])), y1 = Math.max(...r.map((q) => q[1]));
+    const street = Math.round((y0 + y1) / 2 / 70) * 70;          // the nearest made-up street
+    const front = Math.abs(y0 - street) < Math.abs(y1 - street) ? y0 : y1, dir = front === y0 ? 1 : -1;
+    const ya = front + dir * 6, yb = front + dir * 16;
+    return [[[x0 + 5, ya], [x0 + 17, ya], [x0 + 17, yb], [x0 + 5, yb], [x0 + 5, ya]].map(([x, y]) => { const [la, lo] = proj.inv(x, y); return [lo, la]; })];
+  });
+  demoParcels.cache = { key: `${lat0.toFixed(3)},${lon0.toFixed(3)}`, ps, bldgs };
   return ps;
 }
 
@@ -859,13 +929,14 @@ const S = {
   pos: null, acc: null,          // GPS
   heading: null, beta: null,     // compass (true north)
   hbuf: [], gotOrientation: false, orientSource: null,
-  parcels: [], center: null, proj: null, local: [], loading: null,
+  parcels: [], center: null, proj: null, local: [], loading: null, bldgs: [], bldgVer: 0,
   candidates: [], cIdx: 0, locked: false,
   map: { center: null, R: 110, selectedKey: null },
 };
 
 function setData(parcels, lat, lon) {
   S.parcels = parcels; S.center = { lat, lon }; S.proj = makeProj(lat, lon); S.map.img = null;
+  S.bldgs = []; S.bldgVer++;
   S.local = parcels.map((p) => {
     const rings = p.ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
     const L = { p, rings, c: centroid(rings), proj: S.proj };
@@ -882,7 +953,11 @@ async function ensureData(lat, lon, force = false) {
   if (S.loading) return S.loading;
   if (!force && S.failAt && Date.now() - S.failAt < 20000) throw new Error('waiting before retry');
   S.loading = (async () => {
-    try { setData(await queryParcelsNear(lat, lon), lat, lon); S.failAt = 0; }
+    try {
+      setData(await queryParcelsNear(lat, lon), lat, lon); S.failAt = 0;
+      const proj = S.proj;
+      queryBuildingsNear(lat, lon).then((b) => { if (S.proj === proj) setBuildings(b); }).catch((e) => console.warn('building outlines unavailable', e));
+    }
     catch (e) {
       console.error(e); S.failAt = Date.now();
       if (!S.failToastAt || Date.now() - S.failToastAt > 30000) { S.failToastAt = Date.now(); if (anyServiceUp() || DEMO) toast('Could not load property data. Check your connection.'); }
@@ -891,6 +966,95 @@ async function ensureData(lat, lon, force = false) {
     finally { S.loading = null; }
   })();
   return S.loading;
+}
+
+/* =========================================================================
+   Building outlines. Aiming at roofs instead of whole lots picks the house you
+   can actually see (a ray across a big lawn or a lot corner no longer counts).
+   Massachusetts: MassGIS roof outlines. Florida: FEMA/ORNL USA Structures
+   (public domain), with the state's Microsoft-derived outlines as a backup.
+   Lots with no outline on file fall back to the lot line.
+   ========================================================================= */
+const BLDG_SOURCES = {
+  MA: { urls: ['https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0'], items: [], more: [] },
+  FL: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'],
+    more: ['https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/FloridaStatewideBuildingFootprints/FeatureServer/0'] },
+};
+const BSVC = {};
+function bldgLayer(rid) {
+  if (BSVC[rid]) return BSVC[rid];
+  BSVC[rid] = (async () => {
+    const src = BLDG_SOURCES[rid]; if (!src) return null;
+    const cands = [...src.urls];
+    for (const id of src.items) {
+      try { const it = await getJSON(`https://www.arcgis.com/sharing/rest/content/items/${id}?f=json`, {}, 10000);
+        if (it.url) cands.push(/\/\d+\/?$/.test(it.url) ? it.url.replace(/\/+$/, '') : it.url.replace(/\/+$/, '') + '/0'); } catch (e) { /* next */ }
+    }
+    cands.push(...src.more);
+    for (const u of cands) {
+      try { const m = await getJSON(u + '?f=json', {}, 10000); if (/Polygon/i.test(m.geometryType || '')) return { url: u, page: Math.min(2000, m.maxRecordCount || 1000) }; }
+      catch (e) { /* next */ }
+    }
+    return null;
+  })();
+  BSVC[rid].then((l) => { if (!l) setTimeout(() => { delete BSVC[rid]; }, 60000); }, () => { delete BSVC[rid]; });
+  return BSVC[rid];
+}
+async function queryBuildingsNear(lat, lon, radius = QUERY_RADIUS) {
+  if (DEMO) return demoParcels.cache ? demoParcels.cache.bldgs : [];
+  const rg = regionFor(lat, lon); if (!rg) return [];
+  const l = await bldgLayer(rg.id); if (!l) return [];
+  const out = [];
+  for (let page = 0, offset = 0; page < 4; page++) {
+    const params = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+      distance: String(radius), units: 'esriSRUnit_Meter', returnGeometry: 'true', outSR: '4326', geometryPrecision: '7',
+      resultOffset: String(offset), resultRecordCount: String(l.page), f: 'json' });
+    const j = await getJSON(l.url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }, 15000);
+    const got = j.features || [];
+    for (const ft of got) if (ft.geometry && ft.geometry.rings && ft.geometry.rings.length) out.push(ft.geometry.rings);
+    if (!j.exceededTransferLimit || !got.length) break;
+    offset += got.length;
+  }
+  return out;
+}
+// Each outline goes with the smallest lot it sits on.
+function setBuildings(list) {
+  if (!S.proj) return;
+  for (const L of S.local) L.hasBldg = false;
+  const out = [];
+  for (const ringsLL of list || []) {
+    const rings = ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
+    const c = centroid(rings), bb = lotBBox({ rings });
+    let best = null, bestA = Infinity;
+    for (const L of S.local) {
+      const b = L.bb; if (!b || c[0] < b.minx || c[0] > b.maxx || c[1] < b.miny || c[1] > b.maxy) continue;
+      if (!pointInRings(c[0], c[1], L.rings)) continue;
+      const a = lotSqft(L); if (a < bestA) { bestA = a; best = L; }
+    }
+    if (!best) continue;
+    best.hasBldg = true;
+    out.push({ rings, c, bb, L: best, area: Math.abs(rings.reduce((t, r) => t + ringArea(r), 0)) });
+  }
+  S.bldgs = out; S.bldgVer++;
+  for (const L of S.local) L.badges = null;
+  if (S.mode === 'map') drawMap();
+}
+// Everything a ray reaches, nearest first, one entry per lot: [t, lot, building or null].
+function rayHits(ox, oy, dx, dy, exclude, maxT = MAX_RANGE) {
+  const hits = [];
+  for (const b of S.bldgs) {
+    if (!b.L.p.built || exclude.has(b.L) || rayBoxT(ox, oy, dx, dy, b.bb, maxT) < 0) continue;
+    const t = rayEntry(ox, oy, dx, dy, b.rings, maxT);
+    if (t !== null && t >= MIN_RANGE) hits.push([t, b.L, b]);
+  }
+  for (const L of S.local) {
+    if (!L.p.built || L.hasBldg || exclude.has(L) || (L.bb && rayBoxT(ox, oy, dx, dy, L.bb, maxT) < 0)) continue;
+    const t = rayEntry(ox, oy, dx, dy, L.rings, maxT);
+    if (t !== null && t >= MIN_RANGE) hits.push([t, L, null]);
+  }
+  hits.sort((a, b) => a[0] - b[0]);
+  const seen = new Set();
+  return hits.filter((h) => !seen.has(h[1]) && seen.add(h[1]));
 }
 
 /* =========================================================================
@@ -905,13 +1069,7 @@ function findCandidates(lat, lon, heading) {
   const scores = new Map();
   for (const [off, w] of CONE) {
     const h = rad(heading + off), dx = Math.sin(h), dy = Math.cos(h);
-    const hits = [];
-    for (const L of S.local) {
-      if (!L.p.built || insideSet.has(L)) continue;
-      const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE);
-      if (t !== null && t >= MIN_RANGE) hits.push([t, L]);
-    }
-    hits.sort((a, b) => a[0] - b[0]);
+    const hits = rayHits(ox, oy, dx, dy, insideSet);
     hits.slice(0, 2).forEach(([t, L], i) => {
       const s = scores.get(L.p.key) || { L, score: 0, dist: Infinity, center: false };
       s.score += w * (i === 0 ? 1 : .22);
@@ -979,6 +1137,27 @@ function parkNote(s) {
     : 'Homes in a Massachusetts park don’t get their own property tax bill; the park pays the town a monthly fee for each home instead. So the town records the park as one property.';
   return `<b>The individual homes aren’t on the property records.</b> ${why} The value and sale here are for the whole park.`;
 }
+// "Oldest of 86 houses nearby": how this house ranks among the houses within about a quarter mile.
+function badgesFor(L) {
+  if (L.badges) return L.badges;
+  const s = summarize(L.p), out = [];
+  if (!s.park && !s.condo && !s.commonOnly) {
+    const near = S.local.filter((o) => o.p.built && Math.hypot(o.c[0] - L.c[0], o.c[1] - L.c[1]) < 400)
+      .map((o) => ({ o, s: summarize(o.p) })).filter((x) => !x.s.park && !x.s.condo && !x.s.commonOnly);
+    const rank = (vals, v, older) => 1 + vals.filter((x) => (older ? x < v : x > v)).length;
+    const top = (n) => Math.min(10, Math.max(3, Math.round(n * 0.05)));
+    const add = (vals, v, older, best, nth) => {
+      if (!v || vals.length < 15) return;
+      const r = rank(vals, v, older);
+      if (r === 1) out.push(`${best} of ${vals.length} ${nth === 'lot' ? 'nearby' : 'houses nearby'}`);
+      else if (r <= top(vals.length)) out.push(`#${r} ${best.toLowerCase().replace(/^biggest lot$/, 'biggest lot')} of ${vals.length} nearby`);
+    };
+    add(near.map((x) => x.s.year).filter(Boolean), s.year, true, 'Oldest', 'house');
+    add(near.map((x) => num(x.s.r0.TOTAL_VAL)).filter((v) => v > 0), num(s.r0.TOTAL_VAL), false, 'Priciest', 'house');
+    add(near.map((x) => lotSqft(x.o)), lotSqft(L), false, 'Biggest lot', 'lot');
+  }
+  return (L.badges = out.slice(0, 2));
+}
 function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); return Math.abs(a) * 10.7639; }
 function lotText(L) {
   const sqft = lotSqft(L), acres = sqft / 43560;
@@ -994,6 +1173,7 @@ function renderCard(cand, total, idx) {
     if (s.sites) chips.push(`<span class="chip">${s.sites} home sites</span>`);
     if (s.year) chips.push(`<span class="chip">Park built ${s.year}</span>`);
   } else {
+    for (const b of badgesFor(L)) chips.push(`<span class="chip star">${esc(b)}</span>`);
     if (s.year) chips.push(`<span class="chip">Built ${s.year} · ${THIS_YEAR - s.year} yrs</span>`);
     else if (s.approxYear) chips.push(`<span class="chip">Built around ${s.approxYear} (effective year)</span>`);
     if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
@@ -1055,7 +1235,7 @@ function renderCard(cand, total, idx) {
     ${grid}
     ${unitList}
     <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
-  attachImageryFallback($('#cardBody'));
+  attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
   const ul = $('#cardBody .units');
   if (ul) ul.addEventListener('click', (e) => {
@@ -1076,6 +1256,7 @@ function shareText(cand) {
   const bits = [`${s.addr}${s.town ? ', ' + s.town : ''}`];
   if (s.year && !s.park) bits.push(`Built ${s.year}${r.STYLE ? ' · ' + titleCase(r.STYLE) : ''}`);
   const ot = s.park ? null : olderThan(s.year); if (ot) bits.push(ot + '!');
+  for (const b of s.park ? [] : badgesFor(cand.L).slice(0, 1)) bits.push(b);
   if (s.park) bits.push('Mobile home park');
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? 'Whole park assessed' : 'Assessed'} ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
@@ -1138,6 +1319,8 @@ function estimateTax(s) {
     if (!t.length) return null;
     const notes = [`${town.n}’s FY${MA_TAX_FY} residential rate is <b>$${town.r.toFixed(2)}</b> per $1,000 of assessed value.`];
     if (s.park) notes.unshift('The park owner’s tax on the whole park. Homes in the park pay a monthly fee through the park instead.');
+    const fyRec = num(r0.FY);
+    if (fyRec && fyRec !== MA_TAX_FY) notes.push(`The town’s FY${fyRec} rate isn’t built in yet, so this uses the FY${MA_TAX_FY} rate on the FY${fyRec} value.`);
     else if (MA_RES_EXEMPTION.has(town.n)) notes.push(`If the owner lives here, ${town.n}’s residential exemption can lower this a lot.`);
     if (!s.park) notes.push('Doesn’t include exemptions (seniors, veterans and others) or a Community Preservation Act surcharge.');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
@@ -1181,7 +1364,8 @@ function taxBoxHtml(s) {
   const unit = t.perUnit ? 'per unit, per year' : 'per year';
   const lines = t.notes.slice();
   if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
-  return `<div class="tax"><div class="k">Estimated property tax${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
+  const title = s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
+  return `<div class="tax"><div class="k">${title}${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
 /* =========================================================================
@@ -1415,7 +1599,11 @@ async function startSensors() {
     navigator.geolocation.watchPosition((p) => {
       S.pos = { lat: p.coords.latitude, lon: p.coords.longitude }; S.acc = p.coords.accuracy;
       ensureData(S.pos.lat, S.pos.lon).catch(() => {});
-    }, (err) => { $('#gpsTxt').textContent = 'Location off'; $('#gpsPill .dot').className = 'dot bad'; toast('Location is needed to know which house you mean.'); },
+    }, (err) => {
+      $('#gpsTxt').textContent = 'Location off'; $('#gpsPill .dot').className = 'dot bad';
+      if (err && err.code === 1) startMapMode(null, 'Location is off for this site, so use the map: search an address or try a sample spot.');
+      else toast('Can’t find your location right now. Try stepping outside, or use the map.');
+    },
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   }
 
@@ -1423,7 +1611,10 @@ async function startSensors() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     const v = $('#cam'); v.srcObject = stream; show(v); show($('#fakecam'), false); await v.play().catch(() => {});
-  } catch (e) { show($('#fakecam')); }
+  } catch (e) {
+    show($('#fakecam'));
+    if (e && e.name === 'NotAllowedError' && S.mode === 'point') toast('Camera is off. You can still aim with the compass, or use the map.', 4200);
+  }
 }
 
 /* =========================================================================
@@ -1454,6 +1645,7 @@ function tick(ts) {
     $('#gpsPill .dot').className = 'dot ' + (a <= 15 ? 'ok' : a <= 35 ? '' : 'bad');
   }
   $('#hdgTxt').textContent = S.heading == null ? 'Compass…' : `${Math.round(S.heading)}° ${compass8(S.heading)}`;
+  $('#shutter').classList.toggle('fuzzy', !DEMO && (S.acc || 0) > 30);
 
   let hint = '';
   if (!S.pos) hint = 'Finding your location…';
@@ -1501,6 +1693,7 @@ $('#liveLabel').onclick = () => $('#shutter').click();
 $('#shutter').onclick = async () => {
   if (!S.pos) { toast('Still finding your location…'); return; }
   if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
+  if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${Math.round(S.acc)} m), so this might not be the house you mean.`, 3400);
   $('#scan').classList.add('on');
   try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
   const cands = findCandidates(S.pos.lat, S.pos.lon, S.heading).slice(0, 6);
@@ -1575,23 +1768,38 @@ function rayBoxT(ox, oy, dx, dy, b, maxT) {
 
 // Sweep rays across the view; the first house lot each ray reaches is one you can see.
 function arScan(ox, oy, heading, half) {
-  const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < MAX_RANGE + 80 && !pointInRings(ox, oy, L.rings));
+  const far = MAX_RANGE + 80;
+  const inside = new Set(S.local.filter((L) => pointInRings(ox, oy, L.rings)));
+  const nearL = S.local.filter((L) => L.p.built && !L.hasBldg && !inside.has(L) && Math.hypot(L.c[0] - ox, L.c[1] - oy) < far);
+  const nearB = S.bldgs.filter((b) => b.L.p.built && !inside.has(b.L) && Math.hypot(b.c[0] - ox, b.c[1] - oy) < far);
   const hits = new Map();
   for (let a = -half; a <= half + 1e-6; a += AR_STEP) {
     const h = rad(heading + a), dx = Math.sin(h), dy = Math.cos(h);
-    let best = null, bt = Infinity;
-    for (const L of near) {
-      const tb = rayBoxT(ox, oy, dx, dy, L.bb, MAX_RANGE);
+    let best = null, bt = Infinity, bb = null;
+    for (const b of nearB) {                                  // roofs first
+      const tb = rayBoxT(ox, oy, dx, dy, b.bb, MAX_RANGE);
       if (tb < 0 || tb >= bt) continue;                       // misses the box, or something nearer already blocks it
+      const t = rayEntry(ox, oy, dx, dy, b.rings, MAX_RANGE);
+      if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = b.L; bb = b; }
+    }
+    for (const L of nearL) {                                  // lots with no outline on file
+      const tb = rayBoxT(ox, oy, dx, dy, L.bb, MAX_RANGE);
+      if (tb < 0 || tb >= bt) continue;
       const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE);
-      if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; }
+      if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; bb = null; }
     }
     if (!best) continue;
-    const e = hits.get(best) || { L: best, sx: 0, sy: 0, n: 0, t: Infinity };
-    e.sx += dx; e.sy += dy; e.n++; e.t = Math.min(e.t, bt); hits.set(best, e);
+    const e = hits.get(best) || { L: best, sx: 0, sy: 0, n: 0, t: Infinity, roof: null };
+    e.sx += dx; e.sy += dy; e.n++; e.t = Math.min(e.t, bt);
+    if (bb && (!e.roof || bb.area > e.roof.area)) e.roof = bb;     // the biggest roof hit: the house, not the shed
+    hits.set(best, e);
   }
   return [...hits.values()].map((e) => {
     const cd = Math.hypot(e.L.c[0] - ox, e.L.c[1] - oy);
+    if (e.roof) {         // put the tag over the roof
+      const v = [e.roof.c[0] - ox, e.roof.c[1] - oy];
+      return { L: e.L, n: e.n, t: e.t, cdist: cd, dist: Math.max(e.t, Math.hypot(v[0], v[1])), bearing: norm(Math.atan2(v[0], v[1]) * 180 / Math.PI) };
+    }
     return { L: e.L, n: e.n, t: e.t, cdist: cd, dist: clamp(cd, e.t + 3, e.t + 20), bearing: norm(Math.atan2(e.sx, e.sy) * 180 / Math.PI) };
   });
 }
@@ -1646,7 +1854,7 @@ function arFrame(ts) {
   const ok = AR.on && upright && S.mode === 'point' && !S.locked && !$('#panel').classList.contains('open') && S.pos && S.proj && S.heading != null && S.local.length;
   if (!ok) { arClear(); return; }
   const f = camFocalPx(), W = innerWidth, H = innerHeight, half = Math.atan(W / 2 / f) * 180 / Math.PI;
-  if (ts - AR.at > 280 || AR.proj !== S.proj || Math.abs(AR.f - f) > 0.5) { AR.at = ts; AR.proj = S.proj; AR.f = f; arRelayout(f, half); }
+  if (ts - AR.at > 280 || AR.proj !== S.proj || AR.bv !== S.bldgVer || Math.abs(AR.f - f) > 0.5) { AR.at = ts; AR.proj = S.proj; AR.bv = S.bldgVer; AR.f = f; arRelayout(f, half); }
   const pitch = arPitch(), lr = AR.liveRect;
   for (const v of AR.items) {
     const rel = angDiff(v.bearing, S.heading);
@@ -1725,7 +1933,7 @@ function refreshMapImagery() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   let pw = w * k * dpr, ph = pw * aspect; const sc = Math.min(1, 2048 / pw, 2048 / ph);
   pw = Math.round(pw * sc); ph = Math.round(ph * sc);
-  S.map.img = { ext, href: imageryHref(ext, pw, ph, 0), alt: imageryHref(ext, pw, ph, 1) };
+  S.map.img = imagerySet(ext, pw, ph, S.proj, 48);     // the map can be a little softer than the card
 }
 
 /* Map coloring: Photo / Age / Value / Sold. One blue ramp, light to dark (checked as an ordinal ramp
@@ -1813,9 +2021,7 @@ function drawMap() {
   const R = S.map.R, aspect = hgt / w;
   svg.setAttribute('viewBox', `${-R} ${-R * aspect} ${2 * R} ${2 * R * aspect}`);
   if (!svg.querySelector('#mBg')) {
-    svg.innerHTML = '<rect id="mBg" fill="#34322c"/><image id="mImg" preserveAspectRatio="none"/><g id="mParcels"></g><g id="mMe"></g>';
-    const im = svg.querySelector('#mImg');
-    im.addEventListener('error', () => { if (im.dataset.alt && im.getAttribute('href') !== im.dataset.alt) im.setAttribute('href', im.dataset.alt); });
+    svg.innerHTML = '<rect id="mBg" fill="#34322c"/><g id="mImg"></g><g id="mBld"></g><g id="mParcels"></g><g id="mMe"></g>';
   }
   const bg = svg.querySelector('#mBg');
   bg.setAttribute('x', -R * 4); bg.setAttribute('y', -R * 4 * aspect); bg.setAttribute('width', R * 8); bg.setAttribute('height', R * 8 * aspect);
@@ -1823,11 +2029,21 @@ function drawMap() {
   const im = svg.querySelector('#mImg');
   im.style.opacity = sc ? '0.3' : '1';
   if (S.map.img) {
-    if (im.dataset.src !== S.map.img.href) { im.dataset.src = S.map.img.href; im.dataset.alt = S.map.img.alt; im.setAttribute('href', S.map.img.href); }
-    const e = S.map.img.ext;
-    im.setAttribute('x', (e.x0 - cx).toFixed(1)); im.setAttribute('y', (-(e.y0 + e.h - cy)).toFixed(1));
-    im.setAttribute('width', e.w.toFixed(1)); im.setAttribute('height', e.h.toFixed(1)); im.style.display = '';
+    if (im.dataset.k !== S.map.img.key) {
+      im.dataset.k = S.map.img.key; im.innerHTML = imageTags(S.map.img);
+      $('#mapAttr').textContent = S.map.img.credit;
+      attachImageryFallback(im, S.map.img, $('#mapAttr'));
+    }
+    im.setAttribute('transform', `translate(${(-cx).toFixed(2)},${cy.toFixed(2)})`); im.style.display = '';
   } else im.style.display = 'none';
+  // building outlines (plain photo view only)
+  const bg2 = svg.querySelector('#mBld');
+  if (bg2.dataset.v !== String(S.bldgVer)) {
+    bg2.dataset.v = String(S.bldgVer);
+    bg2.innerHTML = S.bldgs.map((b) => `<path d="${ringsPath(b.rings)}" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.45)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`).join('');
+  }
+  bg2.setAttribute('transform', `translate(${(-cx).toFixed(2)},${cy.toFixed(2)})`);
+  bg2.style.display = sc ? 'none' : '';
   let out = '', selOut = '';
   for (const L of S.local) {
     const sel = L.p.key === S.map.selectedKey;
@@ -1989,10 +2205,19 @@ async function makeShareImage(cand) {
 
   // aerial photo with the lot outlined
   const ext = aerialExtent(L, W / PH, 1.9);
-  let img = null;
-  for (let i = 0; i < IMAGERY.length && !img && !DEMO; i++) { try { img = await loadImg(imageryHref(ext, W, PH, i, L.proj)); } catch (e) { /* next source */ } }
-  if (img) g.drawImage(img, 0, 0, W, PH);
-  else { const gr = g.createLinearGradient(0, 0, 0, PH); gr.addColorStop(0, '#5b6b55'); gr.addColorStop(1, '#3f4a3b'); g.fillStyle = gr; g.fillRect(0, 0, W, PH); }
+  const set = imagerySet(ext, W, PH, L.proj);
+  const place = (p) => [(p.x0 - ext.x0) / ext.w * W, (1 - (p.y0 + p.h - ext.y0) / ext.h) * PH, p.w / ext.w * W + 0.5, p.h / ext.h * PH + 0.5];
+  let drawn = 0, credit = set.credit;
+  if (!DEMO) {
+    const load = async (p) => { try { return await loadImg(p.href); } catch (e) { if (p.alt) { try { return await loadImg(p.alt); } catch (e2) { /* give up */ } } return null; } };
+    const imgs = await Promise.all(set.parts.map(load));
+    imgs.forEach((im, i) => { if (im) { g.drawImage(im, ...place(set.parts[i])); drawn++; } });
+    if (drawn < set.parts.length * 0.7 && set.naip) {
+      try { g.drawImage(await loadImg(set.naip.href), 0, 0, W, PH); drawn = 1; credit = IMG_CREDIT.NAIP; } catch (e) { /* no photo */ }
+    }
+  }
+  const img = drawn > 0;
+  if (!img) { const gr = g.createLinearGradient(0, 0, 0, PH); gr.addColorStop(0, '#5b6b55'); gr.addColorStop(1, '#3f4a3b'); g.fillStyle = gr; g.fillRect(0, 0, W, PH); }
   g.beginPath();
   for (const ring of L.rings) {
     ring.forEach(([x, y], i) => { const px = (x - ext.x0) / ext.w * W, py = (1 - (y - ext.y0) / ext.h) * PH; if (i) g.lineTo(px, py); else g.moveTo(px, py); });
@@ -2007,7 +2232,7 @@ async function makeShareImage(cand) {
   g.strokeStyle = '#f0a48f'; g.lineWidth = 5; g.lineJoin = 'round';
   g.beginPath(); g.moveTo(PAD, 96); g.lineTo(PAD, 78); g.lineTo(PAD + 17, 64); g.lineTo(PAD + 34, 78); g.lineTo(PAD + 34, 96); g.closePath(); g.stroke();
   g.fillStyle = '#fff'; g.font = `700 38px ${SERIF}`; g.textBaseline = 'middle'; g.fillText('Housepoint', PAD + 52, 82);
-  if (img) { g.font = `500 20px ${SANS}`; g.fillStyle = 'rgba(255,255,255,.85)'; g.textAlign = 'right'; g.fillText(IMAGERY[0].attribution, W - 24, PH - 22); g.textAlign = 'left'; }
+  if (img) { g.font = `500 20px ${SANS}`; g.fillStyle = 'rgba(255,255,255,.85)'; g.textAlign = 'right'; g.fillText(credit, W - 24, PH - 22); g.textAlign = 'left'; }
 
   // address + town
   g.textBaseline = 'alphabetic'; let y = PH + 40;
@@ -2020,6 +2245,7 @@ async function makeShareImage(cand) {
   const chips = [];
   if (s.park) chips.push(['Mobile home park', false]);
   else {
+    for (const b of badgesFor(L).slice(0, 1)) chips.push([b, true]);
     if (s.year) chips.push([`Built ${s.year}`, false]);
     if (r.STYLE) chips.push([titleCase(r.STYLE), false]);
     const ot = olderThan(s.year); if (ot) chips.push([ot, true]);
@@ -2110,7 +2336,7 @@ function renderMine() {
 }
 function renderPanel() {
   $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine');
-  $('#panelBody').innerHTML = panelTab === 'near' ? renderNear() : renderMine();
+  $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>';
 }
 function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panelScroll').scrollTop = 0; }
 function closePanel() { $('#panel').classList.remove('open'); }
@@ -2118,6 +2344,7 @@ $('#tabNear').onclick = () => { panelTab = 'near'; renderPanel(); };
 $('#tabMine').onclick = () => { panelTab = 'mine'; renderPanel(); };
 $('#panelGrab').onclick = closePanel;
 $('#panelBody').addEventListener('click', (e) => {
+  if (e.target.closest('#panelAbout')) { openAbout(); return; }
   const b = e.target.closest('.item'); if (!b) return;
   if (b.dataset.i !== undefined) { const L = panelItems[+b.dataset.i]; if (L) { closePanel(); openFor(L); } return; }
   const x = loadHistory()[+b.dataset.h]; if (!x) return;
@@ -2147,6 +2374,36 @@ $('#goPoint').onclick = async () => {
   }, 4500);
 };
 $("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sample spot.'); };
+$('#goDemo').onclick = () => { location.search = '?demo=1'; };
+const ABOUT = `
+  <h2>About Housepoint</h2>
+  <p>Point your phone at a house in Massachusetts or Florida and see its story from public records: when it was built, what it’s valued at,
+  when it last sold, an estimated property tax, and its flood zone.</p>
+  <h3>Privacy</h3>
+  <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
+  compass are used only on your phone. To look up records, the app sends the map location you’re looking at (not who you are) to the public
+  services below. There are no accounts, ads or tracking. Houses you look up are saved only on this phone. <a href="privacy.html">Privacy policy</a></p>
+  <h3>Where the facts come from</h3>
+  <ul>
+    <li><b>Massachusetts property records and lot lines:</b> town assessors via MassGIS (Bureau of Geographic Information), Commonwealth of Massachusetts EOTSS.</li>
+    <li><b>Florida property records and lot lines:</b> Florida’s county property appraisers and the Florida Department of Revenue, Property Tax Oversight, via the Florida Geographic Information Office.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures, and Florida’s statewide building footprints (derived from Microsoft building footprints) in Florida.</li>
+    <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
+    <li><b>Flood zones:</b> FEMA National Flood Hazard Layer (Esri’s hosted copy as a backup). Not an official flood determination.</li>
+    <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
+    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
+    <li><b>Street view:</b> opens Google Maps.</li>
+  </ul>
+  <h3>How accurate is it?</h3>
+  <p>Lot lines are a drawing of property boundaries, not a survey. Assessed and “just” values are what towns and counties use for taxes, not market
+  estimates. Tax amounts are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
+  pointing at depends on your phone’s GPS and compass; if it picks the wrong one, tap “Not it.”</p>
+  <h3>Fonts</h3>
+  <p>Inter and Fraunces, under the SIL Open Font License.</p>`;
+function openAbout() { $('#aboutBody').innerHTML = ABOUT; show($('#about')); $('#aboutBody').scrollTop = 0; }
+$('#openAbout').onclick = (e) => { e.preventDefault(); openAbout(); };
+$('#aboutClose').onclick = () => show($('#about'), false);
+$('#about').addEventListener('click', (e) => { if (e.target.id === 'about') show($('#about'), false); });
 $('#toMap').onclick = () => startMapMode(S.pos ? { lat: S.pos.lat, lon: S.pos.lon } : null);
 $('#mapToPoint').onclick = () => { if (S.pos || DEMO) { startPointMode(); if (!S.gotOrientation && !DEMO) startSensors(); if (S.pos) ensureData(S.pos.lat, S.pos.lon, true).catch(() => {}); } else $('#goPoint').click(); };
 $('#toPanel').onclick = () => openPanel('near');
@@ -2159,7 +2416,7 @@ function enableSimCompass() {
 
 // Demo mode: fixed spot, simulated compass, made-up houses.
 if (DEMO) {
-  document.body.insertAdjacentHTML('beforeend', '<div class="demo-flag">DEMO DATA</div>');
+  document.body.insertAdjacentHTML('beforeend', '<a class="demo-flag" href="./">DEMO DATA · EXIT</a>');
   const lat = 42.0, lon = -71.0;
   S.pos = { lat, lon }; S.acc = 6;
   ensureData(lat, lon, true);
@@ -2167,7 +2424,7 @@ if (DEMO) {
 }
 
 // test hooks
-window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
 })();
 </script>
