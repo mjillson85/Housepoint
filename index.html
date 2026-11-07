@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Housepoint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1d1a17;
+    --paper: #f6f1e7;
+    --paper-2: #ece4d3;
+    --brick: #b4432c;
+    --brick-2: #8f321f;
+    --moss: #4d6b4a;
+    --mute: #6f665b;
+    --glass: rgba(20, 17, 15, 0.62);
+    --line: rgba(29, 26, 23, 0.14);
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #14110f; color: #fff; font-family: var(--sans); overflow: hidden; overscroll-behavior: none; }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  .hidden { display: none !important; }
+
+  /* ---------- camera + background ---------- */
+  #cam, #fakecam { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #fakecam {
+    background:
+      linear-gradient(180deg, #8fb3cf 0%, #c9d9e3 48%, #6b6f5f 49%, #4a4c41 100%);
+  }
+  #fakecam::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 30%; height: 20%;
+    background:
+      linear-gradient(90deg, transparent 4%, #d9cbb3 4% 24%, transparent 24% 30%, #b78c6a 30% 52%, transparent 52% 58%, #e7e1d5 58% 80%, transparent 80% 86%, #9c6b4e 86% 98%, transparent 98%);
+    clip-path: polygon(0 35%, 14% 0, 28% 35%, 30% 35%, 41% 5%, 52% 35%, 58% 35%, 69% 0, 80% 35%, 86% 35%, 92% 10%, 98% 35%, 100% 35%, 100% 100%, 0 100%);
+    opacity: .9;
+  }
+  #shade { position: fixed; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 62%, rgba(0,0,0,.6) 100%); }
+
+  /* ---------- start screen ---------- */
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: calc(28px + var(--safe-t)) 26px calc(30px + var(--safe-b));
+    background:
+      radial-gradient(120% 70% at 80% 10%, rgba(180, 67, 44, .35), transparent 60%),
+      radial-gradient(90% 60% at 0% 100%, rgba(77, 107, 74, .35), transparent 60%),
+      #14110f; z-index: 30; }
+  #start .mark { position: absolute; top: calc(26px + var(--safe-t)); left: 26px; display: flex; align-items: center; gap: 10px;
+    font-family: var(--serif); font-weight: 700; font-size: 20px; letter-spacing: .2px; }
+  #start h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(40px, 11vw, 56px); line-height: 1.02; margin: 0 0 14px; letter-spacing: -.5px; }
+  #start h1 em { font-style: normal; color: #f0a48f; }
+  #start p { color: #cfc6ba; font-size: 16px; line-height: 1.5; margin: 0 0 26px; max-width: 34ch; }
+  .btn-primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 58px; border-radius: 16px;
+    background: var(--paper); color: var(--ink); font-weight: 600; font-size: 17px; }
+  .btn-primary:active { transform: scale(.985); }
+  .btn-ghost { width: 100%; height: 50px; margin-top: 10px; border-radius: 14px; color: #e9e1d6; font-weight: 500; font-size: 15px;
+    border: 1px solid rgba(255,255,255,.18); }
+  .fine { margin-top: 18px; font-size: 12px; line-height: 1.5; color: #8f857a; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(12px + var(--safe-t)) 14px 0; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
+  .pill { pointer-events: auto; display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 999px;
+    background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #d9a441; }
+  .pill .dot.ok { background: #7fc27a; }
+  .pill .dot.bad { background: #e0614b; }
+  #hudLeft { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  #brandPill { font-family: var(--serif); font-weight: 700; font-size: 15px; }
+  #radarWrap { pointer-events: auto; width: 116px; height: 116px; border-radius: 50%; background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    overflow: hidden; border: 1px solid rgba(255,255,255,.14); }
+  #radar { width: 100%; height: 100%; display: block; }
+
+  /* ---------- reticle + live label ---------- */
+  #reticle { position: fixed; left: 50%; top: 44%; width: 74px; height: 74px; transform: translate(-50%, -50%); pointer-events: none; z-index: 5; }
+  #reticle::before, #reticle::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); }
+  #reticle::after { inset: 31px; background: #fff; border: 0; }
+  #reticle.locked::before { border-color: #f0a48f; box-shadow: 0 0 0 6px rgba(240,164,143,.22); }
+  #liveLabel { position: fixed; left: 50%; top: calc(44% - 66px); transform: translate(-50%, -100%); z-index: 6; pointer-events: none;
+    max-width: 86vw; padding: 9px 14px; border-radius: 14px; background: rgba(246,241,231,.94); color: var(--ink); text-align: center;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35); transition: opacity .15s; }
+  #liveLabel .a { font-family: var(--serif); font-weight: 700; font-size: 17px; line-height: 1.2; }
+  #liveLabel .b { font-size: 12.5px; color: var(--mute); margin-top: 2px; }
+  #liveLabel.dim { opacity: 0; }
+  #hint { position: fixed; left: 50%; top: calc(44% + 60px); transform: translateX(-50%); z-index: 6; pointer-events: none; font-size: 13.5px;
+    color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); text-align: center; width: 86vw; }
+
+  /* ---------- bottom bar ---------- */
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 22px calc(22px + var(--safe-b)); display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+  .round { width: 52px; height: 52px; border-radius: 50%; background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    display: grid; place-items: center; }
+  .round svg { width: 22px; height: 22px; }
+  #shutter { width: 84px; height: 84px; border-radius: 50%; border: 4px solid rgba(255,255,255,.95); display: grid; place-items: center; }
+  #shutter span { width: 66px; height: 66px; border-radius: 50%; background: var(--paper); display: grid; place-items: center; transition: transform .12s; }
+  #shutter:active span { transform: scale(.9); }
+  #shutter svg { width: 30px; height: 30px; color: var(--brick); }
+
+  /* simulated compass for desktop / demo */
+  #sim { position: fixed; left: 22px; right: 22px; bottom: calc(124px + var(--safe-b)); z-index: 11; display: flex; align-items: center; gap: 10px;
+    background: var(--glass); padding: 8px 12px; border-radius: 12px; font-size: 12px; }
+  #sim input { flex: 1; }
+
+  /* ---------- card (bottom sheet) ---------- */
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; transform: translateY(105%); transition: transform .32s cubic-bezier(.2,.8,.2,1);
+    max-height: 88vh; display: flex; flex-direction: column; }
+  #sheet.open { transform: translateY(0); }
+  .card { margin: 0 10px calc(10px + var(--safe-b)); background: var(--paper); color: var(--ink); border-radius: 24px; overflow: hidden;
+    box-shadow: 0 -10px 40px rgba(0,0,0,.45); display: flex; flex-direction: column; max-height: calc(88vh - 10px); }
+  .card-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 20px 6px; }
+  .grab { width: 72px; height: 26px; margin: 0 auto -6px; position: relative; flex: none; cursor: pointer; }
+  .grab::after { content: ""; position: absolute; left: 16px; right: 16px; top: 10px; height: 5px; border-radius: 3px; background: rgba(29,26,23,.18); }
+  .eyebrow { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--mute); font-weight: 600; margin-top: 6px; }
+  .addr { font-family: var(--serif); font-weight: 700; font-size: 29px; line-height: 1.08; margin: 6px 0 4px; letter-spacing: -.3px; }
+  .town { font-size: 15px; color: var(--mute); }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 4px; }
+  .chip { font-size: 13px; padding: 6px 11px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-weight: 500; }
+  .chip.fun { background: var(--brick); color: #fff; }
+  .chip.green { background: #dfe8da; color: #2f4a2c; }
+  .value { margin: 16px 0 4px; padding: 16px 16px 14px; border-radius: 16px; background: #fffaf1; border: 1px solid var(--line); }
+  .value .k { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .value .v { font-family: var(--serif); font-weight: 700; font-size: 34px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .value .s { font-size: 14px; color: var(--mute); margin-top: 4px; line-height: 1.4; }
+  .value .s b { color: var(--ink); font-weight: 600; }
+  .delta { font-weight: 600; }
+  .delta.up { color: var(--moss); }
+  .delta.down { color: var(--brick-2); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--line); border-radius: 14px; overflow: hidden; margin: 12px 0 6px; border: 1px solid var(--line); }
+  .grid div { background: var(--paper); padding: 11px 10px; }
+  .grid .k { font-size: 10.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .2px; font-weight: 600; white-space: nowrap; }
+  .grid .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .note { font-size: 12px; color: var(--mute); line-height: 1.45; margin: 10px 0 8px; }
+  .units { margin: 6px 0 4px; border-top: 1px solid var(--line); }
+  .units div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .card-actions { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--line); background: var(--paper); }
+  .card-actions button { flex: 1; height: 46px; border-radius: 12px; background: var(--paper-2); color: var(--ink); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .card-actions button.main { background: var(--ink); color: var(--paper); }
+  .card-actions button:disabled { opacity: .4; }
+
+  /* ---------- map mode ---------- */
+  #mapView { position: fixed; inset: 0; z-index: 8; background: #ece4d3; }
+  #mapSvg { width: 100%; height: 100%; display: block; touch-action: none; }
+  #mapTop { position: fixed; left: 0; right: 0; top: 0; z-index: 12; padding: calc(12px + var(--safe-t)) 12px 0; display: flex; gap: 8px; }
+  #search { flex: 1; display: flex; height: 46px; border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.15); overflow: hidden; }
+  #search input { flex: 1; border: 0; padding: 0 14px; font: inherit; font-size: 16px; color: var(--ink); outline: none; min-width: 0; }
+  #search button { padding: 0 14px; color: var(--brick); font-weight: 600; }
+  #mapTop .round { background: #fff; color: var(--ink); box-shadow: 0 4px 18px rgba(0,0,0,.15); width: 46px; height: 46px; }
+  #mapZoom { position: fixed; right: 12px; bottom: calc(176px + var(--safe-b)); z-index: 12; display: flex; flex-direction: column; gap: 8px; }
+  #mapZoom button { width: 44px; height: 44px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 22px; box-shadow: 0 4px 18px rgba(0,0,0,.15); }
+  #mapHelp { position: fixed; left: 12px; right: 12px; bottom: calc(18px + var(--safe-b)); z-index: 12; background: rgba(29,26,23,.86); color: #fff; border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.4; }
+  #mapHelp .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  #mapHelp button { height: 36px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.14); font-size: 13px; font-weight: 500; }
+
+  /* ---------- toast + loader ---------- */
+  #toast { position: fixed; left: 50%; top: calc(64px + var(--safe-t)); transform: translateX(-50%); z-index: 40; background: rgba(29,26,23,.92); color: #fff;
+    padding: 11px 16px; border-radius: 12px; font-size: 14px; max-width: 90vw; text-align: center; transition: opacity .2s; pointer-events: none; }
+  #toast.off { opacity: 0; }
+  #scan { position: fixed; left: 0; right: 0; height: 2px; top: 44%; z-index: 6; background: linear-gradient(90deg, transparent, #f0a48f, transparent); opacity: 0; }
+  #scan.on { animation: scan 0.9s ease-in-out infinite; opacity: 1; }
+  @keyframes scan { 0% { transform: translateY(-120px); } 50% { transform: translateY(120px); } 100% { transform: translateY(-120px); } }
+  .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
+
+  /* aerial photo on card */
+  .aerial { margin: 8px 0 6px; border-radius: 16px; overflow: hidden; position: relative; background: #cfc6b5; aspect-ratio: 2 / 1; }
+  .aerial svg { width: 100%; height: 100%; display: block; }
+  .aerial .attr { position: absolute; right: 8px; bottom: 6px; font-size: 9.5px; color: rgba(255,255,255,.9); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  #mapAttr { position: fixed; left: 14px; bottom: calc(166px + var(--safe-b)); z-index: 12; font-size: 10px; color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+
+  /* highlights / history panel */
+  #panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; transform: translateY(105%); transition: transform .32s cubic-bezier(.2,.8,.2,1); max-height: 88vh; display: flex; flex-direction: column; }
+  #panel.open { transform: translateY(0); }
+  .tabs { display: flex; gap: 6px; margin: 8px 0 12px; }
+  .tabs button { flex: 1; height: 40px; border-radius: 11px; background: var(--paper-2); font-weight: 600; font-size: 14px; color: var(--ink); }
+  .tabs button.on { background: var(--ink); color: var(--paper); }
+  .sum { font-size: 14px; line-height: 1.5; color: var(--ink); background: #fffaf1; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 6px; }
+  .sum b { font-weight: 700; }
+  .list .item { display: flex; width: 100%; text-align: left; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
+  .list .badge { width: 88px; height: 50px; padding: 0 6px; border-radius: 12px; background: var(--paper-2); display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: 16px; flex: none; white-space: nowrap; }
+  .list .badge.hot { background: var(--brick); color: #fff; }
+  .list .t1 { font-weight: 600; font-size: 15px; }
+  .list .t2 { font-size: 13px; color: var(--mute); margin-top: 2px; }
+  .list .chev { margin-left: auto; color: var(--mute); font-size: 20px; padding-left: 6px; }
+  .empty { padding: 26px 6px; text-align: center; color: var(--mute); font-size: 14px; line-height: 1.5; }
+
+  /* share preview */
+  #shareView { position: fixed; inset: 0; z-index: 60; background: rgba(10,9,8,.94); display: flex; align-items: center; justify-content: center; padding: calc(20px + var(--safe-t)) 22px calc(20px + var(--safe-b)); }
+  #shareView .sv { width: 100%; max-width: 420px; text-align: center; }
+  #shareImg { width: 100%; max-height: 66vh; object-fit: contain; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.5); -webkit-touch-callout: default; }
+  .sv-tip { color: #cfc6ba; font-size: 13px; margin: 12px 0 6px; }
+</style>
+</head>
+<body>
+
+<video id="cam" playsinline muted autoplay class="hidden"></video>
+<div id="fakecam" class="hidden"></div>
+<div id="shade" class="hidden"></div>
+
+<!-- START -->
+<section id="start">
+  <div class="mark">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M3 12.5 13 4l10 8.5V23H3z" fill="none" stroke="#f0a48f" stroke-width="2.2" stroke-linejoin="round"/><circle cx="13" cy="15.5" r="3.2" fill="#f0a48f"/></svg>
+    Housepoint
+  </div>
+  <h1>Point at any house.<br><em>Get its story.</em></h1>
+  <p>Hold your phone up at a house in Massachusetts and see when it was built, its style, what it last sold for and what the town says it's worth.</p>
+  <button class="btn-primary" id="goPoint">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
+    Start pointing
+  </button>
+  <button class="btn-ghost" id="goMap">Use the map instead</button>
+  <div class="fine">Uses your camera, location and compass on this device only. Property facts come from public Massachusetts assessor records (MassGIS). Owner names are never shown.</div>
+</section>
+
+<!-- POINT MODE -->
+<div id="hud" class="hidden">
+  <div id="hudLeft">
+    <div class="pill" id="brandPill">Housepoint</div>
+    <div class="pill" id="gpsPill"><span class="dot"></span><span id="gpsTxt">Finding you…</span></div>
+    <div class="pill" id="hdgPill"><span id="hdgTxt">Compass…</span></div>
+  </div>
+  <div id="radarWrap"><svg id="radar" viewBox="-100 -100 200 200"></svg></div>
+</div>
+<div id="reticle" class="hidden"></div>
+<div id="scan"></div>
+<div id="liveLabel" class="dim"><div class="a" id="liveA"></div><div class="b" id="liveB"></div></div>
+<div id="hint" class="hidden"></div>
+<div id="sim" class="hidden"><span>Compass</span><input type="range" id="simRange" min="0" max="359" value="90"><span id="simVal">90°</span></div>
+<div id="bar" class="hidden">
+  <button class="round" id="toMap" aria-label="Map">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
+  </button>
+  <button id="shutter" aria-label="What's this house?"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M3 11 12 3.5 21 11v9.5H3z"/><path d="M10 20.5v-5h4v5"/></svg></span></button>
+  <button class="round" id="toPanel" aria-label="Around here">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+  </button>
+</div>
+
+<!-- MAP MODE -->
+<div id="mapView" class="hidden"><svg id="mapSvg"></svg></div>
+<div id="mapTop" class="hidden">
+  <form id="search"><input id="q" type="search" placeholder="Address, town" autocomplete="off" enterkeyhint="search"><button type="submit">Go</button></form>
+  <button class="round" id="mapToPoint" aria-label="Point mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg></button>
+</div>
+<div id="mapZoom" class="hidden"><button id="zin">+</button><button id="zout">−</button></div>
+<div id="mapHelp" class="hidden">
+  <div id="mapHelpTxt">Tap any lot to see its story.</div>
+  <div class="row" id="samples">
+    <button data-lat="42.51955" data-lon="-70.89955" data-name="Chestnut St, Salem">Salem's Chestnut St</button>
+    <button data-lat="42.35866" data-lon="-71.06787" data-name="Louisburg Sq, Boston">Beacon Hill</button>
+    <button data-lat="41.28296" data-lon="-70.10133" data-name="Main St, Nantucket">Nantucket</button>
+    <button id="useGps">Near me</button>
+    <button id="useHighlights">Highlights</button>
+  </div>
+</div>
+
+<!-- CARD -->
+<div id="sheet"><div class="card">
+  <div class="grab"></div>
+  <div class="card-scroll" id="cardBody"></div>
+  <div class="card-actions">
+    <button id="prevC" aria-label="Previous candidate">‹ Not it</button>
+    <button id="shareC" class="main">Share</button>
+    <button id="nextC" aria-label="Next candidate">Not it ›</button>
+  </div>
+</div></div>
+
+<div id="mapAttr" class="hidden">Imagery © Esri, Maxar · USGS</div>
+
+<!-- HIGHLIGHTS / HISTORY PANEL -->
+<div id="panel"><div class="card">
+  <div class="grab" id="panelGrab"></div>
+  <div class="card-scroll" id="panelScroll">
+    <div class="tabs"><button id="tabNear" class="on">Around here</button><button id="tabMine">Your houses</button></div>
+    <div id="panelBody" class="list"></div>
+  </div>
+</div></div>
+
+<!-- SHARE PREVIEW -->
+<div id="shareView" class="hidden"><div class="sv">
+  <img id="shareImg" alt="Housepoint card">
+  <div class="sv-tip">Press and hold the image to save it, or share it below.</div>
+  <button class="btn-primary" id="svShare">Share</button>
+  <button class="btn-ghost" id="svClose">Close</button>
+</div></div>
+
+<div id="toast" class="off"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================================
+   Config
+   ========================================================================= */
+const PRIMARY_SERVICE = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+const MASSGIS_ORG = 'hGdibHYSPO59RG1h';
+const DECLINATION = -14.2;      // magnetic declination for Massachusetts (degrees, west is negative)
+const QUERY_RADIUS = 220;       // meters of parcels to load around you
+const MAX_RANGE = 170;          // farthest house we'll target, meters
+const MIN_RANGE = 2;
+const CONE = [[-11, .4], [-5.5, .8], [0, 1], [5.5, .8], [11, .4]]; // ray offsets (deg) and weights
+
+// Only these assessor fields are ever requested. Owner name and mailing
+// address fields are deliberately excluded, so they never reach the phone.
+const SAFE_FIELDS = new Set(['LOC_ID','PROP_ID','MAP_PAR_ID','POLY_TYPE','SITE_ADDR','ADDR_NUM','FULL_STR','LOCATION','CITY','ZIP','TOWN_ID',
+  'FY','TOTAL_VAL','BLDG_VAL','LAND_VAL','OTHER_VAL','LOT_SIZE','LOT_UNITS','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','BLD_AREA',
+  'UNITS','RES_AREA','STYLE','STORIES','NUM_ROOMS']);
+
+// Aerial imagery for the card and map. Esri first (sharpest), USGS NAIP (public domain) as backup.
+const IMAGERY = [
+  { url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export', attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' },
+  { url: 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer/exportImage', attribution: 'Imagery: USGS NAIP' },
+];
+
+const qs = new URLSearchParams(location.search);
+const DEMO = qs.has('demo');
+const SERVICE_OVERRIDE = qs.get('service');
+
+/* =========================================================================
+   Small helpers
+   ========================================================================= */
+const $ = (s) => document.querySelector(s);
+const show = (el, on = true) => el.classList.toggle('hidden', !on);
+const norm = (d) => ((d % 360) + 360) % 360;
+const rad = (d) => d * Math.PI / 180;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+const THIS_YEAR = new Date().getFullYear();
+
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('off');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('off'), ms);
+}
+
+function money(v) {
+  const n = num(v); if (!n) return null;
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+  if (n >= 1e3) return '$' + Math.round(n / 1e3).toLocaleString() + 'k';
+  return '$' + n.toLocaleString();
+}
+const moneyFull = (v) => { const n = num(v); return n ? '$' + Math.round(n).toLocaleString() : null; };
+
+function parseSaleDate(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number' && v > 1e11) return new Date(v);           // epoch ms
+  const s = String(v).replace(/\D/g, '');
+  if (s.length >= 8) {
+    const y = +s.slice(0, 4), m = +s.slice(4, 6), d = +s.slice(6, 8);
+    if (y > 1700 && y <= THIS_YEAR + 1 && m >= 1 && m <= 12) return new Date(y, m - 1, d || 1);
+  }
+  return null;
+}
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtMonth = (d) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+
+function titleCase(s) {
+  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim()
+    .replace(/(^|[\s\-\/])([a-z])/g, (m, p, c) => p + c.toUpperCase())
+    .replace(/\b(\d+)(St|Nd|Rd|Th)\b/g, (m, n, suf) => n + suf.toLowerCase());
+}
+
+function compass8(deg) { return ['N','NE','E','SE','S','SW','W','NW'][Math.round(norm(deg) / 45) % 8]; }
+
+const USE_CODES = {
+  '101': 'Single-family home', '102': 'Condo', '103': 'Mobile home', '104': 'Two-family', '105': 'Three-family',
+  '106': 'Accessory building', '109': 'Multiple houses', '111': 'Apartments, 4–8 units', '112': 'Apartments, 9+ units',
+  '130': 'Vacant land', '131': 'Vacant land', '132': 'Vacant land',
+  '900': 'Federal property', '901': 'State property', '902': 'County property', '903': 'Town or city property',
+  '904': 'School or college', '905': 'Charitable organization', '906': 'Religious organization', '908': 'Housing authority',
+};
+const USE_FIRST = { '0': 'Mixed use', '1': 'Residential', '2': 'Open space', '3': 'Commercial', '4': 'Industrial',
+  '6': 'Forest land', '7': 'Farm land', '8': 'Recreation land', '9': 'Tax-exempt property' };
+function useLabel(code) {
+  const d = String(code || '').replace(/\D/g, '');
+  if (d.length < 3) return null;
+  const c3 = d.slice(0, 3);
+  return USE_CODES[c3] || USE_FIRST[c3[0]] || null;
+}
+
+const MILESTONES = [
+  [1776, 'the United States'], [1814, 'the Star-Spangled Banner'], [1844, 'the telegraph'], [1861, 'the Civil War'],
+  [1876, 'the telephone'], [1879, 'the light bulb'], [1903, 'the airplane'], [1908, 'the Model T'], [1911, 'the Titanic'],
+  [1928, 'sliced bread'], [1955, 'Disneyland'], [1969, 'the moon landing'], [1983, 'the cell phone'], [1991, 'the web'], [2007, 'the iPhone'],
+];
+function olderThan(year) {
+  if (!year) return null;
+  const m = MILESTONES.find(([y]) => year < y);
+  return m ? `Older than ${m[1]}` : null;
+}
+function eraLabel(y) {
+  if (!y) return null;
+  if (y < 1776) return 'Colonial era';
+  if (y < 1830) return 'Federal era';
+  if (y < 1870) return 'Greek Revival & Italianate era';
+  if (y < 1915) return 'Victorian era';
+  if (y < 1942) return 'Early 20th century';
+  if (y < 1966) return 'Postwar';
+  if (y < 2000) return 'Late 20th century';
+  return '21st century';
+}
+
+/* =========================================================================
+   Geometry (local flat-earth meters around an origin)
+   ========================================================================= */
+function makeProj(lat0, lon0) {
+  const kx = Math.cos(rad(lat0)) * 111320, ky = 110540;
+  return {
+    fwd: (lat, lon) => [(lon - lon0) * kx, (lat - lat0) * ky],
+    inv: (x, y) => [lat0 + y / ky, lon0 + x / kx],
+  };
+}
+function pointInRings(x, y, rings) {
+  let inside = false;
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+  }
+  return inside;
+}
+// Distance along a ray from (ox,oy) in direction (dx,dy) to the nearest edge of the rings, or null.
+function rayEntry(ox, oy, dx, dy, rings, maxT) {
+  let best = null;
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const ax = r[j][0], ay = r[j][1], ex = r[i][0] - ax, ey = r[i][1] - ay;
+      const den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const wx = ax - ox, wy = ay - oy;
+      const t = (wx * ey - wy * ex) / den;
+      const u = (wx * dy - wy * dx) / den;
+      if (t >= 0 && t <= maxT && u >= 0 && u <= 1 && (best === null || t < best)) best = t;
+    }
+  }
+  return best;
+}
+function ringArea(r) { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return a / 2; }
+function centroid(rings) {
+  // area-weighted centroid of the largest ring (good enough for labels)
+  let big = rings[0], bigA = 0;
+  for (const r of rings) { const a = Math.abs(ringArea(r)); if (a > bigA) { bigA = a; big = r; } }
+  let cx = 0, cy = 0, a6 = 0;
+  for (let i = 0, j = big.length - 1; i < big.length; j = i++) {
+    const f = big[j][0] * big[i][1] - big[i][0] * big[j][1];
+    cx += (big[j][0] + big[i][0]) * f; cy += (big[j][1] + big[i][1]) * f; a6 += f * 3;
+  }
+  if (!a6) return big[0];
+  return [cx / a6, cy / a6];
+}
+
+/* =========================================================================
+   Aerial imagery helpers
+   ========================================================================= */
+const merc = (lat, lon) => [lon * 20037508.34 / 180, Math.log(Math.tan((90 + lat) * Math.PI / 360)) * 6378137];
+function lotBBox(L) {
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (const r of L.rings) for (const [x, y] of r) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+  return { minx, miny, maxx, maxy };
+}
+// A local-meter rectangle around a lot with the given width/height ratio.
+function aerialExtent(L, aspect = 2, pad = 1.7) {
+  const b = lotBBox(L), cx = (b.minx + b.maxx) / 2, cy = (b.miny + b.maxy) / 2;
+  let w = Math.max(b.maxx - b.minx, 16) * pad, h = Math.max(b.maxy - b.miny, 16) * pad;
+  if (w / h < aspect) w = h * aspect; else h = w / aspect;
+  if (w < 70) { w = 70; h = w / aspect; }
+  return { x0: cx - w / 2, y0: cy - h / 2, w, h };
+}
+function imageryHref(ext, pw, ph, i = 0) {
+  const [la0, lo0] = S.proj.inv(ext.x0, ext.y0), [la1, lo1] = S.proj.inv(ext.x0 + ext.w, ext.y0 + ext.h);
+  const [x0, y0] = merc(la0, lo0), [x1, y1] = merc(la1, lo1);
+  return `${IMAGERY[i].url}?bbox=${x0.toFixed(2)},${y0.toFixed(2)},${x1.toFixed(2)},${y1.toFixed(2)}&bboxSR=3857&imageSR=3857&size=${pw},${ph}&format=jpg&f=image`;
+}
+function ringsPath(rings, ox = 0, oy = 0) {
+  return rings.map((r) => 'M' + r.map(([x, y]) => `${(x - ox).toFixed(1)},${(-(y - oy)).toFixed(1)}`).join('L') + 'Z').join('');
+}
+function aerialSvg(L) {
+  const ext = aerialExtent(L, 2);
+  const top = -(ext.y0 + ext.h);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const pw = Math.round(Math.min(innerWidth, 520) * dpr), ph = Math.round(pw / 2);
+  return `<div class="aerial"><svg viewBox="${ext.x0.toFixed(1)} ${top.toFixed(1)} ${ext.w.toFixed(1)} ${ext.h.toFixed(1)}" preserveAspectRatio="xMidYMid slice">
+    <image href="${esc(imageryHref(ext, pw, ph, 0))}" data-alt="${esc(imageryHref(ext, pw, ph, 1))}" x="${ext.x0.toFixed(1)}" y="${top.toFixed(1)}" width="${ext.w.toFixed(1)}" height="${ext.h.toFixed(1)}" preserveAspectRatio="none"/>
+    <path d="${ringsPath(L.rings)}" fill="rgba(180,67,44,.16)" fill-rule="evenodd" stroke="#f0a48f" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+  </svg><span class="attr">${esc(IMAGERY[0].attribution)}</span></div>`;
+}
+function attachImageryFallback(root) {
+  root.querySelectorAll('image[data-alt]').forEach((im) => im.addEventListener('error', () => {
+    const alt = im.getAttribute('data-alt'); if (!alt) return;
+    im.removeAttribute('data-alt'); im.setAttribute('href', alt);
+    const at = root.querySelector('.attr'); if (at) at.textContent = IMAGERY[1].attribution;
+  }, { once: true }));
+}
+
+/* =========================================================================
+   Data source: MassGIS standardized assessor parcels (ArcGIS feature service)
+   ========================================================================= */
+const svc = { layerUrl: null, fields: null, outFields: null, ready: null };
+
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = await r.json();
+  if (j && j.error) throw new Error(j.error.message || 'Service error');
+  return j;
+}
+
+async function tryService(url) {
+  const meta = await getJSON(url + '?f=json');
+  const layers = (meta.layers || []).filter((l) => !l.geometryType || /Polygon/i.test(l.geometryType));
+  for (const l of layers.length ? layers : [{ id: 0 }]) {
+    const lurl = url + '/' + l.id;
+    const lm = await getJSON(lurl + '?f=json');
+    const names = (lm.fields || []).map((f) => f.name);
+    const upper = new Map(names.map((n) => [n.toUpperCase(), n]));
+    if (upper.has('YEAR_BUILT') || upper.has('TOTAL_VAL')) {
+      svc.layerUrl = lurl; svc.fields = upper;
+      svc.outFields = names.filter((n) => SAFE_FIELDS.has(n.toUpperCase()));
+      return true;
+    }
+  }
+  return false;
+}
+
+async function discoverService() {
+  // If the main URL ever moves, look the layer up in MassGIS's ArcGIS Online organization.
+  const q = encodeURIComponent(`orgid:${MASSGIS_ORG} AND type:"Feature Service" AND (title:L3 OR title:parcels OR title:TAXPAR)`);
+  const res = await getJSON(`https://www.arcgis.com/sharing/rest/search?q=${q}&num=25&f=json`);
+  for (const item of res.results || []) {
+    if (!item.url) continue;
+    try { if (await tryService(item.url.replace(/\/$/, ''))) return true; } catch (e) { /* keep looking */ }
+  }
+  return false;
+}
+
+function initService() {
+  if (svc.ready) return svc.ready;
+  svc.ready = (async () => {
+    if (DEMO) return true;
+    const first = SERVICE_OVERRIDE || PRIMARY_SERVICE;
+    try { if (await tryService(first)) return true; } catch (e) { console.warn('primary service failed', e); }
+    try { if (await discoverService()) return true; } catch (e) { console.warn('discovery failed', e); }
+    notifyServiceDown();
+    throw new Error('Could not reach the MassGIS parcel service');
+  })();
+  svc.ready.catch(() => { svc.ready = null; });
+  return svc.ready;
+}
+
+function notifyServiceDown() {
+  const msg = 'Can’t reach the Massachusetts property data. If you opened this in a preview (like the Claude app), that’s expected: open it from its web address instead.';
+  const h = document.querySelector('#mapHelpTxt'); if (h) h.textContent = msg;
+  toast(msg, 7000);
+}
+
+const f = (rec, name) => rec[name] ?? null; // records are stored with UPPERCASE keys
+
+function normalizeRecord(attrs) {
+  const out = {};
+  for (const [k, v] of Object.entries(attrs)) { const K = k.toUpperCase(); if (SAFE_FIELDS.has(K)) out[K] = v; }
+  return out;
+}
+
+// Turn feature-service features into parcels: one per lot, holding every assessor record on it (condos stack).
+function buildParcels(features) {
+  const byKey = new Map();
+  for (const ft of features) {
+    const g = ft.geometry; if (!g || !g.rings || !g.rings.length) continue;
+    const rec = normalizeRecord(ft.attributes || {});
+    const pt = String(rec.POLY_TYPE || '').toUpperCase();
+    if (pt && pt !== 'FEE' && pt !== 'TAX') continue; // skip roads, rail and water
+    const first = g.rings[0][0];
+    const key = rec.LOC_ID || `${first[0].toFixed(6)},${first[1].toFixed(6)},${g.rings[0].length}`;
+    let p = byKey.get(key);
+    if (!p) { p = { key, ringsLL: g.rings, records: [] }; byKey.set(key, p); }
+    p.records.push(rec);
+  }
+  return [...byKey.values()].map((p) => {
+    const recs = p.records;
+    const built = recs.some((r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600 || (num(r.BLDG_VAL) || 0) > 0);
+    return { ...p, built };
+  });
+}
+
+async function queryParcelsNear(lat, lon, radius = QUERY_RADIUS) {
+  if (DEMO) return demoParcels(lat, lon);
+  await initService();
+  const params = new URLSearchParams({
+    geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+    distance: String(radius), units: 'esriSRUnit_Meter', outFields: svc.outFields.join(','), returnGeometry: 'true',
+    outSR: '4326', geometryPrecision: '7', resultRecordCount: '2000', f: 'json',
+  });
+  const j = await getJSON(svc.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+  return buildParcels(j.features || []);
+}
+
+const STREET_ABBR = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'DR', COURT: 'CT', PLACE: 'PL', TERRACE: 'TER', CIRCLE: 'CIR',
+  BOULEVARD: 'BLVD', PARKWAY: 'PKWY', SQUARE: 'SQ', HIGHWAY: 'HWY', WAY: 'WAY' };
+async function searchAddress(text) {
+  const [addrRaw, townRaw] = text.split(',').map((s) => (s || '').trim());
+  const addr = addrRaw.toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+    .split(' ').map((w) => STREET_ABBR[w] || w).join(' ');
+  if (!addr) return null;
+  if (DEMO) return null;
+  await initService();
+  if (!svc.fields.has('SITE_ADDR')) return null;
+  const sqlq = (s) => s.replace(/'/g, "''");
+  const tries = [];
+  if (townRaw && svc.fields.has('CITY')) tries.push(`UPPER(${svc.fields.get('SITE_ADDR')}) LIKE '${sqlq(addr)}%' AND UPPER(${svc.fields.get('CITY')}) LIKE '${sqlq(townRaw.toUpperCase())}%'`);
+  tries.push(`UPPER(${svc.fields.get('SITE_ADDR')}) LIKE '${sqlq(addr)}%'`);
+  for (const where of tries) {
+    const params = new URLSearchParams({ where, outFields: svc.outFields.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '5', f: 'json' });
+    try {
+      const j = await getJSON(svc.layerUrl + '/query?' + params.toString());
+      const ps = buildParcels(j.features || []);
+      if (ps.length) {
+        const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
+        const c = centroid(ps[0].ringsLL.map((r) => r.map(([lo, la]) => proj.fwd(la, lo))));
+        const [la, lo] = proj.inv(c[0], c[1]);
+        return { lat: la, lon: lo, key: ps[0].key };
+      }
+    } catch (e) { console.warn('search failed', e); }
+  }
+  return null;
+}
+
+/* =========================================================================
+   Demo data (?demo=1): a made-up neighborhood for testing without network
+   ========================================================================= */
+function demoParcels(lat0, lon0) {
+  if (demoParcels.cache && demoParcels.cache.key === `${lat0.toFixed(3)},${lon0.toFixed(3)}`) return demoParcels.cache.ps;
+  const proj = makeProj(lat0, lon0);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const styles = ['Colonial', 'Cape Cod', 'Victorian', 'Ranch', 'Garrison', 'Federal', 'Greek Revival', 'Bungalow'];
+  const streets = ['Elm St', 'Maple Ave', 'Chestnut St', 'Prospect Hill Rd'];
+  const feats = []; let n = 0;
+  for (let row = -2; row <= 2; row++) {
+    const streetY = row * 70;              // E–W streets every 70 m, 12 m wide
+    for (const side of [1, -1]) {
+      const y0 = streetY + side * 6, y1 = streetY + side * 34;
+      for (let x = -160; x < 160; x += 22) {
+        const ring = [[x, y0], [x + 22, y0], [x + 22, y1], [x, y1], [x, y0]].map(([px, py]) => { const [la, lo] = proj.inv(px, py); return [lo, la]; });
+        const yb = Math.round(1700 + rnd() * 320);
+        const sale = rnd() > .15 ? (2000 + Math.floor(rnd() * 26)) * 10000 + (1 + Math.floor(rnd() * 12)) * 100 + 15 : null;
+        const val = Math.round((350 + rnd() * 1100) * 1000 / 1000) * 1000;
+        const num0 = 10 + (n++ * 2);
+        feats.push({ geometry: { rings: [ring] }, attributes: {
+          LOC_ID: 'DEMO_' + n, POLY_TYPE: 'FEE', SITE_ADDR: `${num0} ${streets[(row + 2) % 4].toUpperCase()}`, CITY: 'DEMO TOWN', FY: THIS_YEAR,
+          TOTAL_VAL: val, BLDG_VAL: Math.round(val * .55), LAND_VAL: Math.round(val * .45), LS_DATE: sale ? String(sale) : null,
+          LS_PRICE: sale ? Math.round(val * (0.45 + rnd() * .5) / 1000) * 1000 : null, USE_CODE: rnd() > .2 ? '101' : '104',
+          YEAR_BUILT: Math.min(yb, THIS_YEAR - 1), RES_AREA: Math.round(1100 + rnd() * 2400), STYLE: styles[Math.floor(rnd() * styles.length)],
+          STORIES: rnd() > .5 ? 2 : 1.5, NUM_ROOMS: 5 + Math.floor(rnd() * 6), UNITS: 1,
+        } });
+      }
+    }
+  }
+  const ps = buildParcels(feats);
+  demoParcels.cache = { key: `${lat0.toFixed(3)},${lon0.toFixed(3)}`, ps };
+  return ps;
+}
+
+/* =========================================================================
+   App state
+   ========================================================================= */
+const S = {
+  mode: 'start',
+  pos: null, acc: null,          // GPS
+  heading: null, beta: null,     // compass (true north)
+  hbuf: [], gotOrientation: false, orientSource: null,
+  parcels: [], center: null, proj: null, local: [], loading: null,
+  candidates: [], cIdx: 0, locked: false,
+  map: { center: null, R: 110, selectedKey: null },
+};
+
+function setData(parcels, lat, lon) {
+  S.parcels = parcels; S.center = { lat, lon }; S.proj = makeProj(lat, lon); S.map.img = null;
+  S.local = parcels.map((p) => {
+    const rings = p.ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
+    return { p, rings, c: centroid(rings) };
+  });
+}
+
+async function ensureData(lat, lon, force = false) {
+  if (!force && S.center && S.proj) {
+    const [x, y] = S.proj.fwd(lat, lon);
+    if (Math.hypot(x, y) < QUERY_RADIUS - MAX_RANGE + 40) return;
+  }
+  if (S.loading) return S.loading;
+  S.loading = (async () => {
+    try { setData(await queryParcelsNear(lat, lon), lat, lon); }
+    catch (e) { console.error(e); toast('Could not load property data. Check your connection.'); throw e; }
+    finally { S.loading = null; }
+  })();
+  return S.loading;
+}
+
+/* =========================================================================
+   Targeting: which lot is the phone pointing at?
+   ========================================================================= */
+function findCandidates(lat, lon, heading) {
+  if (!S.proj) return [];
+  const [ox, oy] = S.proj.fwd(lat, lon);
+  const scores = new Map();
+  for (const [off, w] of CONE) {
+    const h = rad(heading + off), dx = Math.sin(h), dy = Math.cos(h);
+    const hits = [];
+    for (const L of S.local) {
+      if (!L.p.built) continue;
+      if (pointInRings(ox, oy, L.rings)) continue;     // the lot you're standing on
+      const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE);
+      if (t !== null && t >= MIN_RANGE) hits.push([t, L]);
+    }
+    hits.sort((a, b) => a[0] - b[0]);
+    hits.slice(0, 2).forEach(([t, L], i) => {
+      const s = scores.get(L.p.key) || { L, score: 0, dist: Infinity, center: false };
+      s.score += w * (i === 0 ? 1 : .22);
+      s.dist = Math.min(s.dist, t);
+      if (off === 0 && i === 0) s.center = true;
+      scores.set(L.p.key, s);
+    });
+  }
+  return [...scores.values()].sort((a, b) => (b.center - a.center) || (b.score - a.score) || (a.dist - b.dist))
+    .map((s) => ({ ...s, bearing: norm(Math.atan2(s.L.c[0] - ox, s.L.c[1] - oy) * 180 / Math.PI), cdist: Math.hypot(s.L.c[0] - ox, s.L.c[1] - oy) }));
+}
+
+/* =========================================================================
+   Summaries + card rendering
+   ========================================================================= */
+function summarize(p) {
+  const recs = p.records;
+  const r0 = recs.slice().sort((a, b) => (num(b.RES_AREA) || num(b.BLD_AREA) || 0) - (num(a.RES_AREA) || num(a.BLD_AREA) || 0))[0];
+  const years = recs.map((r) => num(r.YEAR_BUILT)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
+  const year = years.length ? Math.min(...years) : null;
+  const sales = recs.map((r) => ({ d: parseSaleDate(r.LS_DATE), p: num(r.LS_PRICE) })).filter((s) => s.d).sort((a, b) => b.d - a.d);
+  const vals = recs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
+  let rawAddr = r0.SITE_ADDR || [r0.ADDR_NUM, r0.FULL_STR].filter(Boolean).join(' ') || r0.LOCATION || '';
+  if (recs.length > 1) rawAddr = String(rawAddr).replace(/\s+(UNIT|APT|STE|SUITE|#)\s*[\w-]*$/i, '').replace(/\s*#\s*[\w-]+$/, '');
+  const addr = titleCase(rawAddr) || 'Address not listed';
+  const town = titleCase(r0.CITY || '');
+  const units = recs.length > 1 ? recs.length : (num(r0.UNITS) || 1);
+  return { r0, recs, year, sales, vals, addr, town, units, condo: recs.length > 1, use: useLabel(r0.USE_CODE), fy: num(r0.FY) };
+}
+
+function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); return Math.abs(a) * 10.7639; }
+function lotText(L) {
+  const sqft = lotSqft(L), acres = sqft / 43560;
+  if (acres >= 0.5) return `${acres.toFixed(acres >= 10 ? 0 : 1)} ac`;
+  return `${(Math.round(sqft / (sqft < 10000 ? 10 : 100)) * (sqft < 10000 ? 10 : 100)).toLocaleString()} ft²`;
+}
+
+function renderCard(cand, total, idx) {
+  const L = cand.L, s = summarize(L.p), r = s.r0;
+  const style = r.STYLE ? titleCase(r.STYLE) : null;
+  const chips = [];
+  if (s.year) chips.push(`<span class="chip">Built ${s.year} · ${THIS_YEAR - s.year} yrs</span>`);
+  if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
+  const ot = olderThan(s.year); if (ot) chips.push(`<span class="chip fun">${esc(ot)}</span>`);
+  const era = eraLabel(s.year); if (era && s.year < 1942) chips.push(`<span class="chip green">${esc(era)}</span>`);
+
+  let valueBlock = '';
+  if (s.condo) {
+    const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
+    valueBlock = `<div class="value"><div class="k">${s.units} units · assessed${s.fy ? ' FY' + s.fy : ''}</div>
+      <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>
+      <div class="s">${s.sales[0] ? `Latest unit sale <b>${money(s.sales[0].p) || 'non-market'}</b> · ${fmtMonth(s.sales[0].d)}` : 'No recorded sales'}</div></div>`;
+  } else {
+    const v = num(r.TOTAL_VAL), sale = s.sales[0];
+    let saleLine = 'No recorded sale on file';
+    if (sale) {
+      const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
+      if (sale.p && sale.p >= 10000) {
+        const ch = v ? Math.round((v / sale.p - 1) * 100) : null;
+        const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% since</span>`;
+        saleLine = `Last sold <b>${moneyFull(sale.p)}</b> · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta}`;
+      } else {
+        saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
+      }
+    }
+    valueBlock = `<div class="value"><div class="k">Town assessed value${s.fy ? ' · FY' + s.fy : ''}</div>
+      <div class="v">${v ? moneyFull(v) : '—'}</div><div class="s">${saleLine}</div></div>`;
+  }
+
+  const cells = [];
+  const living = s.condo ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
+  if (living) cells.push(['Living area', `${Math.round(living).toLocaleString()} ft²`]);
+  if (!s.condo && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
+  if (num(r.STORIES)) cells.push(['Stories', num(r.STORIES)]);
+  cells.push(['Lot', lotText(L)]);
+  if (s.units > 1) cells.push(['Units', s.units]);
+  if (num(r.LAND_VAL) && !s.condo) cells.push(['Land value', money(r.LAND_VAL)]);
+  while (cells.length % 3) cells.push(['', '']);
+  const grid = `<div class="grid">${cells.map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>`;
+
+  let unitList = '';
+  if (s.condo) {
+    const rows = s.recs.slice().sort((a, b) => (num(b.TOTAL_VAL) || 0) - (num(a.TOTAL_VAL) || 0)).slice(0, 12)
+      .map((u) => `<div><span>${esc(titleCase(u.SITE_ADDR || u.LOCATION || 'Unit'))}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></div>`).join('');
+    unitList = `<div class="units">${rows}</div>`;
+  }
+
+  const where = isFinite(cand.cdist) ? `${Math.round(cand.cdist)} m ${compass8(cand.bearing)}` : '';
+  $('#cardBody').innerHTML = `${aerialSvg(L)}
+    <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : 'Massachusetts'}</span></div>
+    <div class="addr">${esc(s.addr)}</div>
+    <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
+    <div class="chips">${chips.join('')}</div>
+    ${valueBlock}
+    ${grid}
+    ${unitList}
+    <div class="note">Source: town assessor records via MassGIS${s.fy ? ` (fiscal year ${s.fy})` : ''}. Assessed value is the town's figure for taxes, not a market estimate. Owner names are never shown.</div>`;
+  attachImageryFallback($('#cardBody'));
+  $('#prevC').disabled = idx <= 0;
+  $('#nextC').disabled = idx >= total - 1;
+  $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
+  $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
+}
+
+function shareText(cand) {
+  const s = summarize(cand.L.p), r = s.r0;
+  const bits = [`${s.addr}${s.town ? ', ' + s.town : ''}`];
+  if (s.year) bits.push(`Built ${s.year}${r.STYLE ? ' · ' + titleCase(r.STYLE) : ''}`);
+  const ot = olderThan(s.year); if (ot) bits.push(ot + '!');
+  if (!s.condo && num(r.TOTAL_VAL)) bits.push(`Assessed ${moneyFull(r.TOTAL_VAL)}`);
+  if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
+  return bits.join('\n') + '\n\nFound with Housepoint';
+}
+
+/* =========================================================================
+   Sheet (card) controls
+   ========================================================================= */
+function openSheet(cands, idx = 0) {
+  S.candidates = cands; S.cIdx = idx; S.locked = true;
+  renderCard(cands[idx], cands.length, idx);
+  saveHistory(cands[idx]); prepareShare(cands[idx]);
+  closePanel();
+  $('#sheet').classList.add('open');
+  $('#reticle').classList.add('locked');
+  if (S.mode === 'map') { S.map.selectedKey = cands[idx].L.p.key; drawMap(); }
+}
+function closeSheet() {
+  $('#sheet').classList.remove('open'); $('#reticle').classList.remove('locked'); S.locked = false;
+  if (S.mode === 'map') { S.map.selectedKey = null; drawMap(); }
+}
+$('#prevC').onclick = () => { if (S.cIdx > 0) openSheet(S.candidates, S.cIdx - 1); };
+$('#nextC').onclick = () => { if (S.cIdx < S.candidates.length - 1) openSheet(S.candidates, S.cIdx + 1); };
+$('#shareC').onclick = async () => {
+  const cand = S.candidates[S.cIdx];
+  if (!sharePrep || sharePrep.cand !== cand) prepareShare(cand);
+  if (sharePrep.blob) {
+    // Image is ready: open the share sheet straight from this tap.
+    try { if (await doShare(sharePrep.blob, cand)) return; } catch (e) { if (e.name === 'AbortError') return; }
+    showShareView(sharePrep.blob, cand); return;
+  }
+  toast('Making your card…', 1600);
+  const blob = await sharePrep.p;
+  showShareView(blob, cand);
+};
+// swipe the card down to close
+(() => {
+  let y0 = null; const sheet = $('#sheet');
+  sheet.addEventListener('touchstart', (e) => { if ($('#cardBody').scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
+  sheet.addEventListener('touchmove', (e) => { if (y0 !== null && e.touches[0].clientY - y0 > 70) { y0 = null; closeSheet(); } }, { passive: true });
+  sheet.addEventListener('touchend', () => { y0 = null; });
+  $('.grab').onclick = closeSheet;
+})();
+
+/* =========================================================================
+   Sensors
+   ========================================================================= */
+function compassFromEuler(alpha, beta, gamma) {
+  // Heading of the direction the BACK camera faces (W3C DeviceOrientation spec example).
+  const x = rad(beta || 0), y = rad(gamma || 0), z = rad(alpha || 0);
+  const cX = Math.cos(x), cY = Math.cos(y), cZ = Math.cos(z), sX = Math.sin(x), sY = Math.sin(y), sZ = Math.sin(z);
+  const Vx = -cZ * sY - sZ * sX * cY, Vy = -sZ * sY + cZ * sX * cY;
+  return norm(Math.atan2(Vx, Vy) * 180 / Math.PI);
+}
+function pushHeading(h) {
+  S.hbuf.push(h); if (S.hbuf.length > 8) S.hbuf.shift();
+  let sx = 0, sy = 0; for (const v of S.hbuf) { sx += Math.sin(rad(v)); sy += Math.cos(rad(v)); }
+  S.heading = norm(Math.atan2(sx, sy) * 180 / Math.PI);
+}
+function onOrientation(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) { h = e.webkitCompassHeading; S.orientSource = 'ios'; }
+  else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) {
+    h = compassFromEuler(e.alpha, e.beta, e.gamma);
+    const so = (screen.orientation && screen.orientation.angle) || 0; h = norm(h + so); S.orientSource = 'abs';
+  } else return;
+  S.beta = e.beta; S.gotOrientation = true;
+  pushHeading(norm(h + DECLINATION));
+}
+async function startSensors() {
+  // Compass permission (iOS needs this inside a tap)
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') toast('Compass permission was declined');
+    }
+  } catch (e) { /* not a tap, or unsupported */ }
+  if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrientation);
+  window.addEventListener('deviceorientation', onOrientation);
+
+  // Location
+  if ('geolocation' in navigator) {
+    navigator.geolocation.watchPosition((p) => {
+      S.pos = { lat: p.coords.latitude, lon: p.coords.longitude }; S.acc = p.coords.accuracy;
+      ensureData(S.pos.lat, S.pos.lon).catch(() => {});
+    }, (err) => { $('#gpsTxt').textContent = 'Location off'; $('#gpsPill .dot').className = 'dot bad'; toast('Location is needed to know which house you mean.'); },
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+  }
+
+  // Camera
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    const v = $('#cam'); v.srcObject = stream; show(v); show($('#fakecam'), false); await v.play().catch(() => {});
+  } catch (e) { show($('#fakecam')); }
+}
+
+/* =========================================================================
+   Point mode loop
+   ========================================================================= */
+let rafOn = false, lastLive = 0;
+function startPointMode() {
+  S.mode = 'point';
+  show($('#start'), false); [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint')].forEach((el) => show(el));
+  [$('#mapView'), $('#mapTop'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el, false));
+  if (!rafOn) { rafOn = true; requestAnimationFrame(tick); }
+  if (!startPointMode.tipped) { startPointMode.tipped = true; setTimeout(() => toast('Aim the circle at a house, then tap the button. Wrong house? Tap “Not it”.', 4200), 1200); }
+}
+
+function tick(ts) {
+  if (S.mode !== 'point') { rafOn = false; return; }
+  requestAnimationFrame(tick);
+  if (ts - lastLive < 90) return; lastLive = ts;
+
+  // status pills
+  if (S.pos) {
+    const a = Math.round(S.acc || 0);
+    $('#gpsTxt').textContent = `GPS ±${a} m`;
+    $('#gpsPill .dot').className = 'dot ' + (a <= 15 ? 'ok' : a <= 35 ? '' : 'bad');
+  }
+  $('#hdgTxt').textContent = S.heading == null ? 'Compass…' : `${Math.round(S.heading)}° ${compass8(S.heading)}`;
+
+  let hint = '';
+  if (!S.pos) hint = 'Finding your location…';
+  else if (S.heading == null) hint = 'Waiting for the compass…';
+  else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
+  else if (S.beta != null && Math.abs(S.beta) < 35 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';
+  else if (S.acc > 35) hint = 'GPS is fuzzy right now. Results may be off.';
+  $('#hint').textContent = hint;
+
+  drawRadar();
+  if (S.locked) return;
+  const label = $('#liveLabel');
+  if (S.pos && S.heading != null && S.local.length) {
+    const c = findCandidates(S.pos.lat, S.pos.lon, S.heading)[0];
+    if (c) {
+      const s = summarize(c.L.p);
+      $('#liveA').textContent = s.addr;
+      $('#liveB').textContent = [s.year ? `Built ${s.year}` : null, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
+      label.classList.remove('dim'); S.live = c; return;
+    }
+  }
+  label.classList.add('dim'); S.live = null;
+}
+
+$('#shutter').onclick = async () => {
+  if (!S.pos) { toast('Still finding your location…'); return; }
+  if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
+  $('#scan').classList.add('on');
+  try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
+  const cands = findCandidates(S.pos.lat, S.pos.lon, S.heading).slice(0, 6);
+  setTimeout(() => {
+    $('#scan').classList.remove('on');
+    if (!cands.length) { toast('No house found that way. Aim at a house within about 150 m.'); return; }
+    if (navigator.vibrate) navigator.vibrate(18);
+    openSheet(cands, 0);
+  }, 380);
+};
+
+/* radar: heading-up overhead view of nearby lots */
+function drawRadar() {
+  const svg = $('#radar');
+  if (!S.pos || !S.proj) { svg.innerHTML = ''; return; }
+  const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
+  const R = 90, scale = 100 / R, h = S.heading || 0;
+  const target = S.locked ? S.candidates[S.cIdx] : S.live;
+  let paths = '';
+  for (const L of S.local) {
+    if (Math.hypot(L.c[0] - ox, L.c[1] - oy) > R * 1.5) continue;
+    const d = L.rings.map((r) => 'M' + r.map(([x, y]) => `${((x - ox) * scale).toFixed(1)},${(-(y - oy) * scale).toFixed(1)}`).join('L') + 'Z').join('');
+    const on = target && target.L === L;
+    paths += `<path d="${d}" fill="${on ? '#b4432c' : L.p.built ? 'rgba(246,241,231,.16)' : 'rgba(246,241,231,.05)'}" stroke="${on ? '#f0a48f' : 'rgba(246,241,231,.35)'}" stroke-width="${on ? 1.6 : .6}"/>`;
+  }
+  const cone = `<path d="M0,0 L${(Math.sin(rad(-11)) * 100).toFixed(1)},${(-Math.cos(rad(-11)) * 100).toFixed(1)} A100,100 0 0 1 ${(Math.sin(rad(11)) * 100).toFixed(1)},${(-Math.cos(rad(11)) * 100).toFixed(1)} Z" fill="rgba(240,164,143,.18)"/>`;
+  svg.innerHTML = `<g transform="rotate(${(-h).toFixed(1)})">${paths}</g>${cone}<circle r="4.5" fill="#fff" stroke="#b4432c" stroke-width="2"/>`;
+}
+
+/* =========================================================================
+   Map mode
+   ========================================================================= */
+async function startMapMode(center, msg) {
+  S.mode = 'map'; closeSheet();
+  [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint'), $('#cam'), $('#fakecam'), $('#sim')].forEach((el) => show(el, false));
+  $('#liveLabel').classList.add('dim');
+  show($('#start'), false); [$('#mapView'), $('#mapTop'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el));
+  if (msg) $('#mapHelpTxt').textContent = msg;
+  if (center) await centerMap(center.lat, center.lon, center.selectKey);
+  else drawMap();
+}
+
+async function centerMap(lat, lon, selectKey) {
+  S.map.center = { lat, lon };
+  $('#mapHelpTxt').textContent = 'Loading properties…';
+  try { await ensureData(lat, lon, true); }
+  catch (e) { if (!svc.layerUrl && !DEMO) notifyServiceDown(); else $('#mapHelpTxt').textContent = 'Could not load property data here.'; return; }
+  $('#mapHelpTxt').textContent = S.local.length ? 'Tap any lot to see its story.' : 'No Massachusetts parcels here. Try a sample spot.';
+  refreshMapImagery(); drawMap();
+  if (selectKey) {
+    const L = S.local.find((l) => l.p.key === selectKey);
+    if (L) selectLot(L);
+  }
+}
+
+function refreshMapImagery() {
+  if (!S.map.center || !S.proj) return;
+  const [cx, cy] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+  const svg = $('#mapSvg'); const w = svg.clientWidth || innerWidth, h = svg.clientHeight || innerHeight;
+  const R = S.map.R, aspect = h / w, k = 1.35;
+  const ext = { x0: cx - R * k, y0: cy - R * aspect * k, w: 2 * R * k, h: 2 * R * aspect * k };
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  let pw = w * k * dpr, ph = pw * aspect; const sc = Math.min(1, 2048 / pw, 2048 / ph);
+  pw = Math.round(pw * sc); ph = Math.round(ph * sc);
+  S.map.img = { ext, href: imageryHref(ext, pw, ph, 0), alt: imageryHref(ext, pw, ph, 1) };
+}
+
+function drawMap() {
+  const svg = $('#mapSvg');
+  if (!S.map.center || !S.proj) { svg.innerHTML = ''; return; }
+  const [cx, cy] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+  const w = svg.clientWidth || innerWidth, hgt = svg.clientHeight || innerHeight;
+  const R = S.map.R, aspect = hgt / w;
+  svg.setAttribute('viewBox', `${-R} ${-R * aspect} ${2 * R} ${2 * R * aspect}`);
+  if (!svg.querySelector('#mBg')) {
+    svg.innerHTML = '<rect id="mBg" fill="#34322c"/><image id="mImg" preserveAspectRatio="none"/><g id="mParcels"></g><g id="mMe"></g>';
+    const im = svg.querySelector('#mImg');
+    im.addEventListener('error', () => { if (im.dataset.alt && im.getAttribute('href') !== im.dataset.alt) im.setAttribute('href', im.dataset.alt); });
+  }
+  const bg = svg.querySelector('#mBg');
+  bg.setAttribute('x', -R * 4); bg.setAttribute('y', -R * 4 * aspect); bg.setAttribute('width', R * 8); bg.setAttribute('height', R * 8 * aspect);
+  const im = svg.querySelector('#mImg');
+  if (S.map.img) {
+    if (im.dataset.src !== S.map.img.href) { im.dataset.src = S.map.img.href; im.dataset.alt = S.map.img.alt; im.setAttribute('href', S.map.img.href); }
+    const e = S.map.img.ext;
+    im.setAttribute('x', (e.x0 - cx).toFixed(1)); im.setAttribute('y', (-(e.y0 + e.h - cy)).toFixed(1));
+    im.setAttribute('width', e.w.toFixed(1)); im.setAttribute('height', e.h.toFixed(1)); im.style.display = '';
+  } else im.style.display = 'none';
+  let out = '';
+  for (const L of S.local) {
+    const sel = L.p.key === S.map.selectedKey;
+    out += `<path data-k="${esc(L.p.key)}" d="${ringsPath(L.rings, cx, cy)}" fill-rule="evenodd" fill="${sel ? 'rgba(180,67,44,.5)' : L.p.built ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.02)'}" stroke="${sel ? '#f0a48f' : 'rgba(255,255,255,.7)'}" stroke-width="${sel ? 2.4 : .8}" vector-effect="non-scaling-stroke"/>`;
+  }
+  svg.querySelector('#mParcels').innerHTML = out;
+  let me = '';
+  if (S.pos) {
+    const [ux, uy] = S.proj.fwd(S.pos.lat, S.pos.lon);
+    me = `<circle cx="${(ux - cx).toFixed(1)}" cy="${(-(uy - cy)).toFixed(1)}" r="${(R / 40).toFixed(2)}" fill="#3a7bd5" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  }
+  svg.querySelector('#mMe').innerHTML = me;
+}
+
+function selectLot(L) {
+  const [cx, cy] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+  const near = S.local.filter((o) => o.p.built && Math.hypot(o.c[0] - L.c[0], o.c[1] - L.c[1]) < 40 && o !== L)
+    .sort((a, b) => Math.hypot(a.c[0] - L.c[0], a.c[1] - L.c[1]) - Math.hypot(b.c[0] - L.c[0], b.c[1] - L.c[1])).slice(0, 4);
+  const mk = (o) => ({ L: o, dist: Math.hypot(o.c[0] - cx, o.c[1] - cy), cdist: NaN, bearing: 0 });
+  openSheet([mk(L), ...near.map(mk)], 0);
+}
+
+$('#mapSvg').addEventListener('click', (e) => {
+  if (Date.now() - (S.map.justDragged || 0) < 350) return;
+  const k = e.target && e.target.getAttribute && e.target.getAttribute('data-k');
+  if (!k) { closeSheet(); return; }
+  const L = S.local.find((l) => l.p.key === k); if (L) selectLot(L);
+});
+// drag to pan
+(() => {
+  const svg = $('#mapSvg'); let drag = null;
+  svg.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, moved: false }; });
+  svg.addEventListener('pointermove', (e) => {
+    if (!drag || !S.map.center) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+    drag.moved = true; drag.x = e.clientX; drag.y = e.clientY;
+    const mPerPx = (2 * S.map.R) / (svg.clientWidth || innerWidth);
+    const [x, y] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+    const [la, lo] = S.proj.inv(x - dx * mPerPx, y + dy * mPerPx);
+    S.map.center = { lat: la, lon: lo }; drawMap();
+  });
+  svg.addEventListener('pointerup', () => {
+    if (drag && drag.moved) {
+      const [x, y] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+      if (Math.hypot(x, y) > QUERY_RADIUS * 0.55) ensureData(S.map.center.lat, S.map.center.lon, true).then(() => { refreshMapImagery(); drawMap(); }).catch(() => {});
+      S.map.justDragged = Date.now();
+      refreshMapImagery(); drawMap();
+    }
+    drag = null;
+  });
+})();
+$('#zin').onclick = () => { S.map.R = Math.max(40, S.map.R / 1.4); refreshMapImagery(); drawMap(); };
+$('#zout').onclick = () => { S.map.R = Math.min(QUERY_RADIUS, S.map.R * 1.4); refreshMapImagery(); drawMap(); };
+$('#samples').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'useHighlights') { openPanel('near'); return; }
+  if (b.id === 'useGps') {
+    if (S.pos) centerMap(S.pos.lat, S.pos.lon);
+    else navigator.geolocation.getCurrentPosition((p) => { S.pos = { lat: p.coords.latitude, lon: p.coords.longitude }; S.acc = p.coords.accuracy; centerMap(S.pos.lat, S.pos.lon); },
+      () => toast('Location is off'), { enableHighAccuracy: true, timeout: 15000 });
+    return;
+  }
+  $('#q').value = b.dataset.name; centerMap(+b.dataset.lat, +b.dataset.lon);
+});
+$('#search').addEventListener('submit', async (e) => {
+  e.preventDefault(); const text = $('#q').value.trim(); if (!text) return;
+  $('#q').blur(); $('#mapHelpTxt').textContent = 'Searching…';
+  try {
+    const r = await searchAddress(text);
+    if (!r) { $('#mapHelpTxt').textContent = 'No match. Try "number street, town".'; return; }
+    S.map.R = 70; await centerMap(r.lat, r.lon, r.key);
+  } catch (err) { $('#mapHelpTxt').textContent = 'Search failed. Check your connection.'; }
+});
+window.addEventListener('resize', () => { if (S.mode === 'map') { refreshMapImagery(); drawMap(); } });
+
+/* =========================================================================
+   History ("Your houses"), kept on this phone only
+   ========================================================================= */
+const HKEY = 'housepoint.history.v1' + (DEMO ? '.demo' : '');
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
+function saveHistory(cand) {
+  try {
+    const s = summarize(cand.L.p); const [lat, lon] = S.proj.inv(cand.L.c[0], cand.L.c[1]);
+    const h = loadHistory().filter((x) => x.key !== cand.L.p.key);
+    h.unshift({ key: cand.L.p.key, addr: s.addr, town: s.town, year: s.year, val: s.condo ? null : num(s.r0.TOTAL_VAL), lat, lon, ts: Date.now() });
+    localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 100)));
+  } catch (e) { /* storage unavailable */ }
+}
+
+/* =========================================================================
+   Share image (1080 x 1350, made on the phone)
+   ========================================================================= */
+let sharePrep = null;
+function prepareShare(cand) {
+  const prep = { cand, blob: null };
+  prep.p = makeShareImage(cand).then((b) => { prep.blob = b; return b; }).catch((e) => { console.warn('share image failed', e); return null; });
+  sharePrep = prep;
+}
+async function doShare(blob, cand) {
+  const text = shareText(cand);
+  if (blob) {
+    const file = new File([blob], 'housepoint.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return true; }
+  }
+  if (navigator.share) { await navigator.share({ title: 'Housepoint', text }); return true; }
+  return false;
+}
+function showShareView(blob, cand) {
+  if (!blob) {
+    const text = shareText(cand);
+    (navigator.clipboard ? navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard')) : Promise.reject()).catch(() => toast('Sharing not available here'));
+    return;
+  }
+  const img = $('#shareImg'); if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+  const url = URL.createObjectURL(blob); img.dataset.url = url; img.src = url; show($('#shareView'));
+  $('#svShare').onclick = async () => {
+    try { if (!(await doShare(blob, cand))) toast('Press and hold the image to save it'); }
+    catch (e) { if (e.name !== 'AbortError') toast('Press and hold the image to save it'); }
+  };
+}
+$('#svClose').onclick = () => show($('#shareView'), false);
+
+function loadImg(src, ms = 9000) {
+  return new Promise((res, rej) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    const t = setTimeout(() => rej(new Error('timeout')), ms);
+    im.onload = () => { clearTimeout(t); res(im); }; im.onerror = () => { clearTimeout(t); rej(new Error('load')); };
+    im.src = src;
+  });
+}
+function rrect(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+function wrapLines(g, text, maxW) {
+  const lines = []; let line = '';
+  for (const w of String(text).split(' ')) { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line); return lines;
+}
+async function makeShareImage(cand) {
+  const L = cand.L, s = summarize(L.p), r = s.r0;
+  const W = 1080, H = 1350, PH = 680, PAD = 72;
+  const SERIF = 'Fraunces, Georgia, "Times New Roman", serif', SANS = 'Inter, -apple-system, "Segoe UI", Roboto, sans-serif';
+  try { await Promise.race([Promise.all([document.fonts.load(`700 80px Fraunces`), document.fonts.load(`600 32px Inter`)]), new Promise((ok) => setTimeout(ok, 1500))]); } catch (e) {}
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#f6f1e7'; g.fillRect(0, 0, W, H);
+
+  // aerial photo with the lot outlined
+  const ext = aerialExtent(L, W / PH, 1.9);
+  let img = null;
+  for (let i = 0; i < IMAGERY.length && !img && !DEMO; i++) { try { img = await loadImg(imageryHref(ext, W, PH, i)); } catch (e) { /* next source */ } }
+  if (img) g.drawImage(img, 0, 0, W, PH);
+  else { const gr = g.createLinearGradient(0, 0, 0, PH); gr.addColorStop(0, '#5b6b55'); gr.addColorStop(1, '#3f4a3b'); g.fillStyle = gr; g.fillRect(0, 0, W, PH); }
+  g.beginPath();
+  for (const ring of L.rings) {
+    ring.forEach(([x, y], i) => { const px = (x - ext.x0) / ext.w * W, py = (1 - (y - ext.y0) / ext.h) * PH; if (i) g.lineTo(px, py); else g.moveTo(px, py); });
+    g.closePath();
+  }
+  g.fillStyle = 'rgba(180,67,44,.22)'; g.fill('evenodd'); g.lineWidth = 7; g.lineJoin = 'round'; g.strokeStyle = '#f0a48f'; g.stroke();
+  const fade = g.createLinearGradient(0, PH - 120, 0, PH); fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,.28)');
+  g.fillStyle = fade; g.fillRect(0, PH - 120, W, 120);
+
+  // brand pill
+  g.fillStyle = 'rgba(20,17,15,.74)'; rrect(g, PAD - 22, 44, 312, 74, 37); g.fill();
+  g.strokeStyle = '#f0a48f'; g.lineWidth = 5; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(PAD, 96); g.lineTo(PAD, 78); g.lineTo(PAD + 17, 64); g.lineTo(PAD + 34, 78); g.lineTo(PAD + 34, 96); g.closePath(); g.stroke();
+  g.fillStyle = '#fff'; g.font = `700 38px ${SERIF}`; g.textBaseline = 'middle'; g.fillText('Housepoint', PAD + 52, 82);
+  if (img) { g.font = `500 20px ${SANS}`; g.fillStyle = 'rgba(255,255,255,.85)'; g.textAlign = 'right'; g.fillText(IMAGERY[0].attribution, W - 24, PH - 22); g.textAlign = 'left'; }
+
+  // address + town
+  g.textBaseline = 'alphabetic'; let y = PH + 40;
+  g.fillStyle = '#1d1a17'; g.font = `700 76px ${SERIF}`;
+  for (const line of wrapLines(g, s.addr, W - PAD * 2).slice(0, 2)) { y += 82; g.fillText(line, PAD, y); }
+  g.fillStyle = '#6f665b'; g.font = `500 34px ${SANS}`; y += 52;
+  g.fillText([s.town, s.condo ? `Condo building · ${s.units} units` : s.use].filter(Boolean).join(' · '), PAD, y);
+
+  // chips
+  const chips = [];
+  if (s.year) chips.push([`Built ${s.year}`, false]);
+  if (r.STYLE) chips.push([titleCase(r.STYLE), false]);
+  const ot = olderThan(s.year); if (ot) chips.push([ot, true]);
+  g.font = `600 30px ${SANS}`; let cx = PAD; y += 34;
+  for (const [t, hot] of chips) {
+    const w = g.measureText(t).width + 44;
+    if (cx + w > W - PAD) { cx = PAD; y += 72; }
+    g.fillStyle = hot ? '#b4432c' : '#ece4d3'; rrect(g, cx, y, w, 58, 29); g.fill();
+    g.fillStyle = hot ? '#fff' : '#1d1a17'; g.textBaseline = 'middle'; g.fillText(t, cx + 22, y + 30); g.textBaseline = 'alphabetic';
+    cx += w + 14;
+  }
+  if (chips.length) y += 58;
+
+  // value + sale
+  y += 62; g.fillStyle = '#6f665b'; g.font = `600 26px ${SANS}`;
+  g.fillText((s.condo ? 'UNIT VALUES' : 'TOWN ASSESSED VALUE') + (s.fy ? ` · FY${s.fy}` : ''), PAD, y);
+  y += 76; g.fillStyle = '#1d1a17'; g.font = `700 72px ${SERIF}`;
+  let big = '—';
+  if (s.condo && s.vals.length) { const lo = Math.min(...s.vals), hi = Math.max(...s.vals); big = lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`; }
+  else if (num(r.TOTAL_VAL)) big = moneyFull(r.TOTAL_VAL);
+  g.fillText(big, PAD, y);
+  const sale = s.sales.find((q) => q.p >= 10000);
+  if (sale && !s.condo) { y += 54; g.fillStyle = '#6f665b'; g.font = `500 32px ${SANS}`; g.fillText(`Last sold ${moneyFull(sale.p)} in ${sale.d.getFullYear()}`, PAD, y); }
+
+  // footer
+  g.fillStyle = '#a2988b'; g.font = `500 24px ${SANS}`;
+  g.fillText('Point at any house · Massachusetts assessor records via MassGIS', PAD, H - 44);
+  return await new Promise((res) => c.toBlob(res, 'image/png'));
+}
+
+/* =========================================================================
+   "Around here" highlights + "Your houses" panel
+   ========================================================================= */
+let panelTab = 'near', panelItems = [];
+function refPoint() { return (S.mode === 'map' && S.map.center) ? S.map.center : S.pos; }
+function candFor(L) {
+  const ref = S.pos && S.mode === 'point' ? S.pos : null;
+  if (!ref) return { L, dist: 0, cdist: NaN, bearing: 0 };
+  const [ox, oy] = S.proj.fwd(ref.lat, ref.lon);
+  return { L, dist: Math.hypot(L.c[0] - ox, L.c[1] - oy), cdist: Math.hypot(L.c[0] - ox, L.c[1] - oy), bearing: norm(Math.atan2(L.c[0] - ox, L.c[1] - oy) * 180 / Math.PI) };
+}
+function openFor(L) {
+  if (S.mode === 'map') {
+    const [la, lo] = S.proj.inv(L.c[0], L.c[1]);
+    const [mx, my] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
+    if (Math.hypot(L.c[0] - mx, L.c[1] - my) > S.map.R * 0.6) { S.map.center = { lat: la, lon: lo }; refreshMapImagery(); drawMap(); }
+    selectLot(L); return;
+  }
+  openSheet([candFor(L)], 0);
+}
+function median(a) { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; }
+function renderNear() {
+  const ref = refPoint();
+  if (!ref || !S.proj || !S.local.length) { panelItems = []; return '<div class="empty">No property data loaded here yet. Point at a house or search the map first.</div>'; }
+  const [ox, oy] = S.proj.fwd(ref.lat, ref.lon);
+  const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < 350).map((L) => ({ L, s: summarize(L.p) }));
+  if (!near.length) { panelItems = []; return '<div class="empty">No houses within 350 m of here.</div>'; }
+  const best = (arr, f) => arr.reduce((a, b) => (a === null || f(b) > f(a) ? b : a), null);
+  const dated = near.filter((x) => x.s.year);
+  const items = [];
+  const oldest = best(dated, (x) => -x.s.year);
+  if (oldest) items.push({ x: oldest, stat: String(oldest.s.year), hot: true, title: 'Oldest house around here', sub: olderThan(oldest.s.year) });
+  const singles = near.filter((x) => !x.s.condo && num(x.s.r0.TOTAL_VAL));
+  const top = best(singles, (x) => num(x.s.r0.TOTAL_VAL));
+  if (top) items.push({ x: top, stat: money(top.s.r0.TOTAL_VAL), title: 'Highest assessed value', sub: top.s.year ? `Built ${top.s.year}` : '' });
+  const sold = near.map((x) => ({ x, sale: x.s.sales.find((q) => q.p >= 10000) })).filter((q) => q.sale);
+  const recent = best(sold, (q) => q.sale.d.getTime());
+  if (recent) items.push({ x: recent.x, stat: money(recent.sale.p), title: 'Most recent sale', sub: fmtMonth(recent.sale.d) });
+  const newest = best(dated, (x) => x.s.year);
+  if (newest && newest !== oldest) items.push({ x: newest, stat: String(newest.s.year), title: 'Newest house', sub: newest.s.r0.STYLE ? titleCase(newest.s.r0.STYLE) : '' });
+  const lot = best(near, (x) => lotSqft(x.L));
+  if (lot) items.push({ x: lot, stat: lotText(lot.L).replace(' ', ' '), title: 'Biggest lot', sub: '' });
+  panelItems = items.map((it) => it.x.L);
+
+  const over100 = dated.filter((x) => THIS_YEAR - x.s.year >= 100).length;
+  const medYear = median(dated.map((x) => x.s.year));
+  const medVal = median(singles.map((x) => num(x.s.r0.TOTAL_VAL)));
+  const sum = `<div class="sum"><b>${near.length}</b> houses within 350 m.` +
+    (dated.length ? ` <b>${over100}</b> ${over100 === 1 ? 'is' : 'are'} 100+ years old, and the typical one was built around <b>${medYear}</b>.` : '') +
+    (medVal ? ` Typical assessed value: <b>${money(medVal)}</b>.` : '') + '</div>';
+  return sum + items.map((it, i) => `<button class="item" data-i="${i}"><div class="badge${it.hot ? ' hot' : ''}">${esc(it.stat)}</div><div><div class="t1">${esc(it.title)}</div><div class="t2">${esc([it.x.s.addr, it.sub].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
+}
+function renderMine() {
+  const h = loadHistory();
+  if (!h.length) return '<div class="empty">Houses you look up will show here, saved on this phone.</div>';
+  return h.map((x, i) => `<button class="item" data-h="${i}"><div class="badge">${esc(x.year || '—')}</div><div><div class="t1">${esc(x.addr)}</div><div class="t2">${esc([x.town, x.val ? money(x.val) : null, new Date(x.ts).toLocaleDateString()].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
+}
+function renderPanel() {
+  $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine');
+  $('#panelBody').innerHTML = panelTab === 'near' ? renderNear() : renderMine();
+}
+function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panelScroll').scrollTop = 0; }
+function closePanel() { $('#panel').classList.remove('open'); }
+$('#tabNear').onclick = () => { panelTab = 'near'; renderPanel(); };
+$('#tabMine').onclick = () => { panelTab = 'mine'; renderPanel(); };
+$('#panelGrab').onclick = closePanel;
+$('#panelBody').addEventListener('click', (e) => {
+  const b = e.target.closest('.item'); if (!b) return;
+  if (b.dataset.i !== undefined) { const L = panelItems[+b.dataset.i]; if (L) { closePanel(); openFor(L); } return; }
+  const x = loadHistory()[+b.dataset.h]; if (!x) return;
+  closePanel();
+  const L = S.local.find((l) => l.p.key === x.key);
+  if (L) openFor(L);
+  else { S.map.R = 70; startMapMode({ lat: x.lat, lon: x.lon, selectKey: x.key }, 'Loading…'); }
+});
+(() => {
+  let y0 = null; const el = $('#panel');
+  el.addEventListener('touchstart', (e) => { if ($('#panelScroll').scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchmove', (e) => { if (y0 !== null && e.touches[0].clientY - y0 > 70) { y0 = null; closePanel(); } }, { passive: true });
+  el.addEventListener('touchend', () => { y0 = null; });
+})();
+
+/* =========================================================================
+   Wiring
+   ========================================================================= */
+$('#goPoint').onclick = async () => {
+  startPointMode();
+  initService().catch(() => {});
+  await startSensors();
+  if (DEMO) enableSimCompass();
+  // No compass after a few seconds (desktop, or blocked): offer the map.
+  setTimeout(() => {
+    if (S.mode === 'point' && !S.gotOrientation && !DEMO) startMapMode(S.pos, 'The compass isn’t available here, so use the map: tap any lot to see its story.');
+  }, 4500);
+};
+$('#goMap').onclick = () => { initService().catch(() => {}); startMapMode(null, 'Search an address, or try a sample spot.'); };
+$('#toMap').onclick = () => startMapMode(S.pos ? { lat: S.pos.lat, lon: S.pos.lon } : null);
+$('#mapToPoint').onclick = () => { if (S.pos || DEMO) { startPointMode(); if (!S.gotOrientation && !DEMO) startSensors(); if (S.pos) ensureData(S.pos.lat, S.pos.lon, true).catch(() => {}); } else $('#goPoint').click(); };
+$('#toPanel').onclick = () => openPanel('near');
+
+function enableSimCompass() {
+  show($('#sim')); const r = $('#simRange');
+  const apply = () => { S.hbuf = []; pushHeading(+r.value); S.gotOrientation = true; $('#simVal').textContent = r.value + '°'; };
+  r.oninput = apply; apply();
+}
+
+// Demo mode: fixed spot, simulated compass, made-up houses.
+if (DEMO) {
+  document.body.insertAdjacentHTML('beforeend', '<div class="demo-flag">DEMO DATA</div>');
+  const lat = 42.0, lon = -71.0;
+  S.pos = { lat, lon }; S.acc = 6;
+  ensureData(lat, lon, true);
+  navigator.geolocation && (navigator.geolocation.watchPosition = () => 0);
+}
+
+// test hooks
+window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler };
+})();
+</script>
+</body>
+</html>
