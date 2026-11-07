@@ -1739,7 +1739,7 @@ function floodView(env) {
    Only the house's location is sent, never anything about you.
    ========================================================================= */
 // Free sign-up keys (they limit request rates; they aren't secrets): api.census.gov/data/key_signup.html and api.data.gov/signup
-const KEYS = { census: '', fbi: 'DEMO_KEY' };
+const KEYS = { census: 'd7e5755c018834c78e91aaa1039626e6baedd907', fbi: 'DEMO_KEY' };
 const BUY_KEY = 'housepoint.buyOpen';
 let buyAuto = false; try { buyAuto = localStorage.getItem(BUY_KEY) === '1'; } catch (e) { /* private mode */ }
 const BUY = new Map();
