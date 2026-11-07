@@ -195,6 +195,14 @@
   #shareView .sv { width: 100%; max-width: 420px; text-align: center; }
   #shareImg { width: 100%; max-height: 66vh; object-fit: contain; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.5); -webkit-touch-callout: default; }
   .sv-tip { color: #cfc6ba; font-size: 13px; margin: 12px 0 6px; }
+  /* estimated property tax */
+  .tax { margin: 12px 0 4px; padding: 12px 16px 13px; border-radius: 14px; background: #fffaf1; border: 1px solid var(--line); }
+  .tax .k { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .tax .v { font-family: var(--serif); font-weight: 700; font-size: 25px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tax .v span { font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--mute); }
+  .tax .s { font-size: 13px; color: var(--mute); margin-top: 5px; line-height: 1.42; }
+  .tax .s b { color: var(--ink); font-weight: 600; }
+
   /* flood zone + elevation on the card */
   .flood { margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; background: #fffaf1; border: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
   .flood .zb { flex: none; min-width: 54px; height: 54px; padding: 0 6px; border-radius: 12px; display: grid; place-items: center; background: var(--paper-2); color: var(--ink);
@@ -593,6 +601,7 @@ const REGIONS = {
       SALE_MO: ['SALE_MO1', 'SALEMO1'], MULTI_SALE: ['MULTI_PAR_SAL1', 'MULTI_PAR_', 'MULTIPAR1'], USE_CODE: ['DOR_UC', 'DORUC'],
       YEAR_BUILT: ['ACT_YR_BLT', 'ACTYRBLT'], EFF_YEAR: ['EFF_YR_BLT', 'EFFYRBLT'], RES_AREA: ['TOT_LVG_AREA', 'TOT_LVG_AR', 'TOTLVGAREA'],
       UNITS: ['NO_RES_UNTS', 'NO_RES_UNT', 'NORESUNTS'], BLDGS: ['NO_BULDNG', 'NOBULDNG'],
+      COUNTY: ['CO_NO', 'CONO'], TV_NSD: ['TV_NSD', 'TVNSD'], TV_SD: ['TV_SD', 'TVSD'],
     },
     valueLabel: 'County market value (“just value”)', deltaWord: 'value',
     yearLabel: (fy) => `${fy} tax roll`,
@@ -815,7 +824,7 @@ function demoParcels(lat0, lon0) {
           TOTAL_VAL: val, BLDG_VAL: Math.round(val * .55), LAND_VAL: Math.round(val * .45), LS_DATE: sale ? String(sale) : null,
           LS_PRICE: sale ? Math.round(val * (0.45 + rnd() * .5) / 1000) * 1000 : null, USE_CODE: rnd() > .2 ? '101' : '104',
           YEAR_BUILT: Math.min(yb, THIS_YEAR - 1), RES_AREA: Math.round(1100 + rnd() * 2400), STYLE: styles[Math.floor(rnd() * styles.length)],
-          STORIES: rnd() > .5 ? 2 : 1.5, NUM_ROOMS: 5 + Math.floor(rnd() * 6), UNITS: 1,
+          STORIES: rnd() > .5 ? 2 : 1.5, NUM_ROOMS: 5 + Math.floor(rnd() * 6), UNITS: 1, TOWN_ID: 42,
         } });
       }
     }
@@ -842,7 +851,9 @@ function setData(parcels, lat, lon) {
   S.parcels = parcels; S.center = { lat, lon }; S.proj = makeProj(lat, lon); S.map.img = null;
   S.local = parcels.map((p) => {
     const rings = p.ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
-    return { p, rings, c: centroid(rings), proj: S.proj };
+    const L = { p, rings, c: centroid(rings), proj: S.proj };
+    L.bb = lotBBox(L);
+    return L;
   });
 }
 
@@ -1002,6 +1013,7 @@ function renderCard(cand, total, idx) {
     <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
+    ${taxBoxHtml(s)}
     ${floodBoxHtml(L)}
     ${grid}
     ${unitList}
@@ -1021,7 +1033,87 @@ function shareText(cand) {
   const ot = olderThan(s.year); if (ot) bits.push(ot + '!');
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`Assessed ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
+  const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(`Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
   return bits.join('\n') + '\n\nFound with Housepoint';
+}
+
+/* =========================================================================
+   Estimated property tax: a free calculation from public rates, not the actual bill.
+   ========================================================================= */
+// Massachusetts FY2026 residential tax rates ($ per $1,000 of assessed value), in state town-ID order
+// (1 = Abington ... 351 = Yarmouth; Aquinnah keeps Gay Head's old slot). Source: MA Division of Local Services, Tax Rates by Class.
+const MA_TAX_FY = 2026;
+const MA_TOWNS = 'Abington|12.81,Acton|16.23,Acushnet|10.45,Adams|15.63,Agawam|14.1,Alford|4.07,Amesbury|15.05,Amherst|16.91,Andover|12.31,Arlington|10.67,Ashburnham|14.87,Ashby|15.76,Ashfield|14.23,Ashland|12.71,Athol|12.67,Attleboro|12.2,Auburn|14.24,Avon|13.35,Ayer|11.59,Barnstable|6.8,Barre|13.35,Becket|9.56,Bedford|12.49,Belchertown|15.13,Bellingham|12.39,Belmont|11.51,Berkley|12.35,Berlin|14.06,Bernardston|15.2,Beverly|10.81,Billerica|11.61,Blackstone|14.74,Blandford|12.57,Bolton|18.07,Boston|12.4,Bourne|7.65,Boxborough|15.39,Boxford|13.54,Boylston|13.58,Braintree|10.06,Brewster|6.77,Bridgewater|12.03,Brimfield|13.38,Brockton|11.63,Brookfield|14.62,Brookline|10.24,Buckland|16.74,Burlington|8.69,Cambridge|6.67,Canton|9.75,Carlisle|12.82,Carver|13.61,Charlemont|16.81,Charlton|10.94,Chatham|3.67,Chelmsford|13.27,Chelsea|11.48,Cheshire|10.58,Chester|18.06,Chesterfield|15.26,Chicopee|15.24,Chilmark|2.28,Clarksburg|12.29,Clinton|12.98,Cohasset|11.35,Colrain|17.82,Concord|13.05,Conway|14.28,Cummington|12.49,Dalton|16.87,Danvers|10.65,Dartmouth|8.03,Dedham|12.3,Deerfield|13.45,Dennis|4.29,Dighton|12.45,Douglas|12.07,Dover|11.19,Dracut|9.67,Dudley|10.06,Dunstable|13.39,Duxbury|9.96,East Bridgewater|13.69,East Brookfield|11.76,East Longmeadow|19.43,Eastham|7.71,Easthampton|13.29,Easton|12.59,Edgartown|2.48,Egremont|6.58,Erving|9.58,Essex|13.04,Everett|12.62,Fairhaven|9.19,Fall River|11.48,Falmouth|5.73,Fitchburg|13.29,Florida|8.28,Foxborough|13,Framingham|11.83,Franklin|11.42,Freetown|9.78,Gardner|13.77,Aquinnah|6.87,Georgetown|13.76,Gill|14.91,Gloucester|9.31,Goshen|13.5,Gosnold|3.16,Grafton|13.69,Granby|14.85,Granville|14,Great Barrington|13.24,Greenfield|18.64,Groton|14.78,Groveland|12.98,Hadley|11.46,Halifax|14.08,Hamilton|15.04,Hampden|15.78,Hancock|2.18,Hanover|12.47,Hanson|13.06,Hardwick|12.74,Harvard|15.87,Harwich|5.81,Hatfield|14.67,Haverhill|10.61,Hawley|16.2,Heath|19.39,Hingham|10.47,Hinsdale|10.63,Holbrook|12.11,Holden|13.48,Holland|12.2,Holliston|14.29,Holyoke|17.43,Hopedale|16.25,Hopkinton|14.1,Hubbardston|11.18,Hudson|14.14,Hull|10.81,Huntington|14.77,Ipswich|10.78,Kingston|12.82,Lakeville|9.74,Lancaster|16.9,Lanesborough|17.29,Lawrence|8.64,Lee|11.21,Leicester|11.09,Lenox|9.85,Leominster|13.66,Leverett|15.7,Lexington|12.31,Leyden|14.69,Lincoln|12.31,Littleton|14.02,Longmeadow|19.32,Lowell|11.35,Ludlow|16.01,Lunenburg|14.39,Lynn|10.3,Lynnfield|11.46,Malden|11.4,Manchester-by-the-Sea|8.7,Mansfield|13.09,Marblehead|8.56,Marion|8.87,Marlborough|10.54,Marshfield|9.61,Mashpee|6.41,Mattapoisett|10.24,Maynard|16.62,Medfield|13.52,Medford|8.63,Medway|14,Melrose|11.47,Mendon|13.26,Merrimac|13.19,Methuen|10.4,Middleborough|13.12,Middlefield|16.88,Middleton|12.59,Milford|12.69,Millbury|12.87,Millis|15.31,Millville|12.21,Milton|11.81,Monroe|10.13,Monson|14.3,Montague|15.13,Monterey|7.22,Montgomery|11.59,Mount Washington|5.97,Nahant|8.99,Nantucket|3.12,Natick|12.17,Needham|10.83,New Ashford|5.66,New Bedford|10.95,New Braintree|14.97,New Marlborough|7.21,New Salem|13.62,Newbury|7.51,Newburyport|9.26,Newton|9.69,Norfolk|14.87,North Adams|15.97,North Andover|11.24,North Attleborough|11.06,North Brookfield|11.96,North Reading|13.02,Northampton|13.67,Northborough|14.82,Northbridge|11.63,Northfield|13.28,Norton|13.03,Norwell|12.83,Norwood|9.82,Oak Bluffs|4.99,Oakham|11.12,Orange|16.6,Orleans|6.11,Otis|5.96,Oxford|12.23,Palmer|16.66,Paxton|15.17,Peabody|9.47,Pelham|18.79,Pembroke|11.78,Pepperell|13.78,Peru|16.09,Petersham|14.24,Phillipston|10.95,Pittsfield|17.5,Plainfield|17.56,Plainville|11.29,Plymouth|12.55,Plympton|15.26,Princeton|13.44,Provincetown|6.13,Quincy|11.78,Randolph|11.58,Raynham|11.75,Reading|10.96,Rehoboth|10.85,Revere|8.94,Richmond|10.25,Rochester|10.59,Rockland|13.87,Rockport|8.46,Rowe|5.24,Rowley|12.09,Royalston|10.26,Russell|18.42,Rutland|13.87,Salem|10.78,Salisbury|9.93,Sandisfield|7.89,Sandwich|10.19,Saugus|10.42,Savoy|14.52,Scituate|9.83,Seekonk|12.27,Sharon|17.15,Sheffield|11.82,Shelburne|12.79,Sherborn|15.66,Shirley|12.39,Shrewsbury|11.5,Shutesbury|16.21,Somerset|12.93,Somerville|10.98,South Hadley|13.52,Southampton|13.11,Southborough|14.36,Southbridge|14.89,Southwick|14.42,Spencer|10.98,Springfield|15.46,Sterling|12.55,Stockbridge|6.79,Stoneham|10.06,Stoughton|11.81,Stow|17.87,Sturbridge|15.6,Sudbury|14.27,Sunderland|12.44,Sutton|11.55,Swampscott|12,Swansea|11.36,Taunton|11.14,Templeton|11.87,Tewksbury|12.56,Tisbury|7.42,Tolland|7.95,Topsfield|15.66,Townsend|13.75,Truro|6.17,Tyngsborough|12.99,Tyringham|6.63,Upton|13.08,Uxbridge|12.68,Wakefield|11.74,Wales|14.13,Walpole|12.45,Waltham|10.32,Ware|14.49,Wareham|8.56,Warren|14.74,Warwick|16.54,Washington|13.82,Watertown|12.2,Wayland|14.83,Webster|11.92,Wellesley|10.17,Wellfleet|7.1,Wendell|20.5,Wenham|15.99,West Boylston|14.53,West Bridgewater|13.61,West Brookfield|10.75,West Newbury|10.15,West Springfield|14.02,West Stockbridge|10.34,West Tisbury|5.21,Westborough|15.93,Westfield|14.93,Westford|13.11,Westhampton|20.35,Westminster|11.73,Weston|10.88,Westport|7.28,Westwood|12.87,Weymouth|10.12,Whately|13.07,Whitman|13.29,Wilbraham|17.45,Williamsburg|16.01,Williamstown|14.2,Wilmington|11.41,Winchendon|12.69,Winchester|11.08,Windsor|9.43,Winthrop|11.14,Woburn|9.15,Worcester|13.28,Worthington|13.93,Wrentham|11.67,Yarmouth|6.97'.split(',').map((x) => { const [n, r] = x.split('|'); return { n, r: +r }; });
+const MA_BY_NAME = new Map(MA_TOWNS.map((t, i) => [t.n.toUpperCase().replace(/[^A-Z]/g, ''), i]));
+// Towns that have offered owner-occupants a residential exemption (it can take thousands off the bill).
+const MA_RES_EXEMPTION = new Set(['Boston', 'Brookline', 'Cambridge', 'Chelsea', 'Everett', 'Malden', 'Somerville', 'Waltham', 'Watertown',
+  'Barnstable', 'Nantucket', 'Truro', 'Tisbury', 'Provincetown', 'Wellfleet', 'Aquinnah']);
+// Florida average total tax rate by county in mills (all property taxes ÷ taxable value, 2024 roll), in Dept. of Revenue
+// county-number order (11 = Alachua ... 77 = Washington). Source: Florida TaxWatch, "How Florida Counties Compare 2025", from DOR data.
+const FL_MILLAGE_YEAR = 2024;
+const FL_COUNTIES = 'Alachua|20.8095,Baker|14.6367,Bay|12.6726,Bradford|16.5906,Brevard|14.703,Broward|19.8302,Calhoun|15.321,Charlotte|15.7775,Citrus|15.5066,Clay|15.2732,Collier|9.7402,Columbia|14.7596,Miami-Dade|18.4427,DeSoto|16.2845,Dixie|19.6363,Duval|17.8913,Escambia|13.6696,Flagler|17.2605,Franklin|10.6975,Gadsden|16.2562,Gilchrist|15.8371,Glades|18.2563,Gulf|12.6986,Hamilton|16.6089,Hardee|14.6002,Hendry|17.1788,Hernando|15.1245,Highlands|14.4,Hillsborough|17.986,Holmes|15.2,Indian River|14.1617,Jackson|14.2248,Jefferson|14.2038,Lafayette|16.255,Lake|15.8028,Lee|14.0306,Leon|17.7998,Levy|15.5956,Liberty|15.3141,Madison|15.4189,Manatee|14.6499,Marion|16.1672,Martin|16.7269,Monroe|8.2286,Nassau|16.3817,Okaloosa|12.267,Okeechobee|14.5023,Orange|21.3187,Osceola|14.8758,Palm Beach|17.4429,Pasco|17.3368,Pinellas|18.0621,Polk|15.3806,Putnam|17.0695,Saint Johns|13.0651,Saint Lucie|21.5612,Santa Rosa|12.1384,Sarasota|12.7168,Seminole|14.8177,Sumter|11.1557,Suwannee|15.9178,Taylor|15.2264,Union|16.6983,Volusia|17.6266,Wakulla|13.3851,Walton|9.2545,Washington|14.5767'.split(',').map((x) => { const [n, r] = x.split('|'); return { n, r: +r }; });
+const FL_SCHOOL_MILLS = 6;     // about how much of the total goes to schools, which tax a slightly larger value for homesteads
+
+function maTown(r0) {
+  const id = num(r0.TOWN_ID);
+  if (id >= 1 && id <= MA_TOWNS.length) return MA_TOWNS[id - 1];
+  const i = MA_BY_NAME.get(String(r0.CITY || '').toUpperCase().replace(/[^A-Z]/g, ''));
+  return i == null ? null : MA_TOWNS[i];
+}
+function estimateTax(s) {
+  const r0 = s.r0, digits = String(r0.USE_CODE || '').replace(/\D/g, '');
+  if (s.commonOnly) return null;
+  if (s.region.id === 'MA') {
+    if (/^9/.test(digits)) return { exempt: true };
+    if (!/^1/.test(digits)) return null;                              // businesses are taxed at a different rate
+    const town = maTown(r0); if (!town) return null;
+    const t = s.recs.map((r) => num(r.TOTAL_VAL)).filter((v) => v > 0).map((v) => v * town.r / 1000);
+    if (!t.length) return null;
+    const notes = [`${town.n}’s FY${MA_TAX_FY} residential rate is <b>$${town.r.toFixed(2)}</b> per $1,000 of assessed value.`];
+    if (MA_RES_EXEMPTION.has(town.n)) notes.push(`If the owner lives here, ${town.n}’s residential exemption can lower this a lot.`);
+    notes.push('Doesn’t include exemptions (seniors, veterans and others) or a Community Preservation Act surcharge.');
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
+  }
+  if (s.region.id === 'FL') {
+    const n = parseInt(digits || 'x', 10);
+    if (!(n >= 0 && n <= 9)) return null;                             // residential use codes only
+    const co = num(r0.COUNTY), c = co >= 11 && co <= 77 ? FL_COUNTIES[co - 11] : null;
+    if (!c) return null;
+    const m = c.r, rest = Math.max(0, m - FL_SCHOOL_MILLS);
+    const tax = (nsd, sd) => (nsd * rest + sd * Math.min(m, FL_SCHOOL_MILLS)) / 1000;
+    const hasTV = s.recs.some((r) => num(r.TV_NSD) != null);
+    const t = s.recs.map((r) => {
+      const jv = num(r.TOTAL_VAL);
+      if (!hasTV) return jv > 0 ? jv * m / 1000 : null;
+      const nsd = num(r.TV_NSD); if (nsd == null) return null;
+      return tax(Math.max(0, nsd), Math.max(0, num(r.TV_SD) ?? nsd));
+    }).filter((v) => v != null);
+    if (!t.length) return null;
+    const notes = [hasTV
+      ? `From the county’s taxable value (after the current owner’s exemptions) and ${c.n} County’s average tax rate, <b>${m.toFixed(2)}</b> mills (${FL_MILLAGE_YEAR}).`
+      : `From the county’s market value before any exemptions and ${c.n} County’s average tax rate, <b>${m.toFixed(2)}</b> mills (${FL_MILLAGE_YEAR}).`];
+    let buyer = null;
+    const jv = num(r0.TOTAL_VAL);
+    if (hasTV && t.length === 1 && jv > 0) {
+      // Florida caps yearly increases for homesteads; the cap resets when the house sells.
+      const b = tax(Math.max(0, jv - 50000), Math.max(0, jv - 25000));
+      if (b > t[0] * 1.25 && b - t[0] > 500) buyer = b;
+    }
+    notes.push('Cities and special districts can make the real bill higher or lower.');
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes, buyer };
+  }
+  return null;
+}
+const round10 = (v) => Math.round(v / 10) * 10;
+function taxBoxHtml(s) {
+  const t = estimateTax(s);
+  if (!t) return '';
+  if (t.exempt) return `<div class="tax"><div class="k">Estimated property tax</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
+  const big = t.hi < 1 ? '≈ $0' : t.perUnit && round10(t.hi) !== round10(t.lo) ? `≈ ${moneyFull(round10(t.lo)) || '$0'}–${moneyFull(round10(t.hi)).slice(1)}` : `≈ ${moneyFull(round10(t.hi)) || '$0'}`;
+  const unit = t.perUnit ? 'per unit, per year' : 'per year';
+  const lines = t.notes.slice();
+  if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
+  return `<div class="tax"><div class="k">Estimated property tax</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
 /* =========================================================================
@@ -1034,16 +1126,17 @@ const FLOOD_SOURCES = [
 ];
 const EPQS_URL = 'https://epqs.nationalmap.gov/v1/json';
 let floodSrc = 0;            // the source that answered last; tried first next time
-const ENV = new Map();       // parcel key -> Promise<{ flood, elev }>
+const ENV = new Map();       // parcel key -> Promise<flood result>
 
 function floodClass(a) {
   const z = String(a.FLD_ZONE ?? '').trim().toUpperCase(), st = String(a.ZONE_SUBTY ?? '').toUpperCase();
   if (!z || z === 'AREA NOT INCLUDED') return null;
   if (z === 'OPEN WATER') return { rank: 0, badge: 'Water', risk: 'water' };
   if (/^V/.test(z)) return { rank: 5, badge: z, risk: 'high', coastal: true };
-  if (/^A/.test(z)) return { rank: 4, badge: z, risk: 'high' };
-  if (/0\.2 ?(PCT|PERCENT)|500/.test(z + ' ' + st) || z === 'B') return { rank: 3, badge: 'X', risk: 'moderate', shaded: true };
+  if (/^A/.test(z) || String(a.SFHA_TF ?? '').toUpperCase() === 'T') return { rank: 4, badge: z.slice(0, 4), risk: 'high' };   // Special Flood Hazard Area
   if (z === 'X' && /LEVEE/.test(st)) return { rank: 3, badge: 'X', risk: 'moderate', levee: true };
+  if (/0\.2 ?(PCT|PERCENT)|500/.test(z + ' ' + st) || z === 'B') return { rank: 3, badge: 'X', risk: 'moderate', shaded: '500' };
+  if (z === 'X' && st && !/MINIMAL/.test(st)) return { rank: 3, badge: 'X', risk: 'moderate', shaded: 'x' };   // shaded X: shallow flooding, small drainage areas, future conditions
   if (z === 'D') return { rank: 2, badge: 'D', risk: 'unknown' };
   if (z === 'X' || z === 'C') return { rank: 1, badge: 'X', risk: 'low' };
   return { rank: 1.5, badge: z.slice(0, 4), risk: 'unknown' };
@@ -1063,36 +1156,55 @@ async function floodQuery(geometry, geometryType) {
   throw err;
 }
 const riskiest = (zs) => zs.reduce((m, z) => (z.c.rank > m.c.rank ? z : m));
+// Zones on land win over open water: a waterfront lot's flood risk is about the land, not the harbor.
+const landFirst = (zs) => { const land = zs.filter((z) => z.c.risk !== 'water'); return land.length ? land : zs; };
+const classify = (rows) => landFirst(rows.map((a) => ({ a, c: floodClass(a) })).filter((z) => z.c));
+
+// A point inside the lot near its middle (the area centroid of an L-shaped or flag lot can fall outside it).
+function interiorPoint(L) {
+  if (L.ip) return L.ip;
+  const [cx, cy] = L.c;
+  if (pointInRings(cx, cy, L.rings)) return (L.ip = L.c);
+  const b = lotBBox(L); let best = null, bd = Infinity;
+  for (let i = 1; i < 12; i++) for (let j = 1; j < 12; j++) {
+    const x = b.minx + (b.maxx - b.minx) * i / 12, y = b.miny + (b.maxy - b.miny) * j / 12;
+    const d = Math.hypot(x - cx, y - cy);
+    if (d < bd && pointInRings(x, y, L.rings)) { bd = d; best = [x, y]; }
+  }
+  return (L.ip = best || L.c);
+}
 
 async function lookupFlood(L) {
   const rings = L.p.ringsLL, nv = rings.reduce((n, r) => n + r.length, 0);
-  let zones;
+  let zones, exact = true;
   if (nv <= 400) {
     const g = JSON.stringify({ rings: rings.map((r) => r.map(([x, y]) => [+(+x).toFixed(7), +(+y).toFixed(7)])), spatialReference: { wkid: 4326 } });
     zones = await floodQuery(g, 'esriGeometryPolygon');
-  } else {
+  } else {          // very detailed outline: use its bounding box, which can catch zones the lot itself doesn't touch
+    exact = false;
     let w = Infinity, so = Infinity, e = -Infinity, n = -Infinity;
     for (const r of rings) for (const [x, y] of r) { w = Math.min(w, x); e = Math.max(e, x); so = Math.min(so, y); n = Math.max(n, y); }
     zones = await floodQuery(`${w},${so},${e},${n}`, 'esriGeometryEnvelope');
   }
-  zones = zones.map((a) => ({ a, c: floodClass(a) })).filter((z) => z.c);
+  zones = classify(zones);
   if (!zones.length) return { none: true };
   const top = riskiest(zones);
   let here = top;
   if (new Set(zones.map((z) => z.c.rank)).size > 1) {
     // The lot crosses a zone line: check the middle of the lot too, where the house usually sits.
-    const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+    const [lat, lon] = L.proj.inv(...interiorPoint(L));
     try {
-      const mid = (await floodQuery(`${lon.toFixed(7)},${lat.toFixed(7)}`, 'esriGeometryPoint')).map((a) => ({ a, c: floodClass(a) })).filter((z) => z.c);
-      if (mid.length) here = riskiest(mid);
+      const mid = classify(await floodQuery(`${lon.toFixed(7)},${lat.toFixed(7)}`, 'esriGeometryPoint'));
+      if (mid.length && mid[0].c.risk !== 'water') here = riskiest(mid);   // middle of the lot is in the water: go by the land
     } catch (e) { /* keep the riskiest */ }
   }
-  const bfes = zones.filter((z) => z.c.risk === 'high').map((z) => num(z.a.STATIC_BFE)).filter((v) => v != null && v > -9000 && v < 2000);
-  return { here: here.c, top: top.c, partial: top.c.rank > here.c.rank, bfe: bfes.length ? Math.max(...bfes) : null };
+  // Base flood elevation, only when it's in the same datum as the USGS ground elevation (NAVD88).
+  const bfes = zones.filter((z) => z.c.risk === 'high' && /NAVD/i.test(String(z.a.V_DATUM ?? ''))).map((z) => num(z.a.STATIC_BFE)).filter((v) => v != null && v > -9000 && v < 2000);
+  return { here: here.c, top: top.c, partial: top.c.rank > here.c.rank, exact, bfe: bfes.length ? Math.max(...bfes) : null };
 }
 
 async function lookupElev(L) {
-  const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+  const [lat, lon] = L.proj.inv(...interiorPoint(L));
   const j = await getJSON(`${EPQS_URL}?x=${lon.toFixed(6)}&y=${lat.toFixed(6)}&wkid=4326&units=Feet&includeDate=false`, {}, 10000);
   const v = num(j.value);
   return v != null && v > -1000 && v < 21000 ? v : null;   // -1000000 means "no data"
@@ -1102,19 +1214,23 @@ function demoEnv(L) {
   let h = 7; for (const ch of L.p.key) h = (h * 31 + ch.charCodeAt(0)) | 0; h = Math.abs(h);
   const r = h % 100, elev = 6 + (h % 120);
   const here = floodClass(r < 14 ? { FLD_ZONE: 'AE' } : r < 26 ? { FLD_ZONE: 'X', ZONE_SUBTY: '0.2 PCT ANNUAL CHANCE FLOOD HAZARD' } : { FLD_ZONE: 'X', ZONE_SUBTY: 'AREA OF MINIMAL FLOOD HAZARD' });
-  return { flood: { here, top: here, partial: false, bfe: here.risk === 'high' ? elev + 3 : null }, elev };
+  return { flood: { here, top: here, partial: false, exact: true, bfe: here.risk === 'high' ? elev + 3 : null }, elev };
 }
 
-function envFor(L) {
-  const k = L.p.key;
-  if (ENV.has(k)) return ENV.get(k);
-  const p = DEMO ? Promise.resolve(demoEnv(L)) : Promise.allSettled([lookupFlood(L), lookupElev(L)]).then(([fl, el]) => {
-    const out = { flood: fl.status === 'fulfilled' ? fl.value : null, elev: el.status === 'fulfilled' ? el.value : null };
-    if (!out.flood || fl.status !== 'fulfilled' || el.status !== 'fulfilled') ENV.delete(k);   // something failed: try again next time
-    return out;
-  });
-  ENV.set(k, p);
+// Flood and elevation are cached separately, so a slow elevation service doesn't make us ask FEMA again.
+const ENV_ELEV = new Map();
+function cached(map, key, make) {
+  if (map.has(key)) return map.get(key);
+  const p = make();
+  map.set(key, p);
+  p.catch(() => map.delete(key));          // failed: try again next time this card opens
   return p;
+}
+function envFor(L) {
+  if (DEMO) return Promise.resolve(demoEnv(L));
+  const k = L.p.key;
+  return Promise.allSettled([cached(ENV, k, () => lookupFlood(L)), cached(ENV_ELEV, k, () => lookupElev(L))])
+    .then(([fl, el]) => ({ flood: fl.status === 'fulfilled' ? fl.value : null, elev: el.status === 'fulfilled' ? el.value : null }));
 }
 
 function floodView(env) {
@@ -1128,14 +1244,15 @@ function floodView(env) {
     t1 = { high: c.coastal ? 'High flood risk · coastal' : 'High flood risk', moderate: c.levee ? 'Moderate risk · behind a levee' : 'Moderate flood risk',
       low: 'Minimal flood risk', unknown: 'Flood risk not mapped', water: 'Open water' }[c.risk];
     if (c.risk === 'high') lines.push('Flood insurance is usually required with a mortgage');
-    if (c.shaded) lines.push('In the 500-year floodplain');
+    if (c.shaded === '500') lines.push('In the 500-year floodplain');
+    else if (c.shaded) lines.push('Shallow or local flooding possible');
     if (fl.partial) {
-      if (fl.top.risk === 'high' && c.risk !== 'high') { t1 = 'Next to a high-risk flood zone'; cls = 'moderate'; }
-      lines.push(`Part of the lot is in zone ${fl.top.shaded ? 'X (500-year)' : fl.top.badge}`);
+      if (fl.top.risk === 'high' && c.risk !== 'high') { t1 = fl.exact ? 'Next to a high-risk flood zone' : 'Near a high-risk flood zone'; cls = 'moderate'; }
+      lines.push(fl.exact ? `Part of the lot is in zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : `Zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge} is nearby`);
     }
   }
-  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString()} ft above sea level` : `Ground ≈ ${Math.round(-el)} ft below sea level`);
-  if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft`);
+  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString()} ft above sea level (middle of the lot)` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the lot)`);
+  if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft above sea level`);
   return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
 }
 function floodBoxHtml(L) {
@@ -1378,6 +1495,16 @@ function arY(dist, f, pitch, H) {
   return clamp(H / 2 - f * Math.tan(rad(elev - pitch)), 150, H - 180);
 }
 
+// Where a ray first enters a lot's bounding box, or -1 if it misses (cheap test before the exact one).
+function rayBoxT(ox, oy, dx, dy, b, maxT) {
+  let t0 = 0, t1 = maxT;
+  if (Math.abs(dx) < 1e-12) { if (ox < b.minx || ox > b.maxx) return -1; }
+  else { let ta = (b.minx - ox) / dx, tb = (b.maxx - ox) / dx; if (ta > tb) { const q = ta; ta = tb; tb = q; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) return -1; }
+  if (Math.abs(dy) < 1e-12) { if (oy < b.miny || oy > b.maxy) return -1; }
+  else { let ta = (b.miny - oy) / dy, tb = (b.maxy - oy) / dy; if (ta > tb) { const q = ta; ta = tb; tb = q; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) return -1; }
+  return t0;
+}
+
 // Sweep rays across the view; the first house lot each ray reaches is one you can see.
 function arScan(ox, oy, heading, half) {
   const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < MAX_RANGE + 80 && !pointInRings(ox, oy, L.rings));
@@ -1385,7 +1512,12 @@ function arScan(ox, oy, heading, half) {
   for (let a = -half; a <= half + 1e-6; a += AR_STEP) {
     const h = rad(heading + a), dx = Math.sin(h), dy = Math.cos(h);
     let best = null, bt = Infinity;
-    for (const L of near) { const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE); if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; } }
+    for (const L of near) {
+      const tb = rayBoxT(ox, oy, dx, dy, L.bb, MAX_RANGE);
+      if (tb < 0 || tb >= bt) continue;                       // misses the box, or something nearer already blocks it
+      const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE);
+      if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; }
+    }
     if (!best) continue;
     const e = hits.get(best) || { L: best, sx: 0, sy: 0, n: 0, t: Infinity };
     e.sx += dx; e.sy += dy; e.n++; e.t = Math.min(e.t, bt); hits.set(best, e);
@@ -1433,7 +1565,7 @@ function arRelayout(f, half) {
     const hit = (lift) => placed.some((p) => Math.abs(p.x - x) < (p.w + v.w) / 2 + 6 && Math.abs(p.y - (y0 - lift)) < (p.h + v.h) / 2 + 4);
     v.lift = 0;
     while (hit(v.lift) && v.lift < 3 * (v.h + 6)) v.lift += v.h + 6;
-    v.hidden = hit(v.lift);
+    v.hidden = hit(v.lift) || y0 - v.lift - v.h < 70;          // stacked too high: sits out rather than hide under the top bar
     if (!v.hidden) placed.push({ x, y: y0 - v.lift, w: v.w, h: v.h });
   }
   AR.items = keep;
@@ -1442,7 +1574,8 @@ function arRelayout(f, half) {
 }
 
 function arFrame(ts) {
-  const ok = AR.on && S.mode === 'point' && !S.locked && !$('#panel').classList.contains('open') && S.pos && S.proj && S.heading != null && S.local.length;
+  const upright = innerHeight >= innerWidth && !(S.beta != null && S.beta < 35);   // tags assume a phone held up in portrait
+  const ok = AR.on && upright && S.mode === 'point' && !S.locked && !$('#panel').classList.contains('open') && S.pos && S.proj && S.heading != null && S.local.length;
   if (!ok) { arClear(); return; }
   const f = camFocalPx(), W = innerWidth, H = innerHeight, half = Math.atan(W / 2 / f) * 180 / Math.PI;
   if (ts - AR.at > 280 || AR.proj !== S.proj || Math.abs(AR.f - f) > 0.5) { AR.at = ts; AR.proj = S.proj; AR.f = f; arRelayout(f, half); }
@@ -1453,7 +1586,7 @@ function arFrame(ts) {
     const tx = W / 2 + f * Math.tan(rad(rel)), ty = arY(v.dist, f, pitch, H) - v.lift;
     if (v.x == null) { v.x = tx; v.y = ty; } else { v.x += (tx - v.x) * 0.5; v.y += (ty - v.y) * 0.5; }
     const left = v.x - v.w / 2, top = v.y - v.h - 6;
-    const underLive = lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top;
+    const underLive = (lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top) || top < 60;
     v.el.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
     v.el.style.opacity = underLive ? '0' : Math.abs(rel) > half - 3 ? '0.5' : '1';
     v.el.style.pointerEvents = underLive ? 'none' : 'auto';
@@ -1537,7 +1670,7 @@ if (!['plain', 'age', 'value', 'sold'].includes(S.map.color)) S.map.color = 'pla
 function lotMetrics(L) {
   if (L.m) return L.m;
   const s = summarize(L.p);
-  const val = s.commonOnly ? null : s.condo ? median(s.vals) : num(s.r0.TOTAL_VAL);
+  const val = s.commonOnly || s.condo ? null : num(s.r0.TOTAL_VAL);    // a condo building isn't comparable to a house, so it isn't colored by value
   const sale = s.sales.find((q) => q.p >= 10000);
   return (L.m = { year: s.year || s.approxYear || null, val: val && val > 1000 ? val : null, sold: sale ? sale.d.getFullYear() : null });
 }
@@ -1579,17 +1712,19 @@ function mapScale() {
       cls: (y) => (y < b[0] ? 0 : y < b[1] ? 1 : y < b[2] ? 2 : y < b[3] ? 3 : 4), labels: ['Pre-1990', '1990s', '2000s', '2010s', '2020+'] };
   }
   sc.mode = mode; sc.local = S.local; sc.rid = rid;
+  sc.empty = !built.some((m) => sc.get(m) != null);
   return (S.map.sc = sc);
 }
 function drawLegend(sc) {
   const el = $('#legend');
   if (!sc) { show(el, false); el.dataset.sig = ''; return; }
-  const sig = [sc.mode, sc.sub, ...sc.labels].join('|');
+  const sig = [sc.mode, sc.sub, sc.empty, ...sc.labels].join('|');
   if (el.dataset.sig === sig) return;
   el.dataset.sig = sig;
+  if (sc.empty) { el.innerHTML = `<div class="lt">${esc(sc.title)} <span>· no data for these lots</span></div>`; show(el); return; }
   el.innerHTML = `<div class="lt">${esc(sc.title)}${sc.sub ? ` <span>· ${esc(sc.sub)}</span>` : ''}</div><div class="lr">` +
     sc.labels.map((l, i) => `<div class="li"><div class="sw" style="background:${sc.colors[i]}"></div><div class="ll">${esc(l)}</div></div>`).join('') +
-    `<div class="li nd"><div class="sw"></div><div class="ll">${sc.mode === 'sold' ? 'No sale' : 'No data'}</div></div></div>`;
+    `<div class="li nd"><div class="sw"></div><div class="ll">${sc.mode === 'sold' ? 'No sale' : sc.mode === 'value' ? 'Condo/none' : 'No data'}</div></div></div>`;
   show(el);
 }
 function syncColorSeg() { document.querySelectorAll('#colorSeg button').forEach((b) => b.classList.toggle('on', b.dataset.c === S.map.color)); }
@@ -1961,7 +2096,7 @@ if (DEMO) {
 }
 
 // test hooks
-window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler,
+window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
 })();
 </script>
