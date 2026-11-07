@@ -292,14 +292,14 @@
     Housepoint
   </div>
   <h1>Point at any house.<br><em>Get its story.</em></h1>
-  <p>Hold your phone up at a house in Massachusetts, Connecticut or Florida and see when it was built, what it last sold for and what it’s valued at.</p>
+  <p>Hold your phone up at a house in Massachusetts, Connecticut, New Jersey or Florida and see when it was built, what it last sold for and what it’s valued at.</p>
   <button class="btn-primary" id="goPoint">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
     Start pointing
   </button>
   <button class="btn-ghost" id="goMap">Use the map instead</button>
   <button class="btn-link" id="goDemo">Try a sample neighborhood</button>
-  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera, location and compass stay on this device. Covers Massachusetts, Connecticut and Florida.
+  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera, location and compass stay on this device. Covers Massachusetts, Connecticut, New Jersey and Florida.
     <a href="#" id="openAbout">About &amp; sources</a> · <a href="privacy.html">Privacy</a></div>
 </section>
 
@@ -349,6 +349,7 @@
     <button data-lat="42.35866" data-lon="-71.06787" data-name="Louisburg Sq, Boston">Beacon Hill</button>
     <button data-lat="41.28296" data-lon="-70.10133" data-name="Main St, Nantucket">Nantucket</button>
     <button data-lat="41.71156" data-lon="-72.65372" data-name="Main St, Wethersfield, CT">Old Wethersfield, CT</button>
+    <button data-lat="38.93389" data-lon="-74.91889" data-name="Hughes St, Cape May, NJ">Cape May, NJ</button>
     <button data-lat="29.89340" data-lon="-81.31330" data-name="St. Augustine, FL">St. Augustine, FL</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
@@ -504,7 +505,38 @@ function ctUseLabel(code, r) {
   for (const [re, label] of CT_USES) if (re.test(d)) return label(d);
   return titleCase(d).replace(/\bRes\b/, 'Residential').replace(/\bComm\b/, 'Commercial').replace(/\bInd\b/, 'Industrial');
 }
-const CT_RATIO = 0.7;      // Connecticut assesses property at 70% of the town's appraisal (C.G.S. 12-62a)
+// New Jersey property classes (the state's MOD-IV codes). Class 2 is homes of up to four families.
+const NJ_CLASSES = { '1': 'Vacant land', '3A': 'Farm', '3B': 'Farmland', '4A': 'Commercial', '4B': 'Industrial', '4C': 'Apartments',
+  '5A': 'Railroad property', '5B': 'Railroad property', '15A': 'Public school', '15B': 'School', '15C': 'Public property',
+  '15D': 'Church or charity', '15E': 'Cemetery', '15F': 'Tax-exempt property' };
+function njUseLabel(code, r) {
+  const c = String(code || '').toUpperCase().trim();
+  if (c === '2') {
+    if (/^C/i.test(String((r && r.QCODE) || '').trim()) || /CONDO/i.test(String((r && r.BLDG_DESC) || ''))) return 'Condo';
+    const d = num(r && r.UNITS);
+    return d === 1 ? 'Single-family home' : d === 2 ? 'Two-family' : d === 3 ? 'Three-family' : d === 4 ? 'Four-family' : 'Residential';
+  }
+  return NJ_CLASSES[c] || null;
+}
+// MOD-IV deed dates are YYMMDD.
+function njDate(v) {
+  if (typeof v === 'number' && Math.abs(v) > 1e9) return ymdUTC(v);
+  const s = String(v ?? '').trim();
+  if (/^\d{8}$/.test(s)) return s;
+  if (!/^\d{6}$/.test(s)) return null;
+  const yy = +s.slice(0, 2), mm = +s.slice(2, 4), dd = +s.slice(4, 6);
+  if (mm < 1 || mm > 12) return null;
+  return `${yy + (yy <= THIS_YEAR % 100 ? 2000 : 1900)}${String(mm).padStart(2, '0')}${String(dd || 1).padStart(2, '0')}`;
+}
+// Last year's tax, in dollars. Some copies of the list keep it in cents with no decimal point; a tax is a few percent of the value, which tells them apart.
+function njTax(v, val) {
+  const s = String(v ?? '').replace(/[$,\s]/g, '');
+  if (!/^\d*\.?\d+$/.test(s)) return null;
+  let n = parseFloat(s); if (!(n > 0)) return null;
+  if (!s.includes('.') && val > 0) { const ok = (x) => x >= 0.002 && x <= 0.2; if (!ok(n / val) && ok(n / 100 / val)) n /= 100; }
+  return n;
+}
+const CT_RATIO = 0.7;     // Connecticut assesses property at 70% of the town's appraisal (C.G.S. 12-62a)
 const ymdUTC = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`; };
 
 const MILESTONES = [
@@ -742,9 +774,51 @@ const REGIONS = {
     commonNote: 'This town’s records on the state map don’t include the individual units, so unit values and sales aren’t available here.',
     useLabel: (c, r) => ctUseLabel(c, r),
   },
+  NJ: {
+    id: 'NJ', name: 'New Jersey',
+    bbox: [-75.6, 38.85, -73.88, 41.37],
+    // Rough outline: the Hudson and the kills keep Manhattan and Staten Island out, the Delaware keeps Philadelphia out.
+    poly: [[-74.695, 41.357], [-73.894, 40.997], [-73.92, 40.97], [-73.945, 40.88], [-73.965, 40.82], [-74.005, 40.76], [-74.03, 40.7],
+      [-74.06, 40.66], [-74.1, 40.646], [-74.2, 40.638], [-74.21, 40.58], [-74.255, 40.51], [-74.25, 40.49], [-74.1, 40.48], [-74.0, 40.47],
+      [-73.95, 40.45], [-73.98, 40.0], [-74.15, 39.6], [-74.45, 39.3], [-74.85, 38.92], [-74.98, 38.9], [-75.0, 38.93], [-75.3, 39.2],
+      [-75.53, 39.55], [-75.47, 39.75], [-75.4, 39.82], [-75.2, 39.88], [-75.135, 39.95], [-75.06, 40.0], [-74.88, 40.08], [-74.75, 40.13],
+      [-74.77, 40.21], [-74.86, 40.3], [-74.98, 40.42], [-75.07, 40.55], [-75.19, 40.68], [-75.08, 40.85], [-75.13, 40.97], [-74.98, 41.1],
+      [-74.82, 41.25], [-74.695, 41.357]],
+    declination: (lat) => -12.2 - 0.5 * (lat - 40.2),            // ~ -11.6 at Cape May, ~ -12.7 in Sussex County
+    // NJ Office of GIS: statewide parcels joined to the state's MOD-IV tax list.
+    services: ['https://services2.arcgis.com/XVOqAjTOJ5P6ngMu/arcgis/rest/services/Parcels_Composite_NJ_WM/FeatureServer/0',
+      'https://services2.arcgis.com/XVOqAjTOJ5P6ngMu/arcgis/rest/services/Parcels_MODIV_NJ_WM/FeatureServer/0',
+      'https://maps.nj.gov/arcgis/rest/services/Framework/Cadastral/MapServer/0'],
+    discover: 'type:"Feature Service" AND (title:"Parcels and MOD-IV" OR title:Parcels_Composite_NJ OR title:Cad_parcel_mod4)',
+    detect: ['PROP_CLASS', 'LAST_YR_TX', 'NET_VALUE', 'PAMS_PIN'],
+    fields: {           // owner names and mailing addresses (OWNER_NAME, ST_ADDRESS, CITY_STATE, ZIP_CODE) are never asked for
+      SITE_ADDR: ['PROP_LOC'], CITY: ['MUN_NAME'], LAND_VAL: ['LAND_VAL'], BLDG_VAL: ['IMPRVT_VAL'], NET_VALUE: ['NET_VALUE'],
+      LAST_TAX: ['LAST_YR_TX'], USE_CODE: ['PROP_CLASS'], BLDG_DESC: ['BLDG_DESC'], LAND_DESC: ['LAND_DESC'], QCODE: ['PCLQCODE'],
+      YEAR_BUILT: ['YR_CONSTR'], LS_PRICE: ['SALE_PRICE'], DEED_DATE: ['DEED_DATE'], UNITS: ['DWELL'],
+    },
+    derive: (o) => {
+      const has = (v) => v != null && String(v).trim() !== '';
+      o.TOTAL_VAL = has(o.LAND_VAL) || has(o.BLDG_VAL) ? (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0) : null;
+      if (!(o.TOTAL_VAL > 0) && num(o.NET_VALUE) > 0) o.TOTAL_VAL = num(o.NET_VALUE);
+      o.LS_DATE = njDate(o.DEED_DATE);
+      o.TAX_LAST = njTax(o.LAST_TAX, num(o.NET_VALUE) || o.TOTAL_VAL);
+      if (!(num(o.YEAR_BUILT) > 1600)) o.YEAR_BUILT = null;
+      const st = /^\s*(\d(?:\.\d)?)\s*S/i.exec(String(o.BLDG_DESC || '')); if (st && +st[1] >= 1 && +st[1] <= 6) o.STORIES = +st[1];
+      // Condo units carry a "C" qualifier; give them a unit number when the address doesn't have one.
+      const q = String(o.QCODE || '').trim();
+      if (/^C/i.test(q) && o.SITE_ADDR && !/\b(UNIT|APT|STE)\b|#/i.test(o.SITE_ADDR)) o.SITE_ADDR = `${String(o.SITE_ADDR).trim()} UNIT ${q.replace(/^C0*/i, '') || q}`;
+    },
+    noDelta: true,      // towns assess at different shares of market value, so "vs. sale" would mislead
+    valueLabel: 'Town assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
+    yearLabel: () => '',
+    source: () => 'Source: town tax assessors via New Jersey’s MOD-IV tax list and the NJ Office of GIS. Towns assess at different shares of market value, so compare assessed values within one town, not across towns.',
+    shareSource: 'New Jersey tax records via the NJ Office of GIS',
+    commonNote: 'This town’s condo units aren’t mapped one by one on the state’s lot map, so unit values and sales aren’t available here.',
+    useLabel: (c, r) => njUseLabel(c, r),
+  },
 };
 const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => Object.keys(r.fields)).concat(['LS_DATE', 'TOTAL_VAL', 'FY']));
-const COVERAGE = 'Massachusetts, Connecticut and Florida';
+const COVERAGE = 'Massachusetts, Connecticut, New Jersey and Florida';
 const BORDER_SLOP = 1500;   // meters: near a state line, load both states' records
 
 function inPoly(lon, lat, ring) {
@@ -757,7 +831,7 @@ function inPoly(lon, lat, ring) {
 }
 const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
-const REGION_ORDER = ['CT', 'MA', 'FL'];
+const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL'];
 function regionFor(lat, lon) {
   if (lat == null || lon == null) return null;
   for (const id of REGION_ORDER) if (inRegion(REGIONS[id], lat, lon)) return REGIONS[id];
@@ -920,7 +994,7 @@ async function queryRegion(region, lat, lon, radius) {
 
 const STREET_ABBR = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'DR', COURT: 'CT', PLACE: 'PL', TERRACE: 'TER', CIRCLE: 'CIR',
   BOULEVARD: 'BLVD', PARKWAY: 'PKWY', SQUARE: 'SQ', HIGHWAY: 'HWY', WAY: 'WAY' };
-const STATE_WORDS = /^(fl|fla|florida|ma|mass|massachusetts|ct|conn|connecticut)$/i;
+const STATE_WORDS = /^(fl|fla|florida|ma|mass|massachusetts|ct|conn|connecticut|nj|new jersey)$/i;
 async function searchAddress(text) {
   const parts = text.split(',').map((x) => x.trim()).filter(Boolean);
   const addr = (parts[0] || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -930,7 +1004,7 @@ async function searchAddress(text) {
   const said = parts.slice(1).find((x) => STATE_WORDS.test(x)) || '';
   const ref = (S.mode === 'map' && S.map.center) || S.pos;
   const here = ref && regionFor(ref.lat, ref.lon);
-  let order = [/^f/i.test(said) ? REGIONS.FL : /^m/i.test(said) ? REGIONS.MA : /^c/i.test(said) ? REGIONS.CT : null, here, REGIONS.MA, REGIONS.CT, REGIONS.FL];
+  let order = [/^f/i.test(said) ? REGIONS.FL : /^m/i.test(said) ? REGIONS.MA : /^c/i.test(said) ? REGIONS.CT : /^n/i.test(said) ? REGIONS.NJ : null, here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL];
   order = order.filter((r, i) => r && order.indexOf(r) === i);
   for (const region of order) {
     try { const hit = await searchIn(region, addr, town); if (hit) return hit; } catch (e) { console.warn('search failed', region.id, e); }
@@ -1056,13 +1130,14 @@ async function ensureData(lat, lon, force = false) {
    can actually see (a ray across a big lawn or a lot corner no longer counts).
    Massachusetts: MassGIS roof outlines. Florida: FEMA/ORNL USA Structures
    (public domain), with the state's Microsoft-derived outlines as a backup.
-   Connecticut: USA Structures. Lots with no outline on file fall back to the lot line.
+   Connecticut and New Jersey: USA Structures. Lots with no outline on file fall back to the lot line.
    ========================================================================= */
 const BLDG_SOURCES = {
   MA: { urls: ['https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0'], items: [], more: [] },
   FL: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'],
     more: ['https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/FloridaStatewideBuildingFootprints/FeatureServer/0'] },
   CT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  NJ: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
 };
 const BSVC = {};
 function bldgLayer(rid) {
@@ -1199,7 +1274,8 @@ function summarize(p) {
   // Florida: some counties publish only the condo's common-area lot (no value, no units) and keep unit records elsewhere.
   // Connecticut can do the same where a town's units didn't link to the lot.
   const commonOnly = (region.id === 'FL' ? flCondoCode(r0.USE_CODE)
-    : region.id === 'CT' ? recs.length === 1 && /CONDO|COMMON/i.test(String(r0.USE_DESC || '')) : false) && !vals.some((v) => v > 1000);
+    : region.id === 'CT' ? recs.length === 1 && /CONDO|COMMON/i.test(String(r0.USE_DESC || ''))
+    : region.id === 'NJ' ? recs.length === 1 && /CONDO|COMMON|C\/E/i.test(`${r0.BLDG_DESC || ''} ${r0.LAND_DESC || ''}`) : false) && !vals.some((v) => v > 1000);
   // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
   // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
   const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
@@ -1291,7 +1367,7 @@ function renderCard(cand, total, idx) {
       const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
       if (sale.p && sale.p >= 10000) {
         const ratio = v ? v / sale.p : null;
-        const ch = ratio && !s.multiSale && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
+        const ch = ratio && !s.multiSale && !s.region.noDelta && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
         saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else {
@@ -1358,7 +1434,7 @@ function shareText(cand) {
   const vw = s.region.valueWord || 'Assessed';
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? `Whole park ${vw.toLowerCase()}` : vw} ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
-  const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(`Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
+  const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(tx.actual ? `Property tax ${moneyFull(tx.lo)}/yr` : `Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
   return bits.join('\n') + '\n\nFound with Housepoint';
 }
 
@@ -1376,7 +1452,7 @@ function unitListHtml(s) {
     const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
       cell('Living area', area ? `${Math.round(area).toLocaleString()} ft²` : ''), cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : ''),
       cell('Bedrooms', num(u.BEDS) ? String(num(u.BEDS)) : ''), cell('Baths', num(u.BATHS) ? bathText(u) : ''),
-      cell('Built', yb > 1600 ? String(yb) : ''), cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
+      cell('Built', yb > 1600 ? String(yb) : ''), t && t.actual ? cell('Property tax', t.lo > 0 ? `${moneyFull(t.lo)}/yr` : '') : cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
     const more = i >= SHOW ? ' more' : '';
     return `<button class="unit${more}" data-u="${i}"><span>${esc(unitName(u))}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></button><div class="udet hidden" id="ud${i}">${det}</div>`;
   }).join('');
@@ -1473,18 +1549,26 @@ function estimateTax(s) {
     notes.push('Doesn’t include fire or special district taxes, or exemptions (seniors, veterans and others).');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
+  if (s.region.id === 'NJ') {        // New Jersey publishes the real bill, so there's nothing to estimate
+    if (/^15/.test(String(r0.USE_CODE || '').trim())) return { exempt: true };
+    const t = s.recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
+    if (!t.length) return null;
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true,
+      notes: ['The actual tax billed last year, from the state’s MOD-IV tax list. A sale, reassessment or new exemption since then can change it.'] };
+  }
   return null;
 }
 const round10 = (v) => Math.round(v / 10) * 10;
 function taxBoxHtml(s) {
   const t = estimateTax(s);
   if (!t) return '';
-  if (t.exempt) return `<div class="tax"><div class="k">Estimated property tax</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
-  const big = t.hi < 1 ? '≈ $0' : t.perUnit && round10(t.hi) !== round10(t.lo) ? `≈ ${moneyFull(round10(t.lo)) || '$0'}–${moneyFull(round10(t.hi)).slice(1)}` : `≈ ${moneyFull(round10(t.hi)) || '$0'}`;
+  if (t.exempt) return `<div class="tax"><div class="k">${s.region.id === 'NJ' ? 'Property tax' : 'Estimated property tax'}</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
+  const ap = t.actual ? '' : '≈ ', R = t.actual ? Math.round : round10;   // last year's real bill is shown to the dollar
+  const big = t.hi < 1 ? `${ap}$0` : t.perUnit && R(t.hi) !== R(t.lo) ? `${ap}${moneyFull(R(t.lo)) || '$0'}–${moneyFull(R(t.hi)).slice(1)}` : `${ap}${moneyFull(R(t.hi)) || '$0'}`;
   const unit = t.perUnit ? 'per unit, per year' : 'per year';
   const lines = t.notes.slice();
   if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
-  const title = s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
+  const title = t.actual ? 'Property tax · last year’s bill' : s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
   return `<div class="tax"><div class="k">${title}${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
@@ -2497,7 +2581,7 @@ $("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sa
 $('#goDemo').onclick = () => { location.search = '?demo=1'; };
 const ABOUT = `
   <h2>About Housepoint</h2>
-  <p>Point your phone at a house in Massachusetts, Connecticut or Florida and see its story from public records: when it was built, what it’s valued at,
+  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey or Florida and see its story from public records: when it was built, what it’s valued at,
   when it last sold, an estimated property tax, and its flood zone.</p>
   <h3>Privacy</h3>
   <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
@@ -2507,17 +2591,18 @@ const ABOUT = `
   <ul>
     <li><b>Massachusetts property records and lot lines:</b> town assessors via MassGIS (Bureau of Geographic Information), Commonwealth of Massachusetts EOTSS.</li>
     <li><b>Connecticut property records and lot lines:</b> town assessors via the Connecticut Office of Policy and Management GIS Office (Connecticut CAMA and Parcel Layer, public domain).</li>
+    <li><b>New Jersey property records, last year’s tax and lot lines:</b> town tax assessors via the NJ Division of Taxation’s MOD-IV tax list, joined to the statewide parcel map by the NJ Office of Information Technology, Office of GIS (NJOGIS), and the counties.</li>
     <li><b>Florida property records and lot lines:</b> Florida’s county property appraisers and the Florida Department of Revenue, Property Tax Oversight, via the Florida Geographic Information Office.</li>
-    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut and Florida), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey and Florida), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer (Esri’s hosted copy as a backup). Not an official flood determination.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
-    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
+    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
     <li><b>Street view:</b> opens Google Maps.</li>
   </ul>
   <h3>How accurate is it?</h3>
   <p>Lot lines are a drawing of property boundaries, not a survey. Assessed, appraised and “just” values are what towns and counties use for taxes, not market
-  estimates. Tax amounts are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
+  estimates. Tax amounts (except New Jersey’s, which are last year’s actual bills) are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
   pointing at depends on your phone’s GPS and compass; if it picks the wrong one, tap “Not it.”</p>
   <h3>Fonts</h3>
   <p>Inter and Fraunces, under the SIL Open Font License.</p>`;
