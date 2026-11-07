@@ -244,6 +244,26 @@
     font-family: var(--serif); font-weight: 700; font-size: 20px; }
   .flood .zb small { display: block; font-family: var(--sans); font-size: 9.5px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; margin-top: -2px; opacity: .8; text-align: center; }
   .flood.high .zb { background: var(--brick); color: #fff; }
+  /* "Thinking of buying?" */
+  .buy { margin: 14px 0 4px; }
+  .buy-btn { width: 100%; padding: 13px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); font-weight: 600; font-size: 15px; text-align: left; line-height: 1.3; }
+  .buy-btn span { display: block; font-weight: 500; font-size: 12.5px; opacity: .75; margin-top: 2px; }
+  .buy-h { font-family: var(--serif); font-weight: 700; font-size: 21px; margin: 18px 0 2px; }
+  .bsec { margin: 10px 0 4px; padding: 12px 14px 12px; border-radius: 14px; background: #fffaf1; border: 1px solid var(--line); }
+  .bsec .bt { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .bsec .bl { font-size: 13px; color: var(--mute); line-height: 1.42; margin-top: 4px; }
+  .bsec .bl b { color: var(--ink); font-weight: 600; }
+  .bsec a { color: var(--brick); font-weight: 600; text-decoration: none; }
+  .blinks { display: flex; gap: 8px; margin-top: 9px; }
+  .blinks a { flex: 1; padding: 9px 0; border-radius: 10px; background: var(--paper-2); color: var(--ink); text-align: center; font-size: 14px; }
+  .brows { margin-top: 6px; }
+  .brow { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .brow:last-child { border-bottom: 0; }
+  .brow .l { flex: none; width: 92px; color: var(--mute); font-size: 12.5px; }
+  .brow .m { flex: 1; min-width: 0; }
+  .brow .m small { display: block; color: var(--mute); font-size: 12px; margin-top: 1px; }
+  .brow .r { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .brow .r small { display: block; color: var(--mute); font-weight: 500; font-size: 11.5px; }
   .flood.moderate .zb { background: #f2d58a; }
   .flood.low .zb { background: #dfe8da; color: #2f4a2c; }
   .flood .t1 { font-weight: 600; font-size: 15px; line-height: 1.3; }
@@ -1407,9 +1427,11 @@ function renderCard(cand, total, idx) {
     ${floodBoxHtml(L)}
     ${grid}
     ${unitList}
+    ${buyBoxHtml(L)}
     <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
+  wireBuy(L, s);
   const ul = $('#cardBody .units');
   if (ul) ul.addEventListener('click', (e) => {
     if (e.target.closest('.all-btn')) { ul.classList.add('all'); return; }
@@ -1711,6 +1733,308 @@ function floodView(env) {
   if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft above sea level`);
   return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
 }
+/* =========================================================================
+   "Thinking of buying?": listing links, schools, neighborhood, safety, what's nearby.
+   Loaded when asked for (and from then on automatically), all from free public sources.
+   Only the house's location is sent, never anything about you.
+   ========================================================================= */
+// Free sign-up keys (they limit request rates; they aren't secrets): api.census.gov/data/key_signup.html and api.data.gov/signup
+const KEYS = { census: '', fbi: 'DEMO_KEY' };
+const BUY_KEY = 'housepoint.buyOpen';
+let buyAuto = false; try { buyAuto = localStorage.getItem(BUY_KEY) === '1'; } catch (e) { /* private mode */ }
+const BUY = new Map();
+const memo = (k, fn) => { if (!BUY.has(k)) { const p = fn(); BUY.set(k, p); p.catch(() => BUY.delete(k)); } return BUY.get(k); };
+// Results for a spot are reused for houses within `m` meters (distances are measured from each house when shown).
+const NEAR_CACHE = {};
+function nearMemo(kind, lat, lon, m, fn) {
+  const list = NEAR_CACHE[kind] || (NEAR_CACHE[kind] = []);
+  const hit = list.find((e) => distM(lat, lon, e.lat, e.lon) < m);
+  if (hit) return hit.p;
+  const e = { lat, lon, p: fn() }; list.push(e);
+  e.p.catch(() => { const i = list.indexOf(e); if (i >= 0) list.splice(i, 1); });
+  return e.p;
+}
+const distM = (la1, lo1, la2, lo2) => { const a = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(a)); };
+const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
+const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString());
+const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/' };
+
+function buyBoxHtml(L) {
+  return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
+}
+function wireBuy(L, s) {
+  if (buyAuto) { openBuy(L, s); return; }
+  const b = $('#buyBtn'); if (b) b.onclick = () => { buyAuto = true; try { localStorage.setItem(BUY_KEY, '1'); } catch (e) { /* fine */ } openBuy(L, s); };
+}
+function openBuy(L, s) {
+  const box = $('#buyBox'); if (!box) return;
+  const key = L.p.key, [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+  const sec = (id, t, msg) => `<div class="bsec" id="${id}"><div class="bt">${t}</div><div class="bl">${msg}</div></div>`;
+  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}
+    ${sec('bSchools', 'Schools', 'Finding schools…')}${sec('bHood', 'Neighborhood', 'Loading Census figures…')}
+    ${sec('bSafety', 'Safety', 'Loading crime reports…')}${sec('bNear', 'Nearby', 'Finding stores, parks and transit…')}`;
+  const put = (id, title, work) => work.then((html) => html, (e) => { console.warn(id, e); return null; }).then((html) => {
+    const b = $('#buyBox'); if (!b || b.dataset.k !== key) return;          // the card has moved on
+    const el = $('#' + id); if (el) el.innerHTML = html || `<div class="bt">${title}</div><div class="bl">Couldn’t load this right now. Try again later.</div>`;
+  });
+  put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => schoolsHtml(d, s, lat, lon)));
+  put('bHood', 'Neighborhood', neighborhoodFor(lat, lon).then((d) => hoodHtml(d, s)));
+  put('bSafety', 'Safety', safetyFor(s, lat, lon).then((d) => safetyHtml(d, s)));
+  put('bNear', 'Nearby', nearbyFor(lat, lon).then((d) => nearHtml(d, lat, lon)));
+}
+
+// Listing status isn't public record: agents keep it in their MLS. Send people to the listing sites instead.
+function listingHtml(s) {
+  const q = [s.addr, s.town, s.region.id].filter(Boolean).join(' ');
+  const z = `https://www.zillow.com/homes/${encodeURIComponent(q).replace(/%20/g, '-')}_rb/`;
+  const g = `https://www.google.com/search?q=${encodeURIComponent(q + ' for sale')}`;
+  return `<div class="bsec"><div class="bt">For sale?</div><div class="bl">Whether a home is for sale, pending or under contract comes from agents’ listing services, not public records, so check a listing site.</div>
+    <div class="blinks"><a href="${esc(z)}" target="_blank" rel="noopener">Zillow ↗</a><a href="${esc(g)}" target="_blank" rel="noopener">Search listings ↗</a></div></div>`;
+}
+
+// Find the layer in a list of services whose fields include all of `need` (services renumber their layers now and then).
+async function findLayer(urls, need, geom) {
+  for (const u0 of urls) {
+    try {
+      const u = u0.replace(/\/+$/, '');
+      let layerUrls;
+      if (/\/(FeatureServer|MapServer)\/\d+$/i.test(u)) layerUrls = [u];
+      else { const m = await getJSON(u + '?f=json', {}, 12000); layerUrls = (m.layers || []).filter((l) => !geom || !l.geometryType || geom.test(l.geometryType)).map((l) => `${u}/${l.id}`); }
+      for (const lu of layerUrls.slice(0, 8)) {
+        const lm = await getJSON(lu + '?f=json', {}, 12000);
+        const up = new Map((lm.fields || []).map((fd) => [fd.name.toUpperCase(), fd.name]));
+        if (need.every((n) => up.has(n)) && (!geom || geom.test(lm.geometryType || ''))) return { url: lu, f: up };
+      }
+    } catch (e) { /* try the next one */ }
+  }
+  throw new Error('no layer with ' + need.join(','));
+}
+const pick = (attrs, f, name) => { const k = f.get(name); return k ? attrs[k] : null; };
+async function queryLayer(layer, lat, lon, distance, want, extra = {}) {
+  const out = want.map((n) => layer.f.get(n)).filter(Boolean);
+  const p = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+    outFields: out.join(','), returnGeometry: 'false', f: 'json', ...extra });
+  if (distance) { p.set('distance', String(distance)); p.set('units', 'esriSRUnit_Meter'); }
+  const j = await getJSON(layer.url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p.toString() }, 15000);
+  return j.features || [];
+}
+
+/* Schools: federal NCES school and district data (public domain). */
+const SCHOOL_SVCS = ['https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer',
+  'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer',
+  'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2223/MapServer'];
+const DISTRICT_SVCS = ['https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_District_Characteristics_Current/FeatureServer',
+  'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2324/MapServer',
+  'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2223/MapServer'];
+const gradeNum = (g) => { const t = String(g ?? '').trim().toUpperCase(); if (t === 'PK') return -1; if (t === 'KG' || t === 'K') return 0; const n = parseInt(t, 10); return n >= 1 && n <= 13 ? n : null; };
+const gradeTxt = (g) => { const n = gradeNum(g); return n == null ? null : n === -1 ? 'PreK' : n === 0 ? 'K' : String(n); };
+async function schoolsFor(lat, lon) {
+  return nearMemo('sch', lat, lon, 400, async () => {
+    const [sl, dl] = await Promise.all([memo('schL', () => findLayer(SCHOOL_SVCS, ['SCH_NAME', 'GSLO', 'GSHI'], /Point/i)),
+      memo('disL', () => findLayer(DISTRICT_SVCS, ['LEA_NAME', 'LEAID'], /Polygon/i)).catch(() => null)]);
+    const [feats, dfeats] = await Promise.all([
+      queryLayer(sl, lat, lon, 6500, ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT',
+        'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'], { returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' }),
+      dl ? queryLayer(dl, lat, lon, 0, ['LEAID', 'LEA_NAME', 'MEMBER', 'STUTERATIO', 'GSLO', 'GSHI', 'SCH']).catch(() => []) : []]);
+    const schools = feats.map((ft) => {
+      const a = ft.attributes || {}, g = ft.geometry || {}, P = (n) => pick(a, sl.f, n);
+      const la = num(P('LATCOD')) || g.y, lo = num(P('LONCOD')) || g.x;
+      return { id: P('NCESSCH'), name: titleCaseSchool(P('SCH_NAME')), lea: String(P('LEAID') ?? ''), leaName: P('LEA_NAME'), lo: gradeNum(P('GSLO')), hi: gradeNum(P('GSHI')),
+        gslo: P('GSLO'), gshi: P('GSHI'), students: num(P('MEMBER')) || num(P('TOTAL')), ratio: num(P('STUTERATIO')), charter: /^yes/i.test(String(P('CHARTER_TEXT') || '')),
+        magnet: /^yes/i.test(String(P('MAGNET_TEXT') || '')), type: String(P('SCHOOL_TYPE_TEXT') || ''), virtual: String(P('VIRTUAL') || ''), status: String(P('SY_STATUS_TEXT') || ''),
+        year: P('SURVYEAR'), la, lo };
+    }).filter((x) => x.name && x.la && x.lo && (!x.type || /regular/i.test(x.type)) && !/^(full|yes)/i.test(x.virtual) && !/closed|inactive|future/i.test(x.status));
+    const districts = []; const seen = new Set();
+    for (const ft of dfeats) {
+      const a = ft.attributes || {}, P = (n) => pick(a, dl.f, n), id = String(P('LEAID') ?? '');
+      if (seen.has(id)) continue; seen.add(id);
+      districts.push({ id, name: titleCaseSchool(P('LEA_NAME')), students: num(P('MEMBER')), ratio: num(P('STUTERATIO')), lo: gradeNum(P('GSLO')), hi: gradeNum(P('GSHI')) });
+    }
+    return { schools, districts };
+  });
+}
+function titleCaseSchool(n) {
+  return titleCase(n).replace(/\b(Of|And|The|For|At)\b/g, (w) => w.toLowerCase()).replace(/^./, (c) => c.toUpperCase())
+    .replace(/\b(Ii|Iii|Iv|Kipp|Steam|Stem)\b/g, (w) => w.toUpperCase());
+}
+// Nearest public school for each stage, preferring schools in the house's own district over charter and out-of-district ones.
+function schoolPicks(d, lat, lon) {
+  const mine = new Set(d.districts.map((x) => x.id));
+  const all = d.schools.map((x) => ({ ...x, d: distM(lat, lon, x.la, x.lo) })).filter((x) => x.d <= 6500);
+  const stages = [['Elementary', 3], ['Middle', 7], ['High', 10]];
+  return stages.map(([label, g]) => {
+    const fits = all.filter((x) => x.lo != null && x.hi != null && x.lo <= g && x.hi >= g);
+    fits.sort((a, b) => ((mine.has(b.lea) && !b.charter) - (mine.has(a.lea) && !a.charter)) || a.d - b.d);
+    return { label, s: fits[0] || null };
+  });
+}
+function schoolsHtml(d, s, lat, lon) {
+  const picks = schoolPicks(d, lat, lon);
+  if (!d.schools.length && !d.districts.length) return `<div class="bt">Schools</div><div class="bl">No public schools found within 4 miles.</div>`;
+  const dist = d.districts.map((x) => `<b>${esc(x.name)}</b>${x.students ? ` · ${nfmt(x.students)} students` : ''}${x.ratio ? ` · ${x.ratio.toFixed(1)} per teacher` : ''}`).join('<br>');
+  const rows = picks.map(({ label, s: x }) => x ? `<div class="brow"><div class="l">${label}</div><div class="m"><a href="https://nces.ed.gov/ccd/schoolsearch/school_detail.asp?ID=${encodeURIComponent(x.id || '')}" target="_blank" rel="noopener">${esc(x.name)}</a>
+      <small>${[gradeTxt(x.gslo) && gradeTxt(x.gshi) ? `Grades ${gradeTxt(x.gslo)}–${gradeTxt(x.gshi)}` : '', x.students ? `${nfmt(x.students)} students` : '', x.ratio ? `${x.ratio.toFixed(1)} per teacher` : '',
+        x.charter ? 'Charter' : '', x.magnet ? 'Magnet' : ''].filter(Boolean).join(' · ')}</small></div><div class="r">${miles(x.d)}</div></div>`
+    : `<div class="brow"><div class="l">${label}</div><div class="m"><small>None within 4 miles</small></div></div>`).join('');
+  const yr = (d.schools.find((x) => x.year) || {}).year;
+  const rc = REPORT_CARDS[s.region.id];
+  return `<div class="bt">Schools</div>${dist ? `<div class="bl">District: ${dist}</div>` : ''}<div class="brows">${rows}</div>
+    <div class="bl">The nearest public schools, favoring the home’s own district. The district decides which school a home is actually assigned to. Source: NCES${yr ? `, ${esc(yr)}` : ''}.${rc ? ` Test scores: <a href="${rc}" target="_blank" rel="noopener">state report cards ↗</a>` : ''}</div>`;
+}
+
+/* Neighborhood: Census Bureau American Community Survey, 5-year estimates for the census tract, next to the state's. */
+const ACS_VARS = { pop: 'B01003_001E', income: 'B19013_001E', value: 'B25077_001E', occ: 'B25003_001E', owned: 'B25003_002E', built: 'B25035_001E', rent: 'B25064_001E' };
+async function tractFor(lat, lon) {
+  try {
+    const base = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer';
+    const lu = await memo('twTract', async () => { const m = await getJSON(base + '?f=json', {}, 12000); const l = (m.layers || []).find((x) => /^census tracts$/i.test(x.name)); if (!l) throw new Error('no tract layer'); return `${base}/${l.id}`; });
+    const p = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: 'STATE,COUNTY,TRACT,BASENAME', returnGeometry: 'false', f: 'json' });
+    const a = ((await getJSON(`${lu}/query?${p}`, {}, 12000)).features || [])[0];
+    if (a && a.attributes && a.attributes.TRACT) return { state: a.attributes.STATE, county: a.attributes.COUNTY, tract: a.attributes.TRACT, name: a.attributes.BASENAME };
+  } catch (e) { /* fall back to the FCC's lookup */ }
+  const j = await getJSON(`https://geo.fcc.gov/api/census/area?lat=${lat}&lon=${lon}&censusYear=2020&format=json`, {}, 12000);
+  const b = String((j.results && j.results[0] && j.results[0].block_fips) || '');
+  if (b.length < 11) throw new Error('no tract');
+  return { state: b.slice(0, 2), county: b.slice(2, 5), tract: b.slice(5, 11), name: String(+b.slice(5, 9)) + (b.slice(9, 11) === '00' ? '' : '.' + b.slice(9, 11)) };
+}
+async function acsRow(year, forClause, inClause) {
+  const vars = Object.values(ACS_VARS).join(',');
+  const url = `https://api.census.gov/data/${year}/acs/acs5?get=NAME,${vars}&for=${forClause}${inClause ? '&in=' + inClause : ''}${KEYS.census ? '&key=' + KEYS.census : ''}`;
+  const j = await getJSON(url, {}, 15000);
+  if (!Array.isArray(j) || j.length < 2) throw new Error('no ACS row');
+  const row = Object.fromEntries(j[0].map((h, i) => [h, j[1][i]]));
+  const v = (name) => { const n = num(row[name]); return n != null && n >= 0 ? n : null; };   // negative numbers are the Census Bureau's "not available"
+  const out = Object.fromEntries(Object.entries(ACS_VARS).map(([k, name]) => [k, v(name)]));
+  out.ownPct = out.occ ? out.owned / out.occ * 100 : null; out.name = row.NAME; out.year = year;
+  return out;
+}
+async function neighborhoodFor(lat, lon) {
+  const t = await nearMemo('tract', lat, lon, 50, () => tractFor(lat, lon));
+  return memo(`acs:${t.state}${t.county}${t.tract}`, async () => {
+    let err;
+    for (const y of [THIS_YEAR - 2, THIS_YEAR - 3]) {   // the 5-year estimates come out each December
+      try {
+        const [here, st] = await Promise.all([acsRow(y, `tract:${t.tract}`, `state:${t.state}%20county:${t.county}`), acsRow(y, `state:${t.state}`)]);
+        return { here, st, tract: t };
+      } catch (e) { err = e; }
+    }
+    throw err;
+  });
+}
+function hoodHtml(d, s) {
+  const { here: h, st } = d, stName = s.region.name;
+  const row = (label, a, b, f) => (a == null ? '' : `<div class="brow"><div class="l">${label}</div><div class="m">${f(a)}</div><div class="r"><small>${esc(stName)}</small>${b == null ? '—' : f(b)}</div></div>`);
+  const usd = (v) => '$' + nfmt(v), pct = (v) => `${Math.round(v)}%`, yr = (v) => String(Math.round(v));
+  const rows = [row('Household income', h.income, st.income, usd), row('Home value', h.value, st.value, usd), row('Owner-occupied', h.ownPct, st.ownPct, pct),
+    row('Typical home built', h.built, st.built, yr), row('Rent', h.rent, st.rent, usd)].join('');
+  if (!rows) return `<div class="bt">Neighborhood</div><div class="bl">The Census Bureau has no estimates for this area.</div>`;
+  return `<div class="bt">Neighborhood · census tract ${esc(d.tract.name || d.tract.tract)}</div><div class="brows">${rows}</div>
+    <div class="bl">Medians for the roughly ${h.pop ? nfmt(Math.round(h.pop / 100) * 100) : 'few thousand'} people in this census tract, from the Census Bureau’s American Community Survey (${h.year - 4}–${h.year}). Owner-occupied is the share of homes lived in by their owners.</div>`;
+}
+
+/* Safety: crimes the local police department reported to the FBI (Uniform Crime Reporting), per 1,000 residents, next to the state's. */
+const normPlace = (x) => String(x || '').toUpperCase().replace(/POLICE DEPARTMENT|POLICE DEPT|POLICE|DEPARTMENT|\bPD\b/g, ' ')
+  .replace(/\b(CITY|TOWN|TOWNSHIP|BOROUGH|VILLAGE|OF|THE)\b/g, ' ').replace(/[^A-Z]/g, '');
+async function agencyFor(s, lat, lon) {
+  const st = s.region.id;
+  const all = await memo('ag:' + st, async () => {
+    const j = await getJSON(`https://api.usa.gov/crime/fbi/cde/agency/byStateAbbr/${st}?API_KEY=${KEYS.fbi}`, {}, 20000);
+    return Array.isArray(j) ? j : [].concat(...Object.values(j || {}).filter(Array.isArray));
+  });
+  const town = normPlace(s.town);
+  const local = all.filter((a) => /city|municipal|town/i.test(a.agency_type_name || '') || /police/i.test(a.agency_name || ''));
+  let hit = town && local.find((a) => normPlace(a.agency_name) === town);
+  if (!hit) {                                         // nearest police department, then the county sheriff
+    const near = (list, maxM) => list.map((a) => ({ a, d: num(a.latitude) && num(a.longitude) ? distM(lat, lon, num(a.latitude), num(a.longitude)) : Infinity }))
+      .filter((x) => x.d < maxM).sort((a, b) => a.d - b.d)[0];
+    const n = near(local.filter((a) => !/university|college|school|transit|state police|park/i.test(a.agency_name || '')), 6000)
+      || near(all.filter((a) => /county/i.test(a.agency_type_name || '')), 60000);
+    hit = n && n.a;
+  }
+  return hit || null;
+}
+function cdeSeries(j, stateName) {
+  const rates = j && j.offenses && j.offenses.rates; if (!rates) return null;
+  const keys = Object.keys(rates);
+  const us = keys.find((k) => /united states/i.test(k));
+  const st = keys.find((k) => k !== us && k.toUpperCase().includes(stateName.toUpperCase()));
+  const ag = keys.find((k) => k !== us && k !== st);
+  const yearRate = (k) => { const v = k ? Object.values(rates[k] || {}).map(Number).filter(Number.isFinite) : []; return v.length ? { per1000: v.reduce((a, b) => a + b, 0) * 12 / v.length / 100, months: v.length } : null; };
+  const a = yearRate(ag), b = yearRate(st);
+  return a ? { here: a.per1000, months: a.months, state: b ? b.per1000 : null } : null;
+}
+async function safetyFor(s, lat, lon) {
+  const ag = await agencyFor(s, lat, lon);
+  if (!ag) return null;
+  return memo('crime:' + ag.ori, async () => {
+    for (const y of [THIS_YEAR - 1, THIS_YEAR - 2]) {
+      const get = (off) => getJSON(`https://api.usa.gov/crime/fbi/cde/summarized/agency/${encodeURIComponent(ag.ori)}/${off}?from=01-${y}&to=12-${y}&API_KEY=${KEYS.fbi}`, {}, 20000);
+      const [v, p] = await Promise.all([get('violent-crime'), get('property-crime')]);
+      const vs = cdeSeries(v, s.region.name), ps = cdeSeries(p, s.region.name);
+      if (vs && ps && vs.months >= 6) return { agency: titleCase(ag.agency_name), year: y, violent: vs, property: ps };
+    }
+    return { agency: titleCase(ag.agency_name), none: true };
+  });
+}
+function safetyHtml(d, s) {
+  if (!d) return `<div class="bt">Safety</div><div class="bl">Couldn’t match this address to a police department in the FBI’s data.</div>`;
+  if (d.none) return `<div class="bt">Safety</div><div class="bl">${esc(d.agency)} hasn’t sent recent crime counts to the FBI.</div>`;
+  const row = (label, x) => `<div class="brow"><div class="l">${label}</div><div class="m">${x.here.toFixed(1)} <small>per 1,000 residents a year</small></div><div class="r"><small>${esc(s.region.name)}</small>${x.state == null ? '—' : x.state.toFixed(1)}</div></div>`;
+  const part = d.violent.months < 12 ? ` They reported ${d.violent.months} months of ${d.year}, scaled to a full year.` : '';
+  return `<div class="bt">Safety · ${esc(d.agency)}, ${d.year}</div><div class="brows">${row('Violent crime', d.violent)}${row('Property crime', d.property)}</div>
+    <div class="bl">Crimes the department reported to the FBI for its whole town or area, not this street.${part}</div>`;
+}
+
+/* Nearby: OpenStreetMap places (© OpenStreetMap contributors), straight-line distance. */
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const NEAR_CATS = [
+  { label: 'Grocery', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
+  { label: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
+  { label: 'Coffee', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
+  { label: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
+  { label: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
+  { label: 'Train', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
+  { label: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
+  { label: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
+  { label: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
+  { label: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
+];
+async function nearbyFor(lat, lon) {
+  return nearMemo('near', lat, lon, 150, async () => {
+    const at = (r) => `(around:${r},${lat.toFixed(6)},${lon.toFixed(6)})`;
+    const q = `[out:json][timeout:25];(${NEAR_CATS.map((c) => c.q + at(c.r) + ';').join('')});out tags center qt;nwr["amenity"~"^(restaurant|fast_food)$"]${at(800)};out count;`;
+    let j, err;
+    for (const u of OVERPASS) {
+      try { j = await getJSON(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }, 30000); break; }
+      catch (e) { err = e; }
+    }
+    if (!j) throw err;
+    const els = (j.elements || []).filter((e) => e.type !== 'count');
+    const out = NEAR_CATS.map((c) => {
+      const hits = els.filter((e) => e.tags && c.is(e.tags)).map((e) => {
+        const la = e.lat ?? (e.center && e.center.lat), lo = e.lon ?? (e.center && e.center.lon);
+        return la == null ? null : { name: e.tags.name || e.tags.brand || null, la, lo, subway: e.tags.station === 'subway' || e.tags.subway === 'yes' };
+      }).filter(Boolean);
+      return { ...c, hits };
+    });
+    const cnt = (j.elements || []).find((e) => e.type === 'count');
+    return { cats: out, restaurants: cnt && cnt.tags ? num(cnt.tags.total) : null };
+  });
+}
+function nearHtml(d, lat, lon) {
+  const cats = d.cats.map((c) => {
+    const hits = c.hits.map((h) => ({ ...h, d: distM(lat, lon, h.la, h.lo) })).filter((h) => h.d <= c.r).sort((a, b) => a.d - b.d);
+    return { ...c, best: hits[0] || null, n: hits.length };
+  });
+  const rows = cats.map((c) => {
+    if (!c.best) return `<div class="brow"><div class="l">${c.label}</div><div class="m"><small>None within ${miles(c.r)}</small></div></div>`;
+    const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || '') + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
+    return `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(name)}</div><div class="r">${miles(c.best.d)}</div></div>`;
+  }).join('');
+  const food = d.restaurants != null ? `<div class="brow"><div class="l">Restaurants</div><div class="m">${d.restaurants} within half a mile</div></div>` : '';
+  return `<div class="bt">Nearby</div><div class="brows">${rows}${food}</div><div class="bl">Straight-line distance to the closest one. Places © OpenStreetMap contributors.</div>`;
+}
+
 function floodBoxHtml(L) {
   return `<div class="flood loading" id="floodBox" data-k="${esc(L.p.key)}"><div class="zb">…</div><div><div class="t1">Checking flood maps…</div><div class="t2">FEMA flood zone and ground elevation</div></div></div>`;
 }
@@ -2598,7 +2922,11 @@ const ABOUT = `
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer (Esri’s hosted copy as a backup). Not an official flood determination.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
     <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
-    <li><b>Street view:</b> opens Google Maps.</li>
+    <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
+    <li><b>Neighborhood:</b> U.S. Census Bureau, American Community Survey 5-year estimates for the census tract (tract found with the Census Bureau’s TIGERweb, or the FCC’s area lookup as a backup).</li>
+    <li><b>Safety:</b> crimes local police departments report to the FBI (Uniform Crime Reporting), via the FBI Crime Data Explorer.</li>
+    <li><b>Nearby places:</b> © OpenStreetMap contributors, via the Overpass API (Open Database License).</li>
+    <li><b>Street view and listings:</b> open Google Maps, Zillow or a Google search; Housepoint doesn’t read anything from those sites.</li>
   </ul>
   <h3>How accurate is it?</h3>
   <p>Lot lines are a drawing of property boundaries, not a survey. Assessed, appraised and “just” values are what towns and counties use for taxes, not market
@@ -2630,7 +2958,7 @@ if (DEMO) {
 }
 
 // test hooks
-window.__hp = { S, regionFor, regionsNear, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
 })();
 </script>
