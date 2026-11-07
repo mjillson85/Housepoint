@@ -210,13 +210,13 @@
     Housepoint
   </div>
   <h1>Point at any house.<br><em>Get its story.</em></h1>
-  <p>Hold your phone up at a house in Massachusetts and see when it was built, its style, what it last sold for and what the town says it's worth.</p>
+  <p>Hold your phone up at a house in Massachusetts or Florida and see when it was built, what it last sold for and what it’s valued at.</p>
   <button class="btn-primary" id="goPoint">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
     Start pointing
   </button>
   <button class="btn-ghost" id="goMap">Use the map instead</button>
-  <div class="fine">Uses your camera, location and compass on this device only. Property facts come from public Massachusetts assessor records (MassGIS). Owner names are never shown.</div>
+  <div class="fine">Uses your camera, location and compass on this device only. Property facts come from public assessor records (MassGIS in Massachusetts, the Dept. of Revenue in Florida). Owner names are never shown.</div>
 </section>
 
 <!-- POINT MODE -->
@@ -256,6 +256,7 @@
     <button data-lat="42.51955" data-lon="-70.89955" data-name="Chestnut St, Salem">Salem's Chestnut St</button>
     <button data-lat="42.35866" data-lon="-71.06787" data-name="Louisburg Sq, Boston">Beacon Hill</button>
     <button data-lat="41.28296" data-lon="-70.10133" data-name="Main St, Nantucket">Nantucket</button>
+    <button data-lat="29.89340" data-lon="-81.31330" data-name="St. Augustine, FL">St. Augustine, FL</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
   </div>
@@ -381,7 +382,15 @@ const USE_CODES = {
 };
 const USE_FIRST = { '0': 'Mixed use', '1': 'Residential', '2': 'Open space', '3': 'Commercial', '4': 'Industrial',
   '6': 'Forest land', '7': 'Farm land', '8': 'Recreation land', '9': 'Tax-exempt property' };
-function useLabel(code) {
+function flUseLabel(code) {
+  const d = String(code || '').replace(/\D/g, ''); if (!d) return null;
+  const n = parseInt(d, 10);
+  const R = { 0: 'Vacant residential land', 1: 'Single-family home', 2: 'Mobile home', 3: 'Apartments, 10+ units', 4: 'Condo', 5: 'Co-op',
+    6: 'Retirement home', 7: 'Residential', 8: 'Multi-family, under 10 units', 9: 'Residential common area', 10: 'Vacant commercial land' };
+  if (n in R) return R[n];
+  return n < 40 ? 'Commercial' : n < 50 ? 'Industrial' : n < 70 ? 'Farm land' : n < 80 ? 'Institutional' : n < 90 ? 'Government property' : 'Other';
+}
+function maUseLabel(code) {
   const d = String(code || '').replace(/\D/g, '');
   if (d.length < 3) return null;
   const c3 = d.slice(0, 3);
@@ -504,9 +513,64 @@ function attachImageryFallback(root) {
 }
 
 /* =========================================================================
-   Data source: MassGIS standardized assessor parcels (ArcGIS feature service)
+   Data sources, one per state. Each state publishes its own parcel layer with
+   its own field names; records are mapped onto one shape (MassGIS-style names)
+   so the rest of the app doesn't care which state it's in. Only the fields
+   listed here are ever requested, so owner names never reach the phone.
    ========================================================================= */
-const svc = { layerUrl: null, fields: null, outFields: null, ready: null };
+const REGIONS = {
+  MA: {
+    id: 'MA', name: 'Massachusetts',
+    bbox: [-73.55, 41.18, -69.85, 42.89],                       // west, south, east, north
+    declination: (lat, lon) => -14.2 - 0.35 * (lon + 71),     // ~ -13.4 in the Berkshires, ~ -14.6 on the Cape
+    services: [SERVICE_OVERRIDE || PRIMARY_SERVICE],
+    discover: `orgid:${MASSGIS_ORG} AND type:"Feature Service" AND (title:L3 OR title:parcels OR title:TAXPAR)`,
+    detect: ['YEAR_BUILT', 'TOTAL_VAL'],
+    fields: Object.fromEntries(['LOC_ID','PROP_ID','MAP_PAR_ID','POLY_TYPE','SITE_ADDR','ADDR_NUM','FULL_STR','LOCATION','CITY','ZIP','TOWN_ID',
+      'FY','TOTAL_VAL','BLDG_VAL','LAND_VAL','OTHER_VAL','LOT_SIZE','LOT_UNITS','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','BLD_AREA',
+      'UNITS','RES_AREA','STYLE','STORIES','NUM_ROOMS'].map((k) => [k, [k]])),
+    valueLabel: 'Town assessed value', deltaWord: 'assessed',
+    yearLabel: (fy) => `FY${fy}`,
+    source: (fy) => `Source: town assessor records via MassGIS${fy ? ` (fiscal year ${fy})` : ''}. Assessed value is the town’s figure for taxes, not a market estimate.`,
+    shareSource: 'Massachusetts assessor records via MassGIS',
+    useLabel: (c) => maUseLabel(c),
+  },
+  FL: {
+    id: 'FL', name: 'Florida',
+    bbox: [-87.65, 24.39, -79.97, 31.0],
+    declination: (lat, lon) => -6.8 - 0.625 * (lon + 80),      // ~ -6.8 on the Atlantic coast, ~ -2.3 in Pensacola
+    // Florida Geographic Information Office's statewide parcel items (Dept. of Revenue tax roll joined to county parcel maps).
+    items: ['55e830fd6c8948baae1601fbfc33a3b2', 'ff7b985e139c4c7ba844500053e8e185'],
+    discover: `type:"Feature Service" AND (title:"Statewide Parcels" OR title:"Florida Parcels" OR title:"FDOR Parcels")`,
+    detect: ['JV', 'ACT_YR_BLT', 'DOR_UC'],
+    fields: {
+      PROP_ID: ['PARCEL_ID', 'PARCELNO'], SITE_ADDR: ['PHY_ADDR1'], CITY: ['PHY_CITY'], ZIP: ['PHY_ZIPCD', 'PHY_ZIP'], FY: ['ASMNT_YR'],
+      TOTAL_VAL: ['JV'], LAND_VAL: ['LND_VAL'], LS_PRICE: ['SALE_PRC1'], SALE_YR: ['SALE_YR1'], SALE_MO: ['SALE_MO1'],
+      USE_CODE: ['DOR_UC'], YEAR_BUILT: ['ACT_YR_BLT'], EFF_YEAR: ['EFF_YR_BLT'], RES_AREA: ['TOT_LVG_AREA', 'TOT_LVG_AR'],
+      UNITS: ['NO_RES_UNTS', 'NO_RES_UNT'], BLDGS: ['NO_BULDNG'],
+    },
+    valueLabel: 'County market value (“just value”)', deltaWord: 'value',
+    yearLabel: (fy) => `${fy} tax roll`,
+    source: (fy) => `Source: Florida Department of Revenue tax roll from county property appraisers${fy ? ` (${fy})` : ''}. Just value is the county’s market value estimate for taxes, not an appraisal.`,
+    shareSource: 'Florida property appraiser records via FL Dept. of Revenue',
+    useLabel: (c) => flUseLabel(c),
+  },
+};
+const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => Object.keys(r.fields)).concat(['LS_DATE']));
+
+function regionFor(lat, lon) {
+  if (lat == null || lon == null) return null;
+  return Object.values(REGIONS).find(({ bbox: [w, so, e, n] }) => lon >= w && lon <= e && lat >= so && lat <= n) || null;
+}
+function declinationAt(pos) {
+  if (Number.isFinite(DECL_OVERRIDE)) return DECL_OVERRIDE;
+  const r = pos && regionFor(pos.lat, pos.lon);
+  return r ? r.declination(pos.lat, pos.lon) : DECLINATION;
+}
+
+const SVC = {};   // region id -> { layerUrl, rev (service field -> our name), canon (our name -> service field), outFields, oid, pageSize, ready }
+const svcFor = (rid) => SVC[rid] || (SVC[rid] = { ready: null });
+const anyServiceUp = () => Object.values(SVC).some((x) => x.layerUrl);
 
 async function getJSON(url, opts) {
   const r = await fetch(url, opts);
@@ -516,74 +580,88 @@ async function getJSON(url, opts) {
   return j;
 }
 
-async function tryService(url) {
-  const meta = await getJSON(url + '?f=json');
-  const layers = (meta.layers || []).filter((l) => !l.geometryType || /Polygon/i.test(l.geometryType));
-  for (const l of layers.length ? layers : [{ id: 0 }]) {
-    const lurl = url + '/' + l.id;
+async function tryLayer(region, url) {
+  url = String(url).replace(/\/+$/, '');
+  let layerUrls;
+  if (/\/(FeatureServer|MapServer)\/\d+$/i.test(url)) layerUrls = [url];
+  else {
+    const meta = await getJSON(url + '?f=json');
+    const layers = (meta.layers || []).filter((l) => !l.geometryType || /Polygon/i.test(l.geometryType));
+    layerUrls = (layers.length ? layers : [{ id: 0 }]).map((l) => url + '/' + l.id);
+  }
+  for (const lurl of layerUrls.slice(0, 6)) {
     const lm = await getJSON(lurl + '?f=json');
-    const names = (lm.fields || []).map((f) => f.name);
-    const upper = new Map(names.map((n) => [n.toUpperCase(), n]));
-    if (upper.has('YEAR_BUILT') || upper.has('TOTAL_VAL')) {
-      svc.layerUrl = lurl; svc.fields = upper; svc.oid = lm.objectIdField || null;
-      svc.outFields = names.filter((n) => SAFE_FIELDS.has(n.toUpperCase()));
-      return true;
+    const upper = new Map((lm.fields || []).map((fd) => [fd.name.toUpperCase(), fd.name]));
+    if (!region.detect.some((d) => upper.has(d))) continue;
+    const sv = svcFor(region.id);
+    sv.rev = new Map(); sv.canon = new Map();
+    for (const [canon, cands] of Object.entries(region.fields)) {
+      const hit = cands.map((c) => upper.get(c.toUpperCase())).find(Boolean);
+      if (hit) { sv.rev.set(hit, canon); sv.canon.set(canon, hit); }
     }
+    sv.outFields = [...sv.rev.keys()];
+    sv.oid = lm.objectIdField || null;
+    sv.pageSize = Math.min(2000, lm.maxRecordCount || 1000);
+    sv.layerUrl = lurl;
+    return true;
   }
   return false;
 }
 
-async function discoverService() {
-  // If the main URL ever moves, look the layer up in MassGIS's ArcGIS Online organization.
-  const q = encodeURIComponent(`orgid:${MASSGIS_ORG} AND type:"Feature Service" AND (title:L3 OR title:parcels OR title:TAXPAR)`);
-  const res = await getJSON(`https://www.arcgis.com/sharing/rest/search?q=${q}&num=25&f=json`);
-  for (const item of res.results || []) {
-    if (!item.url) continue;
-    try { if (await tryService(item.url.replace(/\/$/, ''))) return true; } catch (e) { /* keep looking */ }
-  }
-  return false;
-}
-
-function initService() {
-  if (svc.ready) return svc.ready;
-  svc.ready = (async () => {
+function initService(region) {
+  const sv = svcFor(region.id);
+  if (sv.ready) return sv.ready;
+  sv.ready = (async () => {
     if (DEMO) return true;
-    const first = SERVICE_OVERRIDE || PRIMARY_SERVICE;
-    try { if (await tryService(first)) return true; } catch (e) { console.warn('primary service failed', e); }
-    try { if (await discoverService()) return true; } catch (e) { console.warn('discovery failed', e); }
-    notifyServiceDown();
-    throw new Error('Could not reach the MassGIS parcel service');
+    for (const u of region.services || []) {
+      try { if (await tryLayer(region, u)) return true; } catch (e) { console.warn(region.id, 'service failed', e); }
+    }
+    for (const id of region.items || []) {     // public ArcGIS Online items: look up their current service address
+      try { const it = await getJSON(`https://www.arcgis.com/sharing/rest/content/items/${id}?f=json`); if (it.url && await tryLayer(region, it.url)) return true; }
+      catch (e) { console.warn(region.id, 'item failed', id, e); }
+    }
+    try {                                      // last resort: search ArcGIS Online
+      const res = await getJSON(`https://www.arcgis.com/sharing/rest/search?q=${encodeURIComponent(region.discover)}&num=20&f=json`);
+      for (const it of (res.results || []).slice(0, 10)) {
+        if (!it.url) continue;
+        try { if (await tryLayer(region, it.url)) return true; } catch (e) { /* keep looking */ }
+      }
+    } catch (e) { console.warn(region.id, 'discovery failed', e); }
+    notifyServiceDown(region);
+    throw new Error(`Could not reach the ${region.name} parcel service`);
   })();
-  svc.ready.catch(() => { svc.ready = null; });
-  return svc.ready;
+  sv.ready.catch(() => { sv.ready = null; });
+  return sv.ready;
 }
 
-function notifyServiceDown() {
-  const msg = 'Can’t reach the Massachusetts property data right now. If you opened this file directly or inside an app preview, open it from its web address instead.';
+function notifyServiceDown(region) {
+  const msg = `Can’t reach the ${region ? region.name + ' ' : ''}property data right now. If you opened this file directly or inside an app preview, open it from its web address instead.`;
   const h = document.querySelector('#mapHelpTxt'); if (h) h.textContent = msg;
   toast(msg, 7000);
 }
 
-const f = (rec, name) => rec[name] ?? null; // records are stored with UPPERCASE keys
+const f = (rec, name) => rec[name] ?? null; // records are stored with our (MassGIS-style) names
 
-function normalizeRecord(attrs) {
-  const out = {};
-  for (const [k, v] of Object.entries(attrs)) { const K = k.toUpperCase(); if (SAFE_FIELDS.has(K)) out[K] = v; }
+function normalizeRecord(attrs, rid) {
+  const out = {}; const sv = rid && SVC[rid];
+  if (sv && sv.rev) { for (const [k, v] of Object.entries(attrs)) { const c = sv.rev.get(k); if (c) out[c] = v; } }
+  else { for (const [k, v] of Object.entries(attrs)) { const K = k.toUpperCase(); if (ALL_FIELDS.has(K)) out[K] = v; } }
+  if (!out.LS_DATE && num(out.SALE_YR) > 1800) out.LS_DATE = `${num(out.SALE_YR)}${String(num(out.SALE_MO) || 1).padStart(2, '0')}01`;
   return out;
 }
 
-// Turn feature-service features into parcels: one per lot, holding every assessor record on it (condos stack).
-function buildParcels(features) {
+// Turn features into parcels: one per lot, holding every record on it (condo units stack on one lot).
+function buildParcels(features, rid = 'MA') {
   const byKey = new Map();
   for (const ft of features) {
     const g = ft.geometry; if (!g || !g.rings || !g.rings.length) continue;
-    const rec = normalizeRecord(ft.attributes || {});
+    const rec = normalizeRecord(ft.attributes || {}, rid);
     const pt = String(rec.POLY_TYPE || '').toUpperCase();
     if (pt && pt !== 'FEE' && pt !== 'TAX') continue; // skip roads, rail and water
     const first = g.rings[0][0];
-    const key = rec.LOC_ID || `${first[0].toFixed(6)},${first[1].toFixed(6)},${g.rings[0].length}`;
+    const key = rec.LOC_ID || `${rid}:${first[0].toFixed(6)},${first[1].toFixed(6)},${g.rings[0].length}`;
     let p = byKey.get(key);
-    if (!p) { p = { key, ringsLL: g.rings, records: [] }; byKey.set(key, p); }
+    if (!p) { p = { key, region: rid, ringsLL: g.rings, records: [] }; byKey.set(key, p); }
     p.records.push(rec);
   }
   return [...byKey.values()].map((p) => {
@@ -595,50 +673,65 @@ function buildParcels(features) {
 
 async function queryParcelsNear(lat, lon, radius = QUERY_RADIUS) {
   if (DEMO) return demoParcels(lat, lon);
-  await initService();
+  const region = regionFor(lat, lon);
+  if (!region) return [];
+  await initService(region);
+  const sv = SVC[region.id];
   const feats = [];
   for (let page = 0, offset = 0; page < 8; page++) {
     const params = new URLSearchParams({
       geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
-      distance: String(radius), units: 'esriSRUnit_Meter', outFields: svc.outFields.join(','), returnGeometry: 'true',
-      outSR: '4326', geometryPrecision: '7', resultOffset: String(offset), resultRecordCount: '2000', f: 'json',
+      distance: String(radius), units: 'esriSRUnit_Meter', outFields: sv.outFields.join(','), returnGeometry: 'true',
+      outSR: '4326', geometryPrecision: '7', resultOffset: String(offset), resultRecordCount: String(sv.pageSize), f: 'json',
     });
-    if (svc.oid) params.set('orderByFields', svc.oid);
-    const j = await getJSON(svc.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+    if (sv.oid) params.set('orderByFields', sv.oid);
+    const j = await getJSON(sv.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
     const got = j.features || [];
     feats.push(...got);
     if (!j.exceededTransferLimit || !got.length) break;   // dense areas (condos) can exceed one page
     offset += got.length;
   }
-  return buildParcels(feats);
+  return buildParcels(feats, region.id);
 }
 
 const STREET_ABBR = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'DR', COURT: 'CT', PLACE: 'PL', TERRACE: 'TER', CIRCLE: 'CIR',
   BOULEVARD: 'BLVD', PARKWAY: 'PKWY', SQUARE: 'SQ', HIGHWAY: 'HWY', WAY: 'WAY' };
+const STATE_WORDS = /^(fl|fla|florida|ma|mass|massachusetts)$/i;
 async function searchAddress(text) {
-  const [addrRaw, townRaw] = text.split(',').map((s) => (s || '').trim());
-  const addr = addrRaw.toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
+  const parts = text.split(',').map((x) => x.trim()).filter(Boolean);
+  const addr = (parts[0] || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
     .split(' ').map((w) => STREET_ABBR[w] || w).join(' ');
-  if (!addr) return null;
-  if (DEMO) return null;
-  await initService();
-  if (!svc.fields.has('SITE_ADDR')) return null;
-  const sqlq = (s) => s.replace(/'/g, "''");
+  if (!addr || DEMO) return null;
+  const town = parts.slice(1).find((x) => !STATE_WORDS.test(x)) || null;
+  const said = parts.slice(1).find((x) => STATE_WORDS.test(x)) || '';
+  const ref = (S.mode === 'map' && S.map.center) || S.pos;
+  const here = ref && regionFor(ref.lat, ref.lon);
+  let order = [/^f/i.test(said) ? REGIONS.FL : /^m/i.test(said) ? REGIONS.MA : null, here, REGIONS.MA, REGIONS.FL];
+  order = order.filter((r, i) => r && order.indexOf(r) === i);
+  for (const region of order) {
+    try { const hit = await searchIn(region, addr, town); if (hit) return hit; } catch (e) { console.warn('search failed', region.id, e); }
+  }
+  return null;
+}
+async function searchIn(region, addr, town) {
+  await initService(region);
+  const sv = SVC[region.id];
+  const A = sv.canon.get('SITE_ADDR'), C = sv.canon.get('CITY');
+  if (!A) return null;
+  const sqlq = (x) => x.replace(/'/g, "''");
   const tries = [];
-  if (townRaw && svc.fields.has('CITY')) tries.push(`UPPER(${svc.fields.get('SITE_ADDR')}) LIKE '${sqlq(addr)}%' AND UPPER(${svc.fields.get('CITY')}) LIKE '${sqlq(townRaw.toUpperCase())}%'`);
-  tries.push(`UPPER(${svc.fields.get('SITE_ADDR')}) LIKE '${sqlq(addr)}%'`);
+  if (town && C) tries.push(`UPPER(${A}) LIKE '${sqlq(addr)}%' AND UPPER(${C}) LIKE '${sqlq(town.toUpperCase().replace(/[^A-Z0-9 .-]/g, ''))}%'`);
+  tries.push(`UPPER(${A}) LIKE '${sqlq(addr)}%'`);
   for (const where of tries) {
-    const params = new URLSearchParams({ where, outFields: svc.outFields.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '5', f: 'json' });
-    try {
-      const j = await getJSON(svc.layerUrl + '/query?' + params.toString());
-      const ps = buildParcels(j.features || []);
-      if (ps.length) {
-        const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
-        const c = centroid(ps[0].ringsLL.map((r) => r.map(([lo, la]) => proj.fwd(la, lo))));
-        const [la, lo] = proj.inv(c[0], c[1]);
-        return { lat: la, lon: lo, key: ps[0].key };
-      }
-    } catch (e) { console.warn('search failed', e); }
+    const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: '5', f: 'json' });
+    const j = await getJSON(sv.layerUrl + '/query?' + params.toString());
+    const ps = buildParcels(j.features || [], region.id);
+    if (ps.length) {
+      const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
+      const c = centroid(ps[0].ringsLL.map((r) => r.map(([lo, la]) => proj.fwd(la, lo))));
+      const [la, lo] = proj.inv(c[0], c[1]);
+      return { lat: la, lon: lo, key: ps[0].key };
+    }
   }
   return null;
 }
@@ -710,7 +803,7 @@ async function ensureData(lat, lon, force = false) {
     try { setData(await queryParcelsNear(lat, lon), lat, lon); S.failAt = 0; }
     catch (e) {
       console.error(e); S.failAt = Date.now();
-      if (!S.failToastAt || Date.now() - S.failToastAt > 30000) { S.failToastAt = Date.now(); if (svc.layerUrl || DEMO) toast('Could not load property data. Check your connection.'); }
+      if (!S.failToastAt || Date.now() - S.failToastAt > 30000) { S.failToastAt = Date.now(); if (anyServiceUp() || DEMO) toast('Could not load property data. Check your connection.'); }
       throw e;
     }
     finally { S.loading = null; }
@@ -773,7 +866,10 @@ function summarize(p) {
   const addr = titleCase(rawAddr) || 'Address not listed';
   const town = titleCase(r0.CITY || '');
   const units = recs.length > 1 ? recs.length : (num(r0.UNITS) || 1);
-  return { r0, recs, year, sales, vals, addr, town, units, condo: recs.length > 1, use: useLabel(r0.USE_CODE), fy: num(r0.FY) };
+  const region = REGIONS[p.region] || REGIONS.MA;
+  const eff = recs.map((r) => num(r.EFF_YEAR)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
+  return { r0, recs, year, sales, vals, addr, town, units, condo: recs.length > 1, use: region.useLabel(r0.USE_CODE), fy: num(r0.FY), region,
+    updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null };
 }
 
 function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); return Math.abs(a) * 10.7639; }
@@ -791,11 +887,12 @@ function renderCard(cand, total, idx) {
   if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
   const ot = olderThan(s.year); if (ot) chips.push(`<span class="chip fun">${esc(ot)}</span>`);
   const era = eraLabel(s.year); if (era && s.year < 1942) chips.push(`<span class="chip green">${esc(era)}</span>`);
+  if (s.updated) chips.push(`<span class="chip">Updated around ${s.updated}</span>`);
 
   let valueBlock = '';
   if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
-    valueBlock = `<div class="value"><div class="k">${s.units} units · assessed${s.fy ? ' FY' + s.fy : ''}</div>
+    valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
       <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>
       <div class="s">${s.sales[0] ? `Latest unit sale <b>${money(s.sales[0].p) || 'non-market'}</b> · ${fmtMonth(s.sales[0].d)}` : 'No recorded sales'}</div></div>`;
   } else {
@@ -806,12 +903,12 @@ function renderCard(cand, total, idx) {
       if (sale.p && sale.p >= 10000) {
         const ch = v ? Math.round((v / sale.p - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
-        saleLine = `Last sold <b>${moneyFull(sale.p)}</b> · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ' · assessed <span') : ''}`;
+        saleLine = `Last sold <b>${moneyFull(sale.p)}</b> · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else {
         saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
       }
     }
-    valueBlock = `<div class="value"><div class="k">Town assessed value${s.fy ? ' · FY' + s.fy : ''}</div>
+    valueBlock = `<div class="value"><div class="k">${esc(s.region.valueLabel)}${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
       <div class="v">${v ? moneyFull(v) : '—'}</div><div class="s">${saleLine}</div></div>`;
   }
 
@@ -835,14 +932,14 @@ function renderCard(cand, total, idx) {
 
   const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${Math.round(cand.cdist)} m ${compass8(cand.bearing)}` : '';
   $('#cardBody').innerHTML = `${aerialSvg(L)}
-    <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : 'Massachusetts'}</span></div>
+    <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
     <div class="addr">${esc(s.addr)}</div>
     <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
     ${grid}
     ${unitList}
-    <div class="note">Source: town assessor records via MassGIS${s.fy ? ` (fiscal year ${s.fy})` : ''}. Assessed value is the town's figure for taxes, not a market estimate. Owner names are never shown.</div>`;
+    <div class="note">${esc(s.region.source(s.fy))} Owner names are never shown.</div>`;
   attachImageryFallback($('#cardBody'));
   $('#prevC').disabled = idx <= 0;
   $('#nextC').disabled = idx >= total - 1;
@@ -922,7 +1019,7 @@ function onOrientation(e) {
   } else return;
   S.beta = e.beta; S.gotOrientation = true;
   S.rawHeading = h;
-  pushHeading(norm(h + (Number.isFinite(DECL_OVERRIDE) ? DECL_OVERRIDE : DECLINATION)));
+  pushHeading(norm(h + declinationAt(S.pos)));
 }
 async function startSensors() {
   S.sensorsStarted = true;
@@ -981,6 +1078,7 @@ function tick(ts) {
 
   let hint = '';
   if (!S.pos) hint = 'Finding your location…';
+  else if (!DEMO && !regionFor(S.pos.lat, S.pos.lon)) hint = 'Housepoint covers Massachusetts and Florida for now.';
   else if (S.heading == null) hint = 'Waiting for the compass…';
   else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
   else if (S.beta != null && Math.abs(S.beta) < 35 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';
@@ -994,7 +1092,7 @@ function tick(ts) {
     const top = S.pos && S.heading != null && S.local.length ? findCandidates(S.pos.lat, S.pos.lon, S.heading)[0] : null;
     el.textContent = [
       `src ${S.orientSource || '—'}  raw ${S.rawHeading == null ? '—' : S.rawHeading.toFixed(1)}°`,
-      `decl ${Number.isFinite(DECL_OVERRIDE) ? DECL_OVERRIDE : DECLINATION}°  heading ${S.heading == null ? '—' : S.heading.toFixed(1)}°`,
+      `decl ${declinationAt(S.pos).toFixed(1)}° ${S.pos && regionFor(S.pos.lat, S.pos.lon) ? '(' + regionFor(S.pos.lat, S.pos.lon).id + ')' : ''}  heading ${S.heading == null ? '—' : S.heading.toFixed(1)}°`,
       `tilt(beta) ${S.beta == null ? '—' : S.beta.toFixed(0)}°`,
       `gps ${S.pos ? S.pos.lat.toFixed(5) + ', ' + S.pos.lon.toFixed(5) : '—'}  ±${S.acc == null ? '—' : Math.round(S.acc)} m`,
       `lots loaded ${S.local.length}${S.failAt ? '  (last load failed)' : ''}`,
@@ -1074,8 +1172,13 @@ async function centerMap(lat, lon, selectKey) {
   S.map.center = { lat, lon };
   $('#mapHelpTxt').textContent = 'Loading properties…';
   try { await ensureData(lat, lon, true); }
-  catch (e) { if (!svc.layerUrl && !DEMO) notifyServiceDown(); else $('#mapHelpTxt').textContent = 'Could not load property data here.'; return; }
-  $('#mapHelpTxt').textContent = S.local.length ? 'Tap any lot to see its story.' : 'No Massachusetts parcels here. Try a sample spot.';
+  catch (e) {
+    const rg = regionFor(lat, lon);
+    if (rg && !(SVC[rg.id] && SVC[rg.id].layerUrl) && !DEMO) notifyServiceDown(rg); else $('#mapHelpTxt').textContent = 'Could not load property data here.';
+    return;
+  }
+  $('#mapHelpTxt').textContent = S.local.length ? 'Tap any lot to see its story.'
+    : (DEMO || regionFor(lat, lon)) ? 'No parcels found here. Try a sample spot.' : 'Housepoint covers Massachusetts and Florida for now. Try a sample spot.';
   refreshMapImagery(); drawMap();
   if (selectKey) {
     const L = S.local.find((l) => l.p.key === selectKey);
@@ -1310,7 +1413,7 @@ async function makeShareImage(cand) {
 
   // value + sale
   y += 62; g.fillStyle = '#6f665b'; g.font = `600 26px ${SANS}`;
-  g.fillText((s.condo ? 'UNIT VALUES' : 'TOWN ASSESSED VALUE') + (s.fy ? ` · FY${s.fy}` : ''), PAD, y);
+  g.fillText((s.condo ? 'UNIT VALUES' : s.region.valueLabel.toUpperCase()) + (s.fy ? ` · ${s.region.yearLabel(s.fy).toUpperCase()}` : ''), PAD, y);
   y += 76; g.fillStyle = '#1d1a17'; g.font = `700 72px ${SERIF}`;
   let big = '—';
   if (s.condo && s.vals.length) { const lo = Math.min(...s.vals), hi = Math.max(...s.vals); big = lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`; }
@@ -1321,7 +1424,7 @@ async function makeShareImage(cand) {
 
   // footer
   g.fillStyle = '#a2988b'; g.font = `500 24px ${SANS}`;
-  g.fillText('Point at any house · Massachusetts assessor records via MassGIS', PAD, H - 44);
+  g.fillText(`Point at any house · ${s.region.shareSource}`, PAD, H - 44);
   return await new Promise((res) => c.toBlob(res, 'image/png'));
 }
 
@@ -1412,7 +1515,7 @@ $('#panelBody').addEventListener('click', (e) => {
    ========================================================================= */
 $('#goPoint').onclick = async () => {
   startPointMode();
-  initService().catch(() => {});
+
   await startSensors();
   if (DEMO) enableSimCompass();
   // No compass after a few seconds (desktop, or blocked): offer the map.
@@ -1420,7 +1523,7 @@ $('#goPoint').onclick = async () => {
     if (S.mode === 'point' && !S.gotOrientation && !DEMO) startMapMode(S.pos, 'The compass isn’t available here, so use the map: tap any lot to see its story.');
   }, 4500);
 };
-$('#goMap').onclick = () => { initService().catch(() => {}); startMapMode(null, 'Search an address, or try a sample spot.'); };
+$("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sample spot.'); };
 $('#toMap').onclick = () => startMapMode(S.pos ? { lat: S.pos.lat, lon: S.pos.lon } : null);
 $('#mapToPoint').onclick = () => { if (S.pos || DEMO) { startPointMode(); if (!S.gotOrientation && !DEMO) startSensors(); if (S.pos) ensureData(S.pos.lat, S.pos.lon, true).catch(() => {}); } else $('#goPoint').click(); };
 $('#toPanel').onclick = () => openPanel('near');

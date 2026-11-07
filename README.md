@@ -1,12 +1,14 @@
 # Housepoint
 
-Point your phone at any house in Massachusetts and see its story: when it was built, its style, what it last sold for, and what the town assesses it at.
+Point your phone at any house in Massachusetts or Florida and see its story: when it was built, what it last sold for, and what it's valued at.
 
 **Live:** https://mjillson85.github.io/housepoint/ (once GitHub Pages is on)
 
 ## How it works
 - Phone GPS + compass work out which property you're pointing at.
-- Property facts come from MassGIS's statewide standardized assessor parcels (public data). Owner names are never requested or shown.
+- Massachusetts: MassGIS statewide standardized assessor parcels.
+- Florida: the Florida Geographic Information Office's statewide parcel layer (Dept. of Revenue tax roll from county property appraisers).
+- Owner names are never requested or shown, in either state.
 - Aerial photos: Esri World Imagery, with USGS NAIP as a fallback.
 
 ## Try it
