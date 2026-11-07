@@ -83,12 +83,13 @@
   #reticle::before, #reticle::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); }
   #reticle::after { inset: 31px; background: #fff; border: 0; }
   #reticle.locked::before { border-color: #f0a48f; box-shadow: 0 0 0 6px rgba(240,164,143,.22); }
-  #liveLabel { position: fixed; left: 50%; top: calc(44% - 66px); transform: translate(-50%, -100%); z-index: 6; pointer-events: none;
+  #liveLabel { position: fixed; left: 50%; top: calc(44% - 66px); transform: translate(-50%, -100%); z-index: 6; pointer-events: auto; cursor: pointer;
     max-width: 86vw; padding: 9px 14px; border-radius: 14px; background: rgba(246,241,231,.94); color: var(--ink); text-align: center;
     box-shadow: 0 8px 28px rgba(0,0,0,.35); transition: opacity .15s; }
   #liveLabel .a { font-family: var(--serif); font-weight: 700; font-size: 17px; line-height: 1.2; }
   #liveLabel .b { font-size: 12.5px; color: var(--mute); margin-top: 2px; }
-  #liveLabel.dim { opacity: 0; }
+  #liveLabel.dim { opacity: 0; pointer-events: none; }
+  #liveLabel .c { font-size: 12px; font-weight: 600; color: var(--brick); margin-top: 4px; }
   #hint { position: fixed; left: 50%; top: calc(44% + 60px); transform: translateX(-50%); z-index: 6; pointer-events: none; font-size: 13.5px;
     color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); text-align: center; width: 86vw; }
 
@@ -229,7 +230,7 @@
 </div>
 <div id="reticle" class="hidden"></div>
 <div id="scan"></div>
-<div id="liveLabel" class="dim"><div class="a" id="liveA"></div><div class="b" id="liveB"></div></div>
+<div id="liveLabel" class="dim"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
 <div id="hint" class="hidden"></div>
 <div id="sim" class="hidden"><span>Compass</span><input type="range" id="simRange" min="0" max="359" value="90"><span id="simVal">90°</span></div>
 <div id="bar" class="hidden">
@@ -1007,15 +1008,17 @@ function tick(ts) {
     if (c) {
       const s = summarize(c.L.p);
       $('#liveA').textContent = s.addr;
+      const val = s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
       $('#liveB').textContent = c.inside
-        ? [s.condo ? `${s.units} units` : null, s.year ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
-        : [s.year ? `Built ${s.year}` : null, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
+        ? [val, s.year ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
+        : [s.year ? `Built ${s.year}` : null, val, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
       label.classList.remove('dim'); S.live = c; return;
     }
   }
   label.classList.add('dim'); S.live = null;
 }
 
+$('#liveLabel').onclick = () => $('#shutter').click();
 $('#shutter').onclick = async () => {
   if (!S.pos) { toast('Still finding your location…'); return; }
   if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
