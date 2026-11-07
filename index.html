@@ -137,8 +137,24 @@
   .grid .k { font-size: 10.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .2px; font-weight: 600; white-space: nowrap; }
   .grid .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .note { font-size: 12px; color: var(--mute); line-height: 1.45; margin: 10px 0 8px; }
-  .units { margin: 6px 0 4px; border-top: 1px solid var(--line); }
-  .units div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .units-h { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; margin: 16px 0 4px; }
+  .units { margin: 0 0 4px; border-top: 1px solid var(--line); }
+  .units .unit { display: flex; width: 100%; justify-content: flex-start; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line);
+    font-size: 14px; color: var(--ink); text-align: left; }
+  .units .unit span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .units .unit span:last-child { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .units .unit::after { content: "›"; color: var(--mute); margin-left: 2px; transition: transform .15s; }
+  .units .unit.open { font-weight: 600; }
+  .units .unit.open::after { transform: rotate(90deg); }
+  .units .more { display: none; }
+  .units.all .more { display: flex; }
+  .units .udet { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; padding: 4px 2px 12px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--mute); }
+  .units .udet b { display: block; color: var(--ink); font-weight: 600; font-size: 14px; }
+  .units .udet.hidden { display: none !important; }
+  .units .all-btn { display: block; width: 100%; padding: 12px 0; color: var(--brick); font-weight: 600; font-size: 14px; text-align: center; border-bottom: 1px solid var(--line); }
+  .units.all .all-btn { display: none; }
+  .park { margin: 14px 0 4px; padding: 12px 16px 13px; border-radius: 14px; background: #f3ead8; border: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+  .park b { font-weight: 600; }
   .card-actions { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--line); background: var(--paper); }
   .card-actions button { flex: 1; height: 46px; border-radius: 12px; background: var(--paper-2); color: var(--ink); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .card-actions button.main { background: var(--ink); color: var(--paper); }
@@ -437,7 +453,8 @@ function flUseLabel(code) {
   const d = String(code || '').replace(/\D/g, ''); if (!d) return null;
   const n = parseInt(d, 10);
   const R = { 0: 'Vacant residential land', 1: 'Single-family home', 2: 'Mobile home', 3: 'Apartments, 10+ units', 4: 'Condo', 5: 'Co-op',
-    6: 'Retirement home', 7: 'Residential', 8: 'Multi-family, under 10 units', 9: 'Residential common area', 10: 'Vacant commercial land' };
+    6: 'Retirement home', 7: 'Residential', 8: 'Multi-family, under 10 units', 9: 'Residential common area', 10: 'Vacant commercial land',
+    28: 'Mobile home park or parking lot' };
   if (n in R) return R[n];
   return n < 40 ? 'Commercial' : n < 50 ? 'Industrial' : n < 70 ? 'Farm land' : n < 80 ? 'Institutional' : n < 90 ? 'Government property' : 'Other';
 }
@@ -936,13 +953,32 @@ function summarize(p) {
   const unitsListed = num(r0.UNITS) || 1;
   // Florida: some counties publish only the condo's common-area lot (no value, no units) and keep unit records elsewhere.
   const commonOnly = region.id === 'FL' && flCondoCode(r0.USE_CODE) && !vals.some((v) => v > 1000);
-  return { r0, recs, year, sales, vals, addr, town, units: recs.length > 1 ? recs.length : unitsListed, condo: recs.length > 1, use: region.useLabel(r0.USE_CODE),
+  // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
+  // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
+  const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
+  const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || acresOf(p) >= 5)
+    : region.id === 'FL' ? parseInt(dig || 'x', 10) === 28 && sites >= 3 : false);
+  return { r0, recs, year, sales, vals, addr, town, units: recs.length > 1 ? recs.length : unitsListed, condo: recs.length > 1,
+    use: park ? 'Mobile home park' : region.useLabel(r0.USE_CODE), park, sites: park && sites >= 3 ? sites : null,
     fy: num(r0.FY), region, commonOnly,
     approxYear: !year && eff.length ? Math.max(...eff) : null,
     updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null,
     multiSale: recs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))) };
 }
 
+function acresOf(p) {
+  const f = p.ringsLL[0] && p.ringsLL[0][0]; if (!f) return 0;
+  const pj = makeProj(f[1], f[0]); let a = 0;
+  for (const r of p.ringsLL) a += ringArea(r.map(([lo, la]) => pj.fwd(la, lo)));
+  return Math.abs(a) / 4046.86;
+}
+// Wording for a park: why the homes aren't on the map.
+function parkNote(s) {
+  const why = s.region.id === 'FL'
+    ? 'Homes on rented lots in a park usually pay a yearly mobile home license fee instead of property tax, so they don’t show up as separate properties.'
+    : 'Homes in a Massachusetts park don’t get their own property tax bill; the park pays the town a monthly fee for each home instead. So the town records the park as one property.';
+  return `<b>The individual homes aren’t on the property records.</b> ${why} The value and sale here are for the whole park.`;
+}
 function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); return Math.abs(a) * 10.7639; }
 function lotText(L) {
   const sqft = lotSqft(L), acres = sqft / 43560;
@@ -954,12 +990,17 @@ function renderCard(cand, total, idx) {
   const L = cand.L, s = summarize(L.p), r = s.r0;
   const style = r.STYLE ? titleCase(r.STYLE) : null;
   const chips = [];
-  if (s.year) chips.push(`<span class="chip">Built ${s.year} · ${THIS_YEAR - s.year} yrs</span>`);
-  else if (s.approxYear) chips.push(`<span class="chip">Built around ${s.approxYear} (effective year)</span>`);
-  if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
-  const ot = olderThan(s.year); if (ot) chips.push(`<span class="chip fun">${esc(ot)}</span>`);
-  const era = eraLabel(s.year); if (era && s.year < 1942) chips.push(`<span class="chip green">${esc(era)}</span>`);
-  if (s.updated) chips.push(`<span class="chip">Updated around ${s.updated}</span>`);
+  if (s.park) {
+    if (s.sites) chips.push(`<span class="chip">${s.sites} home sites</span>`);
+    if (s.year) chips.push(`<span class="chip">Park built ${s.year}</span>`);
+  } else {
+    if (s.year) chips.push(`<span class="chip">Built ${s.year} · ${THIS_YEAR - s.year} yrs</span>`);
+    else if (s.approxYear) chips.push(`<span class="chip">Built around ${s.approxYear} (effective year)</span>`);
+    if (style) chips.push(`<span class="chip">${esc(style)}</span>`);
+    const ot = olderThan(s.year); if (ot) chips.push(`<span class="chip fun">${esc(ot)}</span>`);
+    const era = eraLabel(s.year); if (era && s.year < 1942) chips.push(`<span class="chip green">${esc(era)}</span>`);
+    if (s.updated) chips.push(`<span class="chip">Updated around ${s.updated}</span>`);
+  }
 
   let valueBlock = '';
   if (s.commonOnly) {
@@ -979,32 +1020,28 @@ function renderCard(cand, total, idx) {
         const ratio = v ? v / sale.p : null;
         const ch = ratio && !s.multiSale && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
-        saleLine = `Last sold <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
+        saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else {
         saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
       }
     }
-    valueBlock = `<div class="value"><div class="k">${esc(s.region.valueLabel)}${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
+    valueBlock = `${s.park ? `<div class="park">${parkNote(s)}</div>` : ''}<div class="value"><div class="k">${s.park ? 'Whole park · ' : ''}${esc(s.region.valueLabel)}${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
       <div class="v">${v ? moneyFull(v) : '—'}</div><div class="s">${saleLine}</div></div>`;
   }
 
   const cells = [];
-  const living = s.condo ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
+  const living = s.condo || s.park ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
   if (living) cells.push(['Living area', `${Math.round(living).toLocaleString()} ft²`]);
-  if (!s.condo && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
-  if (num(r.STORIES)) cells.push(['Stories', num(r.STORIES)]);
+  if (!s.condo && !s.park && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
+  if (num(r.STORIES) && !s.park) cells.push(['Stories', num(r.STORIES)]);
   cells.push(['Lot', lotText(L)]);
-  if (s.units > 1) cells.push(['Units', s.units]);
+  if (s.park && s.sites) cells.push(['Home sites', s.sites]);
+  else if (s.units > 1 && !s.park) cells.push(['Units', s.units]);
   if (num(r.LAND_VAL) && !s.condo) cells.push(['Land value', money(r.LAND_VAL)]);
   while (cells.length % 3) cells.push(['', '']);
   const grid = `<div class="grid">${cells.map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>`;
 
-  let unitList = '';
-  if (s.condo) {
-    const rows = s.recs.slice().sort((a, b) => (num(b.TOTAL_VAL) || 0) - (num(a.TOTAL_VAL) || 0)).slice(0, 12)
-      .map((u) => `<div><span>${esc(titleCase(u.SITE_ADDR || u.LOCATION || 'Unit'))}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></div>`).join('');
-    unitList = `<div class="units">${rows}</div>`;
-  }
+  const unitList = s.condo ? unitListHtml(s) : '';
 
   const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${Math.round(cand.cdist)} m ${compass8(cand.bearing)}` : '';
   $('#cardBody').innerHTML = `${aerialSvg(L)}
@@ -1020,6 +1057,14 @@ function renderCard(cand, total, idx) {
     <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
   attachImageryFallback($('#cardBody'));
   paintFlood(L);
+  const ul = $('#cardBody .units');
+  if (ul) ul.addEventListener('click', (e) => {
+    if (e.target.closest('.all-btn')) { ul.classList.add('all'); return; }
+    const b = e.target.closest('.unit'); if (!b) return;
+    const d = $('#ud' + b.dataset.u); if (!d) return;
+    const open = d.classList.toggle('hidden') === false;
+    b.classList.toggle('open', open);
+  });
   $('#prevC').disabled = idx <= 0;
   $('#nextC').disabled = idx >= total - 1;
   $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
@@ -1029,12 +1074,34 @@ function renderCard(cand, total, idx) {
 function shareText(cand) {
   const s = summarize(cand.L.p), r = s.r0;
   const bits = [`${s.addr}${s.town ? ', ' + s.town : ''}`];
-  if (s.year) bits.push(`Built ${s.year}${r.STYLE ? ' · ' + titleCase(r.STYLE) : ''}`);
-  const ot = olderThan(s.year); if (ot) bits.push(ot + '!');
-  if (!s.condo && num(r.TOTAL_VAL)) bits.push(`Assessed ${moneyFull(r.TOTAL_VAL)}`);
+  if (s.year && !s.park) bits.push(`Built ${s.year}${r.STYLE ? ' · ' + titleCase(r.STYLE) : ''}`);
+  const ot = s.park ? null : olderThan(s.year); if (ot) bits.push(ot + '!');
+  if (s.park) bits.push('Mobile home park');
+  if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? 'Whole park assessed' : 'Assessed'} ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
   const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(`Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
   return bits.join('\n') + '\n\nFound with Housepoint';
+}
+
+// Condo units: sorted by unit number, each with its own details when tapped.
+function unitName(u) { return titleCase(u.SITE_ADDR || u.LOCATION || '') || 'Unit'; }
+function unitListHtml(s) {
+  const units = s.recs.slice().sort((a, b) => unitName(a).localeCompare(unitName(b), undefined, { numeric: true }));
+  const SHOW = 12;
+  const rows = units.map((u, i) => {
+    const sd = parseSaleDate(u.LS_DATE), sp = num(u.LS_PRICE);
+    const sale = sd ? (sp >= 10000 ? `${moneyFull(sp)} · ${fmtMonth(sd)}` : `Changed hands ${fmtMonth(sd)}`) : 'No recorded sale';
+    const t = estimateTax({ region: s.region, r0: u, recs: [u], commonOnly: false });
+    const area = num(u.RES_AREA) || num(u.BLD_AREA), yb = num(u.YEAR_BUILT);
+    const cell = (k, v) => v ? `<div>${esc(k)}<b>${esc(v)}</b></div>` : '';
+    const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
+      cell('Living area', area ? `${Math.round(area).toLocaleString()} ft²` : ''), cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : ''),
+      cell('Built', yb > 1600 ? String(yb) : ''), cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
+    const more = i >= SHOW ? ' more' : '';
+    return `<button class="unit${more}" data-u="${i}"><span>${esc(unitName(u))}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></button><div class="udet hidden" id="ud${i}">${det}</div>`;
+  }).join('');
+  const all = units.length > SHOW ? `<button class="all-btn">Show all ${units.length} units</button>` : '';
+  return `<div class="units-h">${units.length} units · tap one for its details</div><div class="units">${rows}${all}</div>`;
 }
 
 /* =========================================================================
@@ -1070,8 +1137,9 @@ function estimateTax(s) {
     const t = s.recs.map((r) => num(r.TOTAL_VAL)).filter((v) => v > 0).map((v) => v * town.r / 1000);
     if (!t.length) return null;
     const notes = [`${town.n}’s FY${MA_TAX_FY} residential rate is <b>$${town.r.toFixed(2)}</b> per $1,000 of assessed value.`];
-    if (MA_RES_EXEMPTION.has(town.n)) notes.push(`If the owner lives here, ${town.n}’s residential exemption can lower this a lot.`);
-    notes.push('Doesn’t include exemptions (seniors, veterans and others) or a Community Preservation Act surcharge.');
+    if (s.park) notes.unshift('The park owner’s tax on the whole park. Homes in the park pay a monthly fee through the park instead.');
+    else if (MA_RES_EXEMPTION.has(town.n)) notes.push(`If the owner lives here, ${town.n}’s residential exemption can lower this a lot.`);
+    if (!s.park) notes.push('Doesn’t include exemptions (seniors, veterans and others) or a Community Preservation Act surcharge.');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
   if (s.region.id === 'FL') {
@@ -1113,7 +1181,7 @@ function taxBoxHtml(s) {
   const unit = t.perUnit ? 'per unit, per year' : 'per year';
   const lines = t.notes.slice();
   if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
-  return `<div class="tax"><div class="k">Estimated property tax</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
+  return `<div class="tax"><div class="k">Estimated property tax${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
 /* =========================================================================
@@ -1419,10 +1487,10 @@ function tick(ts) {
     if (c) {
       const s = summarize(c.L.p);
       $('#liveA').textContent = s.addr;
-      const val = s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
+      const val = s.park ? (s.sites ? `Mobile home park · ${s.sites} sites` : 'Mobile home park') : s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
       $('#liveB').textContent = c.inside
-        ? [val, s.year ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
-        : [s.year ? `Built ${s.year}` : null, val, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
+        ? [val, s.year && !s.park ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
+        : [s.year && !s.park ? `Built ${s.year}` : null, val, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
       label.classList.remove('dim'); S.live = c; return;
     }
   }
@@ -1530,8 +1598,8 @@ function arScan(ox, oy, heading, half) {
 
 function arChipHtml(L) {
   const s = summarize(L.p), m = lotMetrics(L);
-  const top = s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? 'Condos' : 'House';
-  const sub = (s.condo || s.commonOnly) ? `${s.units} units` : (money(s.r0.TOTAL_VAL) || '');
+  const top = s.park ? 'Park' : s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? 'Condos' : 'House';
+  const sub = s.park ? (s.sites ? `${s.sites} sites` : 'Mobile homes') : (s.condo || s.commonOnly) ? `${s.units} units` : (money(s.r0.TOTAL_VAL) || '');
   const dot = ageColor(m.year, L.p.region);
   return `<span class="y">${dot ? `<i style="background:${dot}"></i>` : ''}${esc(top)}</span>${sub ? `<span class="m">${esc(sub)}</span>` : ''}`;
 }
@@ -1670,9 +1738,9 @@ if (!['plain', 'age', 'value', 'sold'].includes(S.map.color)) S.map.color = 'pla
 function lotMetrics(L) {
   if (L.m) return L.m;
   const s = summarize(L.p);
-  const val = s.commonOnly || s.condo ? null : num(s.r0.TOTAL_VAL);    // a condo building isn't comparable to a house, so it isn't colored by value
+  const val = s.commonOnly || s.condo || s.park ? null : num(s.r0.TOTAL_VAL);    // a condo building or a whole park isn't comparable to a house
   const sale = s.sales.find((q) => q.p >= 10000);
-  return (L.m = { year: s.year || s.approxYear || null, val: val && val > 1000 ? val : null, sold: sale ? sale.d.getFullYear() : null });
+  return (L.m = { year: s.park ? null : s.year || s.approxYear || null, val: val && val > 1000 ? val : null, sold: sale ? sale.d.getFullYear() : null });
 }
 const yrRange = (a, b) => `${a}–${Math.floor(a / 100) === Math.floor(b / 100) ? String(b).slice(2) : b}`;
 function ageScale(rid) {
@@ -1950,9 +2018,12 @@ async function makeShareImage(cand) {
 
   // chips
   const chips = [];
-  if (s.year) chips.push([`Built ${s.year}`, false]);
-  if (r.STYLE) chips.push([titleCase(r.STYLE), false]);
-  const ot = olderThan(s.year); if (ot) chips.push([ot, true]);
+  if (s.park) chips.push(['Mobile home park', false]);
+  else {
+    if (s.year) chips.push([`Built ${s.year}`, false]);
+    if (r.STYLE) chips.push([titleCase(r.STYLE), false]);
+    const ot = olderThan(s.year); if (ot) chips.push([ot, true]);
+  }
   g.font = `600 30px ${SANS}`; let cx = PAD; y += 34;
   for (const [t, hot] of chips) {
     const w = g.measureText(t).width + 44;
@@ -1965,14 +2036,14 @@ async function makeShareImage(cand) {
 
   // value + sale
   y += 62; g.fillStyle = '#6f665b'; g.font = `600 26px ${SANS}`;
-  g.fillText((s.condo ? 'UNIT VALUES' : s.region.valueLabel.toUpperCase()) + (s.fy ? ` · ${s.region.yearLabel(s.fy).toUpperCase()}` : ''), PAD, y);
+  g.fillText((s.condo ? 'UNIT VALUES' : (s.park ? 'WHOLE PARK · ' : '') + s.region.valueLabel.toUpperCase()) + (s.fy ? ` · ${s.region.yearLabel(s.fy).toUpperCase()}` : ''), PAD, y);
   y += 76; g.fillStyle = '#1d1a17'; g.font = `700 72px ${SERIF}`;
   let big = '—';
   if (s.condo && s.vals.length) { const lo = Math.min(...s.vals), hi = Math.max(...s.vals); big = lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`; }
   else if (num(r.TOTAL_VAL)) big = moneyFull(r.TOTAL_VAL);
   g.fillText(big, PAD, y);
   const sale = s.sales.find((q) => q.p >= 10000);
-  if (sale && !s.condo) { y += 54; g.fillStyle = '#6f665b'; g.font = `500 32px ${SANS}`; g.fillText(`Last sold ${moneyFull(sale.p)} in ${sale.d.getFullYear()}`, PAD, y); }
+  if (sale && !s.condo) { y += 54; g.fillStyle = '#6f665b'; g.font = `500 32px ${SANS}`; g.fillText(`${s.park ? 'Whole park sold' : 'Last sold'} ${moneyFull(sale.p)} in ${sale.d.getFullYear()}`, PAD, y); }
 
   // footer
   g.fillStyle = '#a2988b'; g.font = `500 24px ${SANS}`;
@@ -2005,7 +2076,7 @@ function renderNear() {
   const ref = refPoint();
   if (!ref || !S.proj || !S.local.length) { panelItems = []; return '<div class="empty">No property data loaded here yet. Point at a house or search the map first.</div>'; }
   const [ox, oy] = S.proj.fwd(ref.lat, ref.lon);
-  const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < 350).map((L) => ({ L, s: summarize(L.p) }));
+  const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < 350).map((L) => ({ L, s: summarize(L.p) })).filter((x) => !x.s.park);
   if (!near.length) { panelItems = []; return '<div class="empty">No houses within 350 m of here.</div>'; }
   const best = (arr, f) => arr.reduce((a, b) => (a === null || f(b) > f(a) ? b : a), null);
   const dated = near.filter((x) => x.s.year);
@@ -2096,7 +2167,7 @@ if (DEMO) {
 }
 
 // test hooks
-window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
 })();
 </script>
