@@ -1,0 +1,12 @@
+name: ios-probe
+on:
+  push:
+    branches: [ci-probe]
+jobs:
+  probe:
+    runs-on: macos-latest
+    steps:
+      - run: |
+          xcodebuild -version | tr '\n' ' ' | sed 's/^/::notice title=xcode::/'; echo
+          xcrun simctl list runtimes | grep -i ios | tail -3 | tr '\n' ';' | sed 's/^/::notice title=runtimes::/'; echo
+          ls /Applications | grep -i xcode | tr '\n' ' ' | sed 's/^/::notice title=xcodes::/'; echo
