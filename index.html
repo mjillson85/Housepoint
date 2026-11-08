@@ -335,6 +335,12 @@
   .arc .y { font-family: var(--serif); font-weight: 700; font-size: 15px; line-height: 1.15; display: flex; align-items: center; gap: 5px; }
   .arc .y i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .arc .m { font-size: 11.5px; color: var(--mute); font-weight: 500; }
+  .arc.below::after { bottom: auto; top: -5px; border-top: 0; border-bottom: 5px solid rgba(246,241,231,.93); }   /* tag under its house points up */
+  .arc.led::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1.5px; height: var(--lead); margin-left: -.75px; background: rgba(246,241,231,.8); }
+  .arc.led.below::before { top: auto; bottom: 100%; }
+  .arc.far { padding: 3px 8px 4px; border-radius: 9px; }                 /* distant houses: just the year, so more fit near the horizon */
+  .arc.far .y { font-size: 13px; }
+  .arc.far .m { display: none; }
   #arPill.off { opacity: .6; }
   body.mapmode .demo-flag { left: auto; right: 14px; transform: none; top: calc(76px + var(--safe-t)); }
   #debug { position: fixed; left: 8px; top: calc(160px + var(--safe-t)); z-index: 45; background: rgba(0,0,0,.72); color: #9ff59a; font: 11px/1.45 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 8px; pointer-events: none; white-space: pre; max-width: 70vw; }
@@ -2718,7 +2724,7 @@ function drawRadar() {
    ========================================================================= */
 const FOV_OVERRIDE = qs.has('fov') ? parseFloat(qs.get('fov')) : NaN;   // side-to-side view in degrees, if the default is off for a phone
 const CAM_HALF_LONG = 33.7;    // half the view across the long side of a phone's main (1x) camera, degrees
-const AR_MAX = 7, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
+const AR_MAX = 9, AR_FAR = 75, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
 const AR = { on: true, items: [], els: new Map(), at: 0, proj: null, f: 0, liveRect: null };
 try { AR.on = localStorage.getItem('housepoint.ar') !== '0'; } catch (e) {}
 const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
@@ -2812,24 +2818,38 @@ function arRelayout(f, half) {
       el = document.createElement('button'); el.className = 'arc'; el.dataset.k = k; el.innerHTML = arChipHtml(v.L);
       el.addEventListener('click', () => arOpen(k)); box.appendChild(el);
     }
+    el.classList.toggle('far', v.dist > AR_FAR);
     next.set(k, el);
     const prev = AR.items.find((i) => i.k === k);
     Object.assign(v, { k, el, x: prev ? prev.x : null, y: prev ? prev.y : null, w: el.offsetWidth || 72, h: el.offsetHeight || 40 });
   }
   for (const [k, el] of AR.els) if (!next.has(k)) el.remove();
   AR.els = next;
-  // Tags that would overlap: the bigger/nearer house keeps its spot, the other moves up a row (up to three), or sits out.
-  const W = innerWidth, H = innerHeight, pitch = arPitch(), placed = [];
+  // Tags that would overlap: the bigger/nearer house keeps its spot, the other moves up a row, or sits out. The big label
+  // over the house in the circle counts too: distant houses sit near the horizon right below it, so their tags hop over it.
+  const W = innerWidth, H = innerHeight, pitch = arPitch(), placed = [];   // boxes by center: { x, cy, w, h }
+  const ll = $('#liveLabel');
+  if (!ll.classList.contains('dim')) { const r = ll.getBoundingClientRect(); placed.push({ x: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.width, h: r.height }); }
+  // Spots to try, nearest the house first: just above it, a row up, just below it (pointing up), a row down, two rows up…
+  const top0 = Math.max(70, ...['#hud', '#arPill'].map((q) => { const e = $(q); return e && e.offsetParent ? e.getBoundingClientRect().bottom + 6 : 0; }));
+  const bottom0 = H - 200;                                     // clear of the compass and the shutter
   for (const v of keep) {
-    const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.dist, f, pitch, H);
-    const hit = (lift) => placed.some((p) => Math.abs(p.x - x) < (p.w + v.w) / 2 + 6 && Math.abs(p.y - (y0 - lift)) < (p.h + v.h) / 2 + 4);
-    v.lift = 0;
-    while (hit(v.lift) && v.lift < 3 * (v.h + 6)) v.lift += v.h + 6;
-    v.hidden = hit(v.lift) || y0 - v.lift - v.h < 70;          // stacked too high: sits out rather than hide under the top bar
-    if (!v.hidden) placed.push({ x, y: y0 - v.lift, w: v.w, h: v.h });
+    const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.dist, f, pitch, H), row = v.h + 6;
+    const spots = [0, 1, -1, -2, 2, -3].map((k) => k >= 0
+      ? { k, cy: y0 - 6 - v.h / 2 - k * row, lead: k * row }                    // above: pointer down at the house
+      : { k, cy: y0 + 6 + v.h / 2 + (-k - 1) * row, lead: 6 + (-k - 1) * row });  // below: pointer up at the house
+    const fits = (sp) => sp.cy - v.h / 2 >= top0 && sp.cy + v.h / 2 <= bottom0
+      && !placed.some((p) => Math.abs(p.x - x) < (p.w + v.w) / 2 + 6 && Math.abs(p.cy - sp.cy) < (p.h + v.h) / 2 + 4);
+    const sp = spots.find(fits);
+    v.hidden = !sp;
+    v.below = !!sp && sp.k < 0;
+    v.lift = !sp ? 0 : sp.k >= 0 ? sp.lead : -(sp.lead + v.h + 6);   // arFrame puts the tag's bottom edge (+6) at y0 − lift
+    v.el.classList.toggle('below', v.below);
+    v.el.style.setProperty("--lead", `${sp ? sp.lead : 0}px`);
+    v.el.classList.toggle('led', !!sp && sp.lead > 8);
+    if (sp) placed.push({ x, cy: sp.cy, w: v.w, h: v.h });
   }
   AR.items = keep;
-  const ll = $('#liveLabel');
   AR.liveRect = ll.classList.contains('dim') ? null : ll.getBoundingClientRect();
 }
 
