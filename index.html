@@ -1797,7 +1797,8 @@ function floodView(env) {
    Only the house's location is sent, never anything about you.
    ========================================================================= */
 // Free sign-up keys (they limit request rates; they aren't secrets): api.census.gov/data/key_signup.html and api.data.gov/signup
-const KEYS = { census: 'd7e5755c018834c78e91aaa1039626e6baedd907', fbi: 'QJ7CG8JwMNtGqqNg8BNCBD9kqQd8tLrqhbhRbDc8' };
+// Free rate-limit keys (not secrets). Geoapify: free plan, 3,000 credits a day; without a key Nearby uses public Overpass servers.
+const KEYS = { census: 'd7e5755c018834c78e91aaa1039626e6baedd907', fbi: 'QJ7CG8JwMNtGqqNg8BNCBD9kqQd8tLrqhbhRbDc8', geoapify: '' };
 const BUY_KEY = 'housepoint.buyOpen';
 let buyAuto = false; try { buyAuto = localStorage.getItem(BUY_KEY) === '1'; } catch (e) { /* private mode */ }
 const BUY = new Map();
@@ -2169,21 +2170,43 @@ const NEAR_GROUPS = [   // fixed color per group (validated categorical palette;
 const GROUP = Object.fromEntries(NEAR_GROUPS.map((g) => [g.id, g]));
 const NEAR_CATS = [
   // nw = points and outlines; only parks and hospitals (often mapped as multi-part areas) also ask for relations, which are slow.
-  { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, q: 'nw["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
-  { label: 'Pharmacy', g: 'health', unnamed: 'Pharmacy', r: 3200, q: 'nw["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
-  { label: 'Coffee', g: 'dining', unnamed: 'Café', r: 1600, q: 'nw["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
-  { label: 'Restaurant', g: 'dining', unnamed: 'Restaurant', r: 800, list: false, is: (t) => /^(restaurant|fast_food)$/.test(t.amenity || '') },
-  { label: 'Park', g: 'parks', unnamed: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
-  { label: 'Playground', g: 'parks', unnamed: 'Playground', r: 1600, q: 'nw["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
-  { label: 'Train', g: 'transit', unnamed: 'Station', r: 6400, q: 'nw["railway"="station"]', is: (t) => t.railway === 'station' },
-  { label: 'Bus stop', g: 'transit', unnamed: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
-  { label: 'Hospital', g: 'health', unnamed: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
-  { label: 'Library', g: 'other', unnamed: 'Library', r: 4800, q: 'nw["amenity"="library"]', is: (t) => t.amenity === 'library' },
-  { label: 'Fire station', g: 'other', unnamed: 'Fire station', r: 4800, q: 'nw["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
+  { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, gc: 'commercial.supermarket', gl: 10, q: 'nw["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
+  { label: 'Pharmacy', g: 'health', unnamed: 'Pharmacy', r: 3200, gc: 'healthcare.pharmacy', gl: 10, q: 'nw["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
+  { label: 'Coffee', g: 'dining', unnamed: 'Café', r: 1600, gc: 'catering.cafe', gl: 10, q: 'nw["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
+  { label: 'Restaurant', g: 'dining', unnamed: 'Restaurant', r: 800, list: false, gc: 'catering.restaurant,catering.fast_food', gl: 60, is: (t) => /^(restaurant|fast_food)$/.test(t.amenity || '') },
+  { label: 'Park', g: 'parks', unnamed: 'Park', r: 1600, gc: 'leisure.park', gl: 10, gn: true, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
+  { label: 'Playground', g: 'parks', unnamed: 'Playground', r: 1600, gc: 'leisure.playground', gl: 10, q: 'nw["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
+  { label: 'Train', g: 'transit', unnamed: 'Station', r: 6400, gc: 'public_transport.train,public_transport.subway,public_transport.light_rail', gl: 10, q: 'nw["railway"="station"]', is: (t) => t.railway === 'station' },
+  { label: 'Bus stop', g: 'transit', unnamed: 'Bus stop', r: 800, gc: 'public_transport.bus', gl: 20, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
+  { label: 'Hospital', g: 'health', unnamed: 'Hospital', r: 16000, gc: 'healthcare.hospital', gl: 5, gn: true, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
+  { label: 'Library', g: 'other', unnamed: 'Library', r: 4800, gc: 'education.library', gl: 5, q: 'nw["amenity"="library"]', is: (t) => t.amenity === 'library' },
+  { label: 'Fire station', g: 'other', unnamed: 'Fire station', r: 4800, gc: 'service.fire_station', gl: 5, q: 'nw["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
 ];
 const NEAR_VIEW = new Map();      // card key -> what Nearby last showed, for the filter chips
+// Geoapify (OpenStreetMap places on paid, fast servers): one small request per row, started a quarter second apart
+// to stay under the free plan's 5 requests a second. Restaurants: up to 60, so the count reads "60+" in busy places.
+async function geoapifyNear(lat, lon) {
+  const ask = (c, i) => new Promise((r) => setTimeout(r, i * 250)).then(() => {
+    const u = `https://api.geoapify.com/v2/places?categories=${c.gc}${c.gn ? '&conditions=named' : ''}&filter=circle:${lon.toFixed(6)},${lat.toFixed(6)},${c.r}`
+      + `&bias=proximity:${lon.toFixed(6)},${lat.toFixed(6)}&limit=${c.gl}&apiKey=${KEYS.geoapify}`;
+    return getJSON(u, {}, 15000).catch((e) => { throw new Error(`Geoapify: ${/^HTTP 401|^HTTP 403/.test(e.message) ? 'the key was refused' : /^HTTP 429/.test(e.message) ? 'today’s free lookups are used up' : fetchMsg(e)}`); });
+  });
+  const res = await Promise.all(NEAR_CATS.map(ask));
+  const cats = NEAR_CATS.map((c, i) => {
+    const seen = new Set();
+    const hits = (res[i].features || []).map((f) => {
+      const p = f.properties || {}, la = p.lat ?? (f.geometry && f.geometry.coordinates[1]), lo = p.lon ?? (f.geometry && f.geometry.coordinates[0]);
+      return la == null ? null : { id: p.place_id || `${la},${lo}`, name: p.name || null, la, lo, subway: (p.categories || []).some((k) => /subway|light_rail/.test(k)) };
+    }).filter((h) => h && (h.name ? !seen.has(h.name + '|' + h.la.toFixed(3)) && seen.add(h.name + '|' + h.la.toFixed(3)) : true));
+    return { ...c, hits, capped: hits.length >= c.gl };           // asked for at most gl: there may be more
+  });
+  const rc = cats.find((c) => c.label === 'Restaurant');
+  return { cats, restaurants: rc ? (rc.hits.length >= rc.gl ? `${rc.gl}+` : rc.hits.length) : null, via: 'Geoapify' };
+}
 async function nearbyFor(lat, lon) {
   return nearMemo('near', lat, lon, 150, async () => {
+    let geoErr = null;
+    if (KEYS.geoapify) { try { return await geoapifyNear(lat, lon); } catch (e) { console.warn('Geoapify', e); geoErr = e.message; } }   // then the volunteer servers
     const at = (r) => `(around:${r},${lat.toFixed(6)},${lon.toFixed(6)})`;
     // Everything but restaurants in one set; restaurants counted, and the first 60 listed.
     const q = `[out:json][timeout:20];(${NEAR_CATS.filter((c) => c.q).map((c) => c.q + at(c.r) + ';').join('')});out center qt;`
@@ -2194,7 +2217,7 @@ async function nearbyFor(lat, lon) {
         .catch((e) => { throw new Error(fetchMsg(e)); });
       if (r.remark && /error|timed out/i.test(r.remark) && !(r.elements || []).length) throw new Error(r.remark.slice(0, 80));
       return r;
-    }]), 7000);
+    }]), 7000).catch((e) => { throw new Error(geoErr ? `${geoErr} · ${e.message}` : e.message); });
     const els = (j.elements || []).filter((e) => e.type !== 'count');
     const out = NEAR_CATS.map((c) => {
       const hits = els.filter((e) => e.tags && c.is(e.tags)).map((e) => {
@@ -2206,7 +2229,7 @@ async function nearbyFor(lat, lon) {
       return { ...c, hits: hits.filter((h) => { const k = h.name ? `${h.name}|${h.la.toFixed(3)}|${h.lo.toFixed(3)}` : h.id; return seen.has(k) ? false : seen.add(k); }) };
     });
     const cnt = (j.elements || []).find((e) => e.type === 'count');
-    return { cats: out, restaurants: cnt && cnt.tags ? num(cnt.tags.total) : null };
+    return { cats: out, restaurants: cnt && cnt.tags ? num(cnt.tags.total) : null, via: 'OpenStreetMap' };
   });
 }
 // Distances from this house (results are shared with houses next door).
@@ -2222,7 +2245,7 @@ function travelTime(m) {
   return `${Math.max(2, Math.round(m * 1.35 / 600))} min drive`;
 }
 const RING_M = [[402, '¼ mi'], [805, '½ mi'], [1609, '1 mi']];
-function radarSvg(L, cats, group) {
+function radarSvg(L, cats, group, via) {
   // Scale so the one-mile ring and its label fit inside the shorter side.
   const proj = L.proj, [cx, cy] = L.c, W = 340, H = 300, k = (H / 2 - 16) / RING_M[RING_M.length - 1][0], R = W / 2 / k;
   const ext = { x0: cx - W / 2 / k, y0: cy - H / 2 / k, w: W / k, h: H / k };
@@ -2245,7 +2268,7 @@ function radarSvg(L, cats, group) {
       return `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="${GROUP[c.g].color}" stroke="#fff" stroke-width="2"><title>${esc((h.name || c.unnamed) + ' · ' + c.label + ' · ' + miles(h.d))}</title></circle>`; }).join('');
   const home = `<circle cx="${X(cx)}" cy="${Y(cy)}" r="7" fill="#b4432c" stroke="#fff" stroke-width="2.5"/>`;
   return `<div class="radar"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of nearby places with rings at a quarter, half and one mile">
-    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}<text x="12" y="20" font-size="11" font-weight="700" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">N ↑</text></svg><span class="attr">Map: USGS · Places: OpenStreetMap</span></div>`;
+    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}<text x="12" y="20" font-size="11" font-weight="700" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">N ↑</text></svg><span class="attr">Map: USGS · Places: OpenStreetMap${via === 'Geoapify' ? ' via Geoapify' : ''}</span></div>`;
 }
 function nearHtml(d, lat, lon, L, group = 'all') {
   const cats = nearCats(d, lat, lon);
@@ -2255,7 +2278,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
   if (group === 'all') {                             // the closest of each kind
     rows = cats.filter((c) => c.list !== false).map((c) => {
       if (!c.best) return `<div class="brow"><div class="l">${c.label}</div><div class="m"><small>None within ${miles(c.r)}</small></div></div>`;
-      const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || c.unnamed || c.label) + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
+      const name = c.count ? `${c.n}${c.capped && c.n === c.hits.length ? '+' : ''} within ${miles(c.r)}` : (c.best.name || c.unnamed || c.label) + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
       return `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(name)}<small>${travelTime(c.best.d)}</small></div><div class="r">${miles(c.best.d)}</div></div>`;
     }).join('') + (d.restaurants != null ? `<div class="brow"><div class="l">Restaurants</div><div class="m">${d.restaurants} within half a mile</div></div>` : '');
   } else {                                           // several of one kind, nearest first
@@ -2263,8 +2286,8 @@ function nearHtml(d, lat, lon, L, group = 'all') {
     rows = list.length ? list.map(({ h, c }) => `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(h.name || c.unnamed)}<small>${travelTime(h.d)}</small></div><div class="r">${miles(h.d)}</div></div>`).join('')
       : `<div class="brow"><div class="m"><small>Nothing of this kind found nearby.</small></div></div>`;
   }
-  return `<div class="bt">Nearby</div>${radarSvg(L, cats, group)}${chips}<div class="brows">${rows}</div>
-    <div class="bl">Walking times assume about 3 mph on streets; past a mile and a half it’s a rough drive time. Distances are straight-line. Places © OpenStreetMap contributors; base map USGS.</div>`;
+  return `<div class="bt">Nearby</div>${radarSvg(L, cats, group, d.via)}${chips}<div class="brows">${rows}</div>
+    <div class="bl">Walking times assume about 3 mph on streets; past a mile and a half it’s a rough drive time. Distances are straight-line. Places © OpenStreetMap contributors${d.via === 'Geoapify' ? ', powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a>' : ''}; base map USGS.</div>`;
 }
 
 /* =========================================================================
@@ -3356,7 +3379,7 @@ const ABOUT = `
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
     <li><b>Neighborhood:</b> U.S. Census Bureau, American Community Survey 5-year estimates for the census tract (tract found with the Census Bureau’s TIGERweb, or the FCC’s area lookup as a backup).</li>
     <li><b>Safety:</b> crimes local police departments report to the FBI (Uniform Crime Reporting), via the FBI Crime Data Explorer.</li>
-    <li><b>Nearby places:</b> © OpenStreetMap contributors, via the Overpass API (Open Database License). Walking and driving times are rough figures from straight-line distance.</li>
+    <li><b>Nearby places:</b> © OpenStreetMap contributors (Open Database License), powered by Geoapify, with the public Overpass API as a backup. Walking and driving times are rough figures from straight-line distance.</li>
     <li><b>Nearby map:</b> USGS National Map topographic base map (public domain).</li>
     <li><b>Monthly cost:</b> the starting rate is Freddie Mac’s Primary Mortgage Market Survey average for a 30-year fixed loan; insurance starts at the state’s average homeowners policy for a $300,000 home (Insurify, 2026); mortgage insurance is a rough 0.6% of the loan a year. Change any of them to match a real quote.</li>
     <li><b>Street view and listings:</b> open Google Maps, Zillow or a Google search; Housepoint doesn’t read anything from those sites.</li>
