@@ -1412,6 +1412,12 @@ function renderCard(cand, total, idx) {
     if (s.updated) chips.push(`<span class="chip">Updated around ${s.updated}</span>`);
   }
 
+  // $1 or $100 deeds (to a trust, between family) aren't sales; show the latest real one.
+  const condoSaleLine = (s) => {
+    const m = s.sales.find((q) => q.p >= 10000);
+    if (m) return `Latest unit sale <b>${money(m.p)}</b> · ${fmtMonth(m.d)}`;
+    return s.sales[0] ? `No market sales on record (latest transfer ${fmtMonth(s.sales[0].d)} was for a nominal amount)` : 'No recorded sales';
+  };
   let valueBlock = '';
   if (s.commonOnly) {
     valueBlock = `<div class="value"><div class="k">Condo building</div><div class="v">${s.units > 1 ? s.units + ' units' : 'Condo'}</div>
@@ -1420,7 +1426,7 @@ function renderCard(cand, total, idx) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
       <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>
-      <div class="s">${s.sales[0] ? `Latest unit sale <b>${money(s.sales[0].p) || 'non-market'}</b> · ${fmtMonth(s.sales[0].d)}` : 'No recorded sales'}</div></div>`;
+      <div class="s">${condoSaleLine(s)}</div></div>`;
   } else {
     const v = num(r.TOTAL_VAL), sale = s.sales[0];
     let saleLine = 'No recorded sale on file';
