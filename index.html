@@ -272,7 +272,7 @@
   .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .cgrid label { font-size: 11.5px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
   .cgrid input { display: block; width: 100%; margin-top: 3px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
-    font: 600 15px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+    font: 600 16px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
   .cchips { display: flex; align-items: center; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
   .cchips > span { font-size: 11.5px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; flex-basis: 100%; margin-bottom: -1px; }
   .cchips button, .nchips button { height: 32px; padding: 0 11px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-size: 13.5px; font-weight: 600; }
@@ -499,10 +499,10 @@ function toast(msg, ms = 2600) {
 function money(v) {
   const n = num(v); if (!n) return null;
   if (n >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
-  if (n >= 1e3) return '$' + Math.round(n / 1e3).toLocaleString() + 'k';
-  return '$' + n.toLocaleString();
+  if (n >= 1e3) return '$' + Math.round(n / 1e3).toLocaleString('en-US') + 'k';
+  return '$' + n.toLocaleString('en-US');
 }
-const moneyFull = (v) => { const n = num(v); return n ? '$' + Math.round(n).toLocaleString() : null; };
+const moneyFull = (v) => { const n = num(v); return n ? '$' + Math.round(n).toLocaleString('en-US') : null; };
 
 function parseSaleDate(v) {
   if (v == null || v === '') return null;
@@ -1392,7 +1392,7 @@ function lotSqft(L) { let a = 0; for (const r of L.rings) a += ringArea(r); retu
 function lotText(L) {
   const sqft = lotSqft(L), acres = sqft / 43560;
   if (acres >= 0.5) return `${acres.toFixed(acres >= 10 ? 0 : 1)} ac`;
-  return `${(Math.round(sqft / (sqft < 10000 ? 10 : 100)) * (sqft < 10000 ? 10 : 100)).toLocaleString()} ft²`;
+  return `${(Math.round(sqft / (sqft < 10000 ? 10 : 100)) * (sqft < 10000 ? 10 : 100)).toLocaleString('en-US')} ft²`;
 }
 
 function renderCard(cand, total, idx) {
@@ -1443,7 +1443,7 @@ function renderCard(cand, total, idx) {
 
   const cells = [];
   const living = s.condo || s.park ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
-  if (living) cells.push(['Living area', `${Math.round(living).toLocaleString()} ft²`]);
+  if (living) cells.push(['Living area', `${Math.round(living).toLocaleString('en-US')} ft²`]);
   if (!s.condo && !s.park && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
   if (!s.condo && !s.park && num(r.BEDS)) cells.push(['Bedrooms', num(r.BEDS)]);
   if (!s.condo && !s.park && num(r.BATHS)) cells.push(['Baths', bathText(r)]);
@@ -1515,7 +1515,7 @@ function unitListHtml(s) {
     const area = num(u.RES_AREA) || num(u.BLD_AREA), yb = num(u.YEAR_BUILT);
     const cell = (k, v) => v ? `<div>${esc(k)}<b>${esc(v)}</b></div>` : '';
     const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
-      cell('Living area', area ? `${Math.round(area).toLocaleString()} ft²` : ''), cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : ''),
+      cell('Living area', area ? `${Math.round(area).toLocaleString('en-US')} ft²` : ''), cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : ''),
       cell('Bedrooms', num(u.BEDS) ? String(num(u.BEDS)) : ''), cell('Baths', num(u.BATHS) ? bathText(u) : ''),
       cell('Built', yb > 1600 ? String(yb) : ''), t && t.actual ? cell('Property tax', t.lo > 0 ? `${moneyFull(t.lo)}/yr` : '') : cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
     const more = i >= SHOW ? ' more' : '';
@@ -1771,7 +1771,7 @@ function floodView(env) {
       lines.push(fl.exact ? `Part of the lot is in zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : `Zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge} is nearby`);
     }
   }
-  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString()} ft above sea level (middle of the lot)` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the lot)`);
+  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString('en-US')} ft above sea level (middle of the lot)` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the lot)`);
   if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft above sea level`);
   return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
 }
@@ -1798,7 +1798,7 @@ function nearMemo(kind, lat, lon, m, fn) {
 }
 const distM = (la1, lo1, la2, lo2) => { const a = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(a)); };
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
-const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString());
+const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/' };
 
 function buyBoxHtml(L) {
@@ -1825,7 +1825,7 @@ function openBuy(L, s) {
   const box = $('#buyBox'); if (!box) return;
   const key = L.p.key, [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
   const sec = (id, t, msg) => `<div class="bsec" id="${id}"><div class="bt">${t}</div><div class="bl">${msg}</div></div>`;
-  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}${calcHtml(L, s)}
+  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}${calcApplies(s) ? calcHtml(L, s) : ''}
     ${sec('bSchools', 'Schools', 'Finding schools…')}${sec('bHood', 'Neighborhood', 'Loading Census figures…')}
     ${sec('bSafety', 'Safety', 'Loading crime reports…')}${sec('bNear', 'Nearby', 'Finding stores, parks and transit…')}`;
   const put = (id, title, work) => work.then((html) => ({ html }), (e) => { console.warn(id, e); return { err: e }; }).then(({ html, err }) => {
@@ -2122,7 +2122,7 @@ const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.p
 const NEAR_GROUPS = [   // fixed color per group (validated categorical palette; every dot is also named in the list)
   { id: 'groceries', label: 'Groceries', color: '#2a78d6' }, { id: 'dining', label: 'Dining', color: '#eb6834' },
   { id: 'parks', label: 'Parks', color: '#1baf7a' }, { id: 'transit', label: 'Transit', color: '#eda100' },
-  { id: 'health', label: 'Health', color: '#e87ba4' }, { id: 'other', label: 'Other', color: '#6250d6' }];
+  { id: 'health', label: 'Health', color: '#e87ba4' }, { id: 'other', label: 'Services', color: '#6250d6' }];
 const GROUP = Object.fromEntries(NEAR_GROUPS.map((g) => [g.id, g]));
 const NEAR_CATS = [
   { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
@@ -2154,10 +2154,11 @@ async function nearbyFor(lat, lon) {
     const out = NEAR_CATS.map((c) => {
       const hits = els.filter((e) => e.tags && c.is(e.tags)).map((e) => {
         const la = e.lat ?? (e.center && e.center.lat), lo = e.lon ?? (e.center && e.center.lon);
-        return la == null ? null : { name: e.tags.name || e.tags.brand || null, la, lo, subway: e.tags.station === 'subway' || e.tags.subway === 'yes' };
+        return la == null ? null : { id: e.id != null ? `${e.type}/${e.id}` : `${e.type}@${la},${lo}`, name: e.tags.name || e.tags.brand || null, la, lo, subway: e.tags.station === 'subway' || e.tags.subway === 'yes' };
       }).filter(Boolean);
-      const seen = new Set();                         // the same place mapped as a point and an outline counts once
-      return { ...c, hits: hits.filter((h) => { const k = `${h.name}|${h.la.toFixed(3)}|${h.lo.toFixed(3)}`; return seen.has(k) ? false : seen.add(k); }) };
+      // A named place mapped as both a point and an outline counts once; unnamed ones (two bus stops across a street) are each their own.
+      const seen = new Set();
+      return { ...c, hits: hits.filter((h) => { const k = h.name ? `${h.name}|${h.la.toFixed(3)}|${h.lo.toFixed(3)}` : h.id; return seen.has(k) ? false : seen.add(k); }) };
     });
     const cnt = (j.elements || []).find((e) => e.type === 'count');
     return { cats: out, restaurants: cnt && cnt.tags ? num(cnt.tags.total) : null };
@@ -2183,7 +2184,8 @@ function radarSvg(L, cats, group) {
   const X = (x) => ((x - ext.x0) * k).toFixed(1), Y = (y) => ((ext.y0 + ext.h - y) * k).toFixed(1);
   // USGS topographic base map (public domain), faded so the dots read.
   const [la0, lo0] = proj.inv(ext.x0, ext.y0), [la1, lo1] = proj.inv(ext.x0 + ext.w, ext.y0 + ext.h);
-  const z = Math.min(16, Math.max(11, Math.round(Math.log2(40075016.686 * Math.cos(rad((la0 + la1) / 2)) / 256 * k))));
+  // One zoom level finer than 1:1 so street names stay sharp on 2–3× phone screens (still only a dozen or so tiles).
+  const z = Math.min(16, Math.max(11, Math.round(Math.log2(40075016.686 * Math.cos(rad((la0 + la1) / 2)) / 256 * k)) + 1));
   const n = 2 ** z, xa = Math.floor((lo0 + 180) / 360 * n), xb = Math.floor((lo1 + 180) / 360 * n), ya = Math.floor(tileY(la1, n)), yb = Math.floor(tileY(la0, n));
   let tiles = '';
   if ((xb - xa + 1) * (yb - ya + 1) <= 30) for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) {
@@ -2198,12 +2200,12 @@ function radarSvg(L, cats, group) {
       return `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="${GROUP[c.g].color}" stroke="#fff" stroke-width="2"><title>${esc((h.name || c.unnamed) + ' · ' + c.label + ' · ' + miles(h.d))}</title></circle>`; }).join('');
   const home = `<circle cx="${X(cx)}" cy="${Y(cy)}" r="7" fill="#b4432c" stroke="#fff" stroke-width="2.5"/>`;
   return `<div class="radar"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of nearby places with rings at a quarter, half and one mile">
-    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}</svg><span class="attr">Map: USGS · Places: OpenStreetMap</span></div>`;
+    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}<text x="12" y="20" font-size="11" font-weight="700" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">N ↑</text></svg><span class="attr">Map: USGS · Places: OpenStreetMap</span></div>`;
 }
 function nearHtml(d, lat, lon, L, group = 'all') {
   const cats = nearCats(d, lat, lon);
-  const chips = `<div class="nchips">${[{ id: 'all', label: 'All' }, ...NEAR_GROUPS.filter((g) => g.id !== 'other')].map((g) =>
-    `<button data-g="${g.id}" class="${g.id === group ? 'on' : ''}">${g.color ? `<i style="background:${g.color}"></i>` : ''}${g.label}</button>`).join('')}</div>`;
+  const chips = `<div class="nchips">${[{ id: 'all', label: 'All' }, ...NEAR_GROUPS].map((g) =>
+    `<button data-g="${g.id}" class="${g.id === group ? 'on' : ''}" aria-pressed="${g.id === group}">${g.color ? `<i style="background:${g.color}"></i>` : ''}${g.label}</button>`).join('')}</div>`;
   let rows;
   if (group === 'all') {                             // the closest of each kind
     rows = cats.filter((c) => c.list !== false).map((c) => {
@@ -2225,18 +2227,23 @@ function nearHtml(d, lat, lon, L, group = 'all') {
    ========================================================================= */
 const CALC_KEY = 'housepoint.calc';
 const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
-const STATE_INSURANCE = { MA: 1956, CT: 1980, NJ: 1284, FL: 6408 };   // average yearly premium for a $300k-dwelling policy (Insurify, 2026)
+const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
 const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
 let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
-try { const p = JSON.parse(localStorage.getItem(CALC_KEY) || '{}'); if (p.asOf === RATE30.asOf) Object.assign(calcPrefs, p); else if (p.down) Object.assign(calcPrefs, { down: p.down, term: p.term || 30 }); } catch (e) { /* defaults */ }
+try {
+  const p = JSON.parse(localStorage.getItem(CALC_KEY) || '{}') || {}, ok = (v, lo, hi) => Number.isFinite(+v) && +v >= lo && +v < hi;
+  if (ok(p.down, 0, 100)) calcPrefs.down = +p.down;
+  if ([15, 20, 30].includes(+p.term)) calcPrefs.term = +p.term;
+  if (p.asOf === RATE30.asOf && ok(p.rate, 0, 30)) calcPrefs.rate = +p.rate;       // a new weekly rate replaces an old typed one
+} catch (e) { /* defaults */ }
 const CALC_EDITS = new Map();                            // card key -> price/insurance/fee typed in
 function calcDefaults(s) {
-  const sale = s.condo ? null : s.sales.find((q) => q.p >= 10000);
+  const sale = s.condo || s.multiSale || s.unqualified ? null : s.sales.find((q) => q.p >= 10000);   // not a multi-lot or non-market sale
   const value = s.condo ? median(s.vals) : num(s.r0.TOTAL_VAL);
   const price = Math.round(Math.max(value || 0, sale ? sale.p : 0) / 1000) * 1000;
   const t = estimateTax(s);
   const taxYr = !t || t.exempt ? 0 : (t.buyer || (t.lo + t.hi) / 2);
-  return { price, taxYr, taxKind: !t || t.exempt ? 'none' : t.actual ? 'actual' : t.buyer ? 'buyer' : 'estimate', ins: s.condo ? 0 : (STATE_INSURANCE[s.region.id] || 0), hoa: 0 };
+  return { price, taxYr, taxKind: !t || t.exempt ? 'none' : t.actual ? 'actual' : t.buyer ? 'buyer' : 'estimate', ins: s.condo || s.commonOnly ? 0 : (STATE_INSURANCE[s.region.id] || 0), hoa: 0 };
 }
 function monthlyCost(c) {
   const loan = Math.max(0, c.price * (1 - c.down / 100)), r = c.rate / 100 / 12, n = c.term * 12;
@@ -2245,12 +2252,23 @@ function monthlyCost(c) {
   return { loan, pi, tax, ins, pmi, hoa, total: pi + tax + ins + pmi + hoa, cash: c.price * c.down / 100 };
 }
 const calcFor = (key, s) => ({ ...calcDefaults(s), ...(CALC_EDITS.get(key) || {}), down: calcPrefs.down, rate: calcPrefs.rate, term: calcPrefs.term });
-const dollars = (v) => '$' + Math.round(v || 0).toLocaleString();
-const parseMoney = (v) => { const n = parseFloat(String(v).replace(/[^0-9.]/g, '')); return Number.isFinite(n) ? n : 0; };
+// Always US formatting: a phone set to Portuguese or German would otherwise show $800.000 and read it back as $800.
+const dollars = (v) => '$' + Math.round(v || 0).toLocaleString('en-US');
+function parseMoney(v) {
+  let t = String(v).toLowerCase().replace(/[\s$]/g, '');
+  if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');          // 800.000 typed with dots for thousands
+  t = t.replace(/,/g, '');
+  const m = t.match(/(\d*\.?\d+)(k|m)?/); if (!m) return 0;
+  const n = parseFloat(m[1]) * (m[2] === 'm' ? 1e6 : m[2] === 'k' ? 1e3 : 1);       // 700k, 1.2m
+  return Number.isFinite(n) ? n : 0;
+}
+// Not for parks, common areas, or commercial, public and exempt property.
+const NOT_A_HOME = /commercial|industrial|federal|state property|county property|town or city|school|college|charit|religious|church|cemetery|railroad|public|government|institutional|tax-exempt|open space|recreation|forest|accessory|parking|housing authority/i;
+function calcApplies(s) { const t = estimateTax(s); return !s.park && !s.commonOnly && !(t && t.exempt) && !NOT_A_HOME.test(s.use || ''); }
 function calcHtml(L, s) {
   const c = calcFor(L.p.key, s);
-  const chip = (attr, v, cur, label) => `<button data-${attr}="${v}" class="${+v === +cur ? 'on' : ''}">${label}</button>`;
-  return `<div class="bsec calc" id="bCalc"><div class="bt">Monthly cost${s.condo ? ' · a typical unit' : ''}</div><div class="cbig" id="cTotal"></div>
+  const chip = (attr, v, cur, label) => `<button data-${attr}="${v}" class="${+v === +cur ? 'on' : ''}" aria-pressed="${+v === +cur}">${label}</button>`;
+  return `<div class="bsec calc" id="bCalc"><div class="bt">Monthly cost${s.condo ? ' · a typical unit' : ''}</div><div class="cbig" id="cTotal" aria-live="polite"></div>
     <div class="cgrid"><label>Price<input id="cPrice" inputmode="numeric" value="${dollars(c.price)}" aria-label="Price"></label>
       <label>Rate %<input id="cRate" inputmode="decimal" value="${c.rate}" aria-label="Interest rate, percent"></label>
       <label>Insurance a year<input id="cIns" inputmode="numeric" value="${dollars(c.ins)}" aria-label="Home insurance a year"></label>
@@ -2262,7 +2280,13 @@ function calcHtml(L, s) {
 function wireCalc(L, s) {
   const box = $('#bCalc'); if (!box) return;
   const key = L.p.key;
-  const draw = () => {
+  // A saved house remembers the asking price, insurance and fee typed for it, even after the app reloads.
+  if (!CALC_EDITS.has(key)) {
+    const sv = loadSaved().find((h) => h.key === key), d = calcDefaults(s), e = {};
+    if (sv && sv.calc) for (const f of ['price', 'ins', 'hoa']) if (Number.isFinite(sv.calc[f]) && sv.calc[f] !== d[f]) e[f] = sv.calc[f];
+    if (Object.keys(e).length) { CALC_EDITS.set(key, e); for (const [f, id] of [['price', 'cPrice'], ['ins', 'cIns'], ['hoa', 'cHoa']]) if (f in e) $('#' + id).value = dollars(e[f]); }
+  }
+  const draw = (edited) => {
     const c = calcFor(key, s), m = monthlyCost(c);
     $('#cTotal').innerHTML = c.price > 0 ? `≈ ${dollars(m.total)} <small>a month</small>` : '<small>Enter a price</small>';
     const row = (l, v, sub) => `<div class="brow"><div class="l">${l}</div><div class="m">${sub ? `<small>${sub}</small>` : ''}</div><div class="r">${dollars(v)}</div></div>`;
@@ -2270,20 +2294,20 @@ function wireCalc(L, s) {
       + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
     const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: 'the estimate above', none: 'not included' }[c.taxKind];
     $('#cNote').innerHTML = `Rate: Freddie Mac’s average 30-year rate was ${RATE30.rate}% (${RATE30.asOf}); yours depends on credit and points${c.term !== 30 ? ', and shorter loans usually run a bit lower' : ''}. `
-      + `Price starts at the ${s.condo ? 'typical unit value' : 'town’s value or the last sale, whichever is higher'}; type the asking price. Tax: ${taxWhy}. `
+      + `Price starts at the ${s.condo ? 'typical unit value' : 'town’s value or the last sale, whichever is higher'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : ''}. Tax: ${taxWhy}. `
       + `Insurance: ${s.condo ? 'add your condo policy quote' : `${esc(s.region.name)}’s average policy; get a real quote`}.${m.pmi ? ` Mortgage insurance is a rough ${PMI_RATE * 100}% a year.` : ''} `
       + `Cash needed: <b>${dollars(m.cash)}</b> down plus closing costs, often 2–5% of the loan.`;
-    patchSaved(key, { calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } });
+    if (edited) patchSaved(key, { calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } });
   };
-  const edit = (field) => (e) => { CALC_EDITS.set(key, { ...(CALC_EDITS.get(key) || {}), [field]: parseMoney(e.target.value) }); draw(); };
+  const edit = (field) => (e) => { CALC_EDITS.set(key, { ...(CALC_EDITS.get(key) || {}), [field]: parseMoney(e.target.value) }); draw(true); };
   $('#cPrice').oninput = edit('price'); $('#cIns').oninput = edit('ins'); $('#cHoa').oninput = edit('hoa');
   const money0 = (el) => { el.onblur = () => { el.value = dollars(parseMoney(el.value)); }; };
   [$('#cPrice'), $('#cIns'), $('#cHoa')].forEach(money0);
-  $('#cRate').oninput = (e) => { const r = parseFloat(e.target.value); if (r >= 0 && r < 30) { calcPrefs.rate = r; saveCalcPrefs(); draw(); } };
+  $('#cRate').oninput = (e) => { const r = parseFloat(String(e.target.value).replace(',', '.')); if (r >= 0 && r < 30) { calcPrefs.rate = r; saveCalcPrefs(); draw(); } };
   box.addEventListener('click', (e) => {
     const b = e.target.closest('.cchips button'); if (!b) return;
     if (b.dataset.down) calcPrefs.down = +b.dataset.down; if (b.dataset.term) calcPrefs.term = +b.dataset.term;
-    box.querySelectorAll('.cchips button').forEach((x) => x.classList.toggle('on', x.dataset.down ? +x.dataset.down === calcPrefs.down : +x.dataset.term === calcPrefs.term));
+    box.querySelectorAll('.cchips button').forEach((x) => { const on = x.dataset.down ? +x.dataset.down === calcPrefs.down : +x.dataset.term === calcPrefs.term; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
     saveCalcPrefs(); draw();
   });
   draw();
@@ -2295,7 +2319,10 @@ function saveCalcPrefs() { try { localStorage.setItem(CALC_KEY, JSON.stringify({
    ========================================================================= */
 const SAVED_KEY = 'housepoint.saved.v1' + (DEMO ? '.demo' : '');
 const MAX_SAVED = 24;
-function loadSaved() { try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch (e) { return []; } }
+function loadSaved() {
+  try { const a = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => x && typeof x === 'object' && typeof x.key === 'string') : []; }
+  catch (e) { return []; }
+}
 function storeSaved(a) { try { localStorage.setItem(SAVED_KEY, JSON.stringify(a.slice(0, MAX_SAVED))); } catch (e) { /* storage full or off */ } }
 const isSaved = (key) => loadSaved().some((x) => x.key === key);
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
@@ -2303,7 +2330,8 @@ const STAR_O = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 function saveBtnHtml(key) { const on = isSaved(key); return `<button class="savebtn${on ? ' on' : ''}" id="saveBtn" aria-pressed="${on}">${on ? STAR : STAR_O}${on ? 'Saved' : 'Save'}</button>`; }
 function floodShort(env) {
   const fl = env && env.flood; if (!fl) return null; if (fl.none) return 'Not mapped';
-  const c = fl.here; return `${c.badge} · ${{ high: 'high risk', moderate: 'moderate', low: 'minimal', unknown: 'not mapped', water: 'water' }[c.risk] || ''}`;
+  const c = fl.here; if (c.risk === 'water') return 'Open water';
+  return `${c.badge} · ${{ high: 'high risk', moderate: 'moderate', low: 'minimal', unknown: 'not mapped' }[c.risk] || ''}`;
 }
 function snapshot(L, s) {
   const [lat, lon] = L.proj.inv(L.c[0], L.c[1]), r = s.r0, sale = s.sales.find((q) => q.p >= 10000), t = estimateTax(s), c = calcFor(L.p.key, s);
@@ -2312,7 +2340,7 @@ function snapshot(L, s) {
     value: s.condo || s.commonOnly ? null : num(r.TOTAL_VAL), range: s.condo && s.vals.length ? [Math.min(...s.vals), Math.max(...s.vals)] : null, valueWord: s.region.valueWord || 'Assessed',
     sale: sale ? { p: sale.p, d: sale.d.toISOString().slice(0, 10) } : null,
     tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual }) : null,
-    calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa },
+    calc: calcApplies(s) ? { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } : null,
     living: s.condo || s.park ? null : num(r.RES_AREA) || num(r.BLD_AREA) || null, beds: num(r.BEDS) || null, baths: num(r.BATHS) ? bathText(r) : null,
     lot: Math.round(lotSqft(L)), flood: null, school: null, grocery: null, ...(BUY_FACTS.get(L.p.key) || {}) };
 }
@@ -2323,7 +2351,7 @@ function toggleSave(L, s) {
     const snap = snapshot(L, s);
     a.unshift(snap); storeSaved(a); saveHistory({ L });
     envFor(L).then((env) => patchSaved(L.p.key, { flood: floodShort(env) })).catch(() => {});   // already looked up for this card: no new request
-    toast(a.length > MAX_SAVED ? `Saved. Only the newest ${MAX_SAVED} are kept.` : 'Saved. Compare saved houses from the list button.', 2200);
+    toast(a.length > MAX_SAVED ? `Saved. Only the newest ${MAX_SAVED} are kept.` : S.mode === 'map' ? 'Saved. Compare saved houses under Highlights › Saved.' : 'Saved. Compare saved houses from the list button.', 2200);
   }
   const b = $('#saveBtn'); if (b) b.outerHTML = saveBtnHtml(L.p.key);
   const nb = $('#saveBtn'); if (nb) nb.onclick = () => toggleSave(L, s);
@@ -2341,19 +2369,19 @@ function renderSaved() {
   const cols = a.map((x, i) => ({ x, i, m: x.calc && x.calc.price ? monthlyCost({ ...x.calc, down: calcPrefs.down, rate: calcPrefs.rate, term: calcPrefs.term }) : null }));
   const cell = (v, sub) => `<td>${v == null || v === '' ? '—' : esc(v)}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`;
   const rows = [
-    ['Value', (x) => cell(x.range ? `${money(x.range[0])}–${money(x.range[1])}` : money(x.value), x.range ? 'unit values' : x.valueWord.toLowerCase())],
+    ['Value', (x) => cell(x.range ? `${money(x.range[0])}–${money(x.range[1])}` : money(x.value), x.range ? 'unit values' : String(x.valueWord || 'Assessed').toLowerCase())],
     ['Last sale', (x) => cell(x.sale ? moneyFull(x.sale.p) : null, x.sale ? x.sale.d.slice(0, 4) : '')],
     ['Property tax', (x) => cell(x.tax && x.tax.exempt ? 'None' : x.tax ? `${x.tax.actual ? '' : '≈ '}${moneyFull(round10(x.tax.lo))}${x.tax.hi > x.tax.lo + 10 ? '+' : ''}` : null, x.tax && !x.tax.exempt ? (x.tax.actual ? 'last year, per year' : 'estimate, per year') : '')],
-    ['Monthly cost', (x, m) => cell(m ? `≈ ${dollars(m.total)}` : null, m ? `at ${calcPrefs.down}% down, ${calcPrefs.rate}%` : '')],
+    ['Monthly cost', (x, m) => cell(m && Number.isFinite(m.total) ? `≈ ${dollars(m.total)}` : null, m && Number.isFinite(m.total) ? `at ${calcPrefs.down}% down, ${calcPrefs.rate}%` : '')],
     ['Built', (x) => cell(x.year)],
-    ['Living area', (x) => cell(x.living ? `${Math.round(x.living).toLocaleString()} ft²` : null)],
+    ['Living area', (x) => cell(x.living ? `${Math.round(x.living).toLocaleString('en-US')} ft²` : null)],
     ['Beds · baths', (x) => cell(x.beds || x.baths ? `${x.beds || '—'} · ${x.baths || '—'}` : null)],
-    ['Lot', (x) => cell(x.lot ? (x.lot >= 21780 ? `${(x.lot / 43560).toFixed(1)} ac` : `${x.lot.toLocaleString()} ft²`) : null)],
+    ['Lot', (x) => cell(x.lot ? (x.lot >= 21780 ? `${(x.lot / 43560).toFixed(1)} ac` : `${x.lot.toLocaleString('en-US')} ft²`) : null)],
     ['Flood zone', (x) => cell(x.flood)],
     ['Elementary', (x) => cell(x.school, x.school ? '' : 'open its card’s buying section')],
     ['Grocery', (x) => cell(x.grocery)],
   ];
-  const head = `<tr><th></th>${cols.map(({ x, i }) => `<th class="h"><a href="#" data-open="${i}">${esc(x.addr)}</a><small>${esc([x.town, x.rid].filter(Boolean).join(', '))}</small><button data-remove="${i}">Remove</button></th>`).join('')}</tr>`;
+  const head = `<tr><th></th>${cols.map(({ x, i }) => `<th class="h"><a href="#" data-open="${i}">${esc(x.addr)}</a><small>${esc([x.town, x.rid].filter(Boolean).join(', '))}</small><button data-remove="${i}" aria-label="Remove ${esc(x.addr)} from Saved">Remove</button></th>`).join('')}</tr>`;
   const body = rows.map(([label, f]) => `<tr><td>${label}</td>${cols.map(({ x, m }) => f(x, m)).join('')}</tr>`).join('');
   return `<div class="sum"><b>${a.length}</b> saved on this phone.${a.length > 1 ? ' Swipe the table sideways to compare.' : ' Save another house to compare side by side.'}</div>
     <div class="cmpwrap"><table class="cmp"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
@@ -2380,8 +2408,11 @@ function openSheet(cands, idx = 0) {
   renderCard(cands[idx], cands.length, idx);
   // Only houses you actually looked at go in "Your houses", not every "Not it" on the way.
   clearTimeout(openSheet.hist); const seenCand = cands[idx];
-  openSheet.hist = setTimeout(() => { if (S.candidates[S.cIdx] === seenCand && $('#sheet').classList.contains('open')) saveHistory(seenCand); }, 2500);
-  prepareShare(cands[idx]);
+  // After a couple of seconds on a card, keep it in History and get its share image ready (not for every card flicked past).
+  openSheet.hist = setTimeout(() => {
+    if (S.candidates[S.cIdx] !== seenCand || !$('#sheet').classList.contains('open')) return;
+    saveHistory(seenCand); if (!sharePrep || sharePrep.cand !== seenCand) prepareShare(seenCand);
+  }, 2500);
   closePanel();
   $('#sheet').classList.add('open');
   $('#reticle').classList.add('locked');
@@ -2408,10 +2439,7 @@ $('#shareC').onclick = async () => {
 };
 // swipe the card down to close
 (() => {
-  let y0 = null; const sheet = $('#sheet');
-  sheet.addEventListener('touchstart', (e) => { if ($('#cardBody').scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
-  sheet.addEventListener('touchmove', (e) => { if (y0 !== null && e.touches[0].clientY - y0 > 70) { y0 = null; closeSheet(); } }, { passive: true });
-  sheet.addEventListener('touchend', () => { y0 = null; });
+  pullToClose($('#sheet'), $('#cardBody'), closeSheet);
   $('.grab').onclick = closeSheet;
 })();
 
@@ -2448,16 +2476,18 @@ async function startSensors() {
       const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') toast('Compass permission was declined');
     }
   } catch (e) { /* not a tap, or unsupported */ }
+  // addEventListener ignores a second copy of the same listener, so calling this again is safe.
   if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrientation);
   window.addEventListener('deviceorientation', onOrientation);
 
-  // Location
-  if ('geolocation' in navigator) {
-    navigator.geolocation.watchPosition((p) => {
+  // Location (one watch at a time; a declined one ends, so a later tap can ask again)
+  if ('geolocation' in navigator && S.geoWatch == null) {
+    S.geoWatch = navigator.geolocation.watchPosition((p) => {
       S.pos = { lat: p.coords.latitude, lon: p.coords.longitude }; S.acc = p.coords.accuracy;
       ensureData(S.pos.lat, S.pos.lon).catch(() => {});
     }, (err) => {
       $('#gpsTxt').textContent = 'Location off'; $('#gpsPill .dot').className = 'dot bad';
+      if (err && err.code === 1) { navigator.geolocation.clearWatch(S.geoWatch); S.geoWatch = null; }
       if (err && err.code === 1) startMapMode(null, 'Location is off for this site, so use the map: search an address or try a sample spot.');
       else toast('Can’t find your location right now. Try stepping outside, or use the map.');
     },
@@ -2465,6 +2495,7 @@ async function startSensors() {
   }
 
   // Camera
+  if ($('#cam').srcObject) return;                                    // already running
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     const v = $('#cam'); v.srcObject = stream; show(v); show($('#fakecam'), false); await v.play().catch(() => {});
@@ -2780,7 +2811,9 @@ async function centerMap(lat, lon, selectKey) {
     : (DEMO || regionFor(lat, lon)) ? 'No parcels found here. Try a sample spot.' : `Housepoint covers ${COVERAGE} for now. Try a sample spot.`;
   refreshMapImagery(); drawMap();
   if (selectKey) {
-    const L = S.local.find((l) => l.p.key === selectKey);
+    // Outside Massachusetts a lot's key comes from its shape, which changes if the state redraws it; then find it by location.
+    let L = S.local.find((l) => l.p.key === selectKey);
+    if (!L && S.proj) { const [x, y] = S.proj.fwd(lat, lon); L = S.local.find((l) => pointInRings(x, y, l.rings)); }
     if (L) selectLot(L);
   }
 }
@@ -3009,6 +3042,17 @@ function saveHistory(cand) {
 /* =========================================================================
    Share image (1080 x 1350, made on the phone)
    ========================================================================= */
+// Drag a sheet down to close it, but not while swiping a table or chip row sideways.
+function pullToClose(el, scroller, close) {
+  let p0 = null;
+  el.addEventListener('touchstart', (e) => { p0 = scroller.scrollTop <= 0 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (!p0) return; const dx = e.touches[0].clientX - p0.x, dy = e.touches[0].clientY - p0.y;
+    if (Math.abs(dx) > 24 && Math.abs(dx) > dy) { p0 = null; return; }      // a sideways swipe: leave it alone
+    if (dy > 70 && dy > Math.abs(dx) * 1.5) { p0 = null; close(); }
+  }, { passive: true });
+  el.addEventListener('touchend', () => { p0 = null; });
+}
 let sharePrep = null;
 function prepareShare(cand) {
   const prep = { cand, blob: null };
@@ -3227,12 +3271,7 @@ $('#panelBody').addEventListener('click', (e) => {
   if (L) openFor(L);
   else { S.map.R = 70; startMapMode({ lat: x.lat, lon: x.lon, selectKey: x.key }, 'Loading…'); }
 });
-(() => {
-  let y0 = null; const el = $('#panel');
-  el.addEventListener('touchstart', (e) => { if ($('#panelScroll').scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
-  el.addEventListener('touchmove', (e) => { if (y0 !== null && e.touches[0].clientY - y0 > 70) { y0 = null; closePanel(); } }, { passive: true });
-  el.addEventListener('touchend', () => { y0 = null; });
-})();
+pullToClose($('#panel'), $('#panelScroll'), closePanel);
 
 /* =========================================================================
    Wiring
@@ -3308,7 +3347,7 @@ if (DEMO) {
 
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
-  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap };
+  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, get sharePrep() { return sharePrep; } };
 })();
 </script>
 </body>
