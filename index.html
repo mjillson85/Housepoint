@@ -266,6 +266,42 @@
   .brow .m small { display: block; color: var(--mute); font-size: 12px; margin-top: 1px; }
   .brow .r { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
   .brow .r small { display: block; color: var(--mute); font-weight: 500; font-size: 11.5px; }
+  /* monthly cost */
+  .cbig { font-family: var(--serif); font-weight: 700; font-size: 27px; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
+  .cbig small { font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--mute); }
+  .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cgrid label { font-size: 11.5px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .cgrid input { display: block; width: 100%; margin-top: 3px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+    font: 600 15px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .cchips { display: flex; align-items: center; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+  .cchips > span { font-size: 11.5px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; flex-basis: 100%; margin-bottom: -1px; }
+  .cchips button, .nchips button { height: 32px; padding: 0 11px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-size: 13.5px; font-weight: 600; }
+  .cchips button { padding: 0 10px; font-size: 13px; }
+  .cchips button.on, .nchips button.on { background: var(--ink); color: var(--paper); }
+  /* save + compare */
+  .addrrow { display: flex; align-items: flex-start; gap: 10px; }
+  .addrrow .addr { flex: 1; min-width: 0; }
+  .savebtn { flex: none; margin-top: 4px; height: 34px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-weight: 600; font-size: 13.5px;
+    display: inline-flex; align-items: center; gap: 5px; }
+  .savebtn svg { width: 17px; height: 17px; }
+  .savebtn.on { background: var(--ink); color: var(--paper); }
+  .cmpwrap { overflow-x: auto; margin: 4px -2px 10px; -webkit-overflow-scrolling: touch; }
+  .cmp { border-collapse: separate; border-spacing: 0; font-size: 13.5px; min-width: 100%; }
+  .cmp th, .cmp td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; min-width: 132px; max-width: 170px; }
+  .cmp th:first-child, .cmp td:first-child { position: sticky; left: 0; background: var(--paper); min-width: 96px; max-width: 96px; color: var(--mute); font-size: 12px; font-weight: 600; z-index: 1; }
+  .cmp thead th { vertical-align: bottom; }
+  .cmp .h a { color: var(--ink); font-weight: 700; text-decoration: none; display: block; }
+  .cmp .h small { display: block; color: var(--mute); font-weight: 500; font-size: 12px; }
+  .cmp .h button { margin-top: 6px; font-size: 12px; color: var(--brick); font-weight: 600; }
+  .cmp td { font-variant-numeric: tabular-nums; }
+  .cmp td small { display: block; color: var(--mute); font-size: 11.5px; }
+  /* nearby rings map */
+  .radar { position: relative; margin: 8px 0 4px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #f3eee2; }
+  .radar svg { display: block; width: 100%; height: auto; }
+  .radar .attr { position: absolute; right: 6px; bottom: 4px; font-size: 10px; color: var(--mute); background: rgba(246,241,231,.85); padding: 1px 5px; border-radius: 5px; }
+  .nchips { display: flex; gap: 6px; overflow-x: auto; margin: 8px -2px 2px; padding: 0 2px 2px; }
+  .nchips button { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+  .nchips i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1.5px #fff; }
   .flood.moderate .zb { background: #f2d58a; }
   .flood.low .zb { background: #dfe8da; color: #2f4a2c; }
   .flood .t1 { font-weight: 600; font-size: 15px; line-height: 1.3; }
@@ -395,7 +431,7 @@
 <div id="panel"><div class="card">
   <div class="grab" id="panelGrab" role="button" tabindex="0" aria-label="Close"></div>
   <div class="card-scroll" id="panelScroll">
-    <div class="tabs"><button id="tabNear" class="on">Around here</button><button id="tabMine">Your houses</button></div>
+    <div class="tabs"><button id="tabNear" class="on">Around here</button><button id="tabSaved">Saved</button><button id="tabMine">History</button></div>
     <div id="panelBody" class="list"></div>
   </div>
 </div></div>
@@ -1425,7 +1461,7 @@ function renderCard(cand, total, idx) {
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
-    <div class="addr">${esc(s.addr)}</div>
+    <div class="addrrow"><div class="addr">${esc(s.addr)}</div>${saveBtnHtml(L.p.key)}</div>
     <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
@@ -1438,6 +1474,7 @@ function renderCard(cand, total, idx) {
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
   wireBuy(L, s);
+  const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, s);
   const ul = $('#cardBody .units');
   if (ul) ul.addEventListener('click', (e) => {
     if (e.target.closest('.all-btn')) { ul.classList.add('all'); return; }
@@ -1788,7 +1825,7 @@ function openBuy(L, s) {
   const box = $('#buyBox'); if (!box) return;
   const key = L.p.key, [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
   const sec = (id, t, msg) => `<div class="bsec" id="${id}"><div class="bt">${t}</div><div class="bl">${msg}</div></div>`;
-  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}
+  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}${calcHtml(L, s)}
     ${sec('bSchools', 'Schools', 'Finding schools…')}${sec('bHood', 'Neighborhood', 'Loading Census figures…')}
     ${sec('bSafety', 'Safety', 'Loading crime reports…')}${sec('bNear', 'Nearby', 'Finding stores, parks and transit…')}`;
   const put = (id, title, work) => work.then((html) => ({ html }), (e) => { console.warn(id, e); return { err: e }; }).then(({ html, err }) => {
@@ -1797,10 +1834,27 @@ function openBuy(L, s) {
     // A short reason in small print makes a failure on someone's phone something we can actually fix.
     el.innerHTML = html || `<div class="bt">${title}</div><div class="bl">Couldn’t load this right now. Try again later.</div><div class="why">${esc(whyFailed(err))}</div>`;
   });
-  put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => schoolsHtml(d, s, lat, lon)));
+  wireCalc(L, s);
+  put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => {
+    const el = schoolPicks(d, lat, lon)[0]; if (el && el.s) noteBuy(key, { school: `${el.s.name} · ${miles(el.s.d)}` });
+    return schoolsHtml(d, s, lat, lon);
+  }));
   put('bHood', 'Neighborhood', neighborhoodFor(lat, lon).then((d) => hoodHtml(d, s)));
   put('bSafety', 'Safety', safetyFor(s, lat, lon).then((d) => safetyHtml(d, s)));
-  put('bNear', 'Nearby', nearbyFor(lat, lon).then((d) => nearHtml(d, lat, lon)));
+  put('bNear', 'Nearby', nearbyFor(lat, lon).then((d) => {
+    const g = nearCats(d, lat, lon).find((c) => c.label === 'Grocery');
+    if (g && g.best) noteBuy(key, { grocery: `${g.best.name || 'Grocery store'} · ${miles(g.best.d)}` });
+    NEAR_VIEW.set(key, { d, lat, lon, L });
+    return nearHtml(d, lat, lon, L, 'all');
+  }));
+  if (!box.dataset.wired) {          // filter chips in Nearby
+    box.dataset.wired = '1';
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('.nchips button'); if (!b) return;
+      const v = NEAR_VIEW.get($('#buyBox').dataset.k); if (!v) return;
+      $('#bNear').innerHTML = nearHtml(v.d, v.lat, v.lon, v.L, b.dataset.g);
+    });
+  }
 }
 
 function whyFailed(e) {
@@ -2065,22 +2119,31 @@ function safetyHtml(d, s) {
 
 /* Nearby: OpenStreetMap places (© OpenStreetMap contributors), straight-line distance. */
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const NEAR_GROUPS = [   // fixed color per group (validated categorical palette; every dot is also named in the list)
+  { id: 'groceries', label: 'Groceries', color: '#2a78d6' }, { id: 'dining', label: 'Dining', color: '#eb6834' },
+  { id: 'parks', label: 'Parks', color: '#1baf7a' }, { id: 'transit', label: 'Transit', color: '#eda100' },
+  { id: 'health', label: 'Health', color: '#e87ba4' }, { id: 'other', label: 'Other', color: '#6250d6' }];
+const GROUP = Object.fromEntries(NEAR_GROUPS.map((g) => [g.id, g]));
 const NEAR_CATS = [
-  { label: 'Grocery', unnamed: 'Grocery store', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
-  { label: 'Pharmacy', unnamed: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
-  { label: 'Coffee', unnamed: 'Café', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
-  { label: 'Park', unnamed: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
-  { label: 'Playground', unnamed: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
-  { label: 'Train', unnamed: 'Station', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
-  { label: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
-  { label: 'Hospital', unnamed: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
-  { label: 'Library', unnamed: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
-  { label: 'Fire station', unnamed: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
+  { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
+  { label: 'Pharmacy', g: 'health', unnamed: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
+  { label: 'Coffee', g: 'dining', unnamed: 'Café', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
+  { label: 'Restaurant', g: 'dining', unnamed: 'Restaurant', r: 800, list: false, is: (t) => /^(restaurant|fast_food)$/.test(t.amenity || '') },
+  { label: 'Park', g: 'parks', unnamed: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
+  { label: 'Playground', g: 'parks', unnamed: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
+  { label: 'Train', g: 'transit', unnamed: 'Station', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
+  { label: 'Bus stop', g: 'transit', unnamed: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
+  { label: 'Hospital', g: 'health', unnamed: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
+  { label: 'Library', g: 'other', unnamed: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
+  { label: 'Fire station', g: 'other', unnamed: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
 ];
+const NEAR_VIEW = new Map();      // card key -> what Nearby last showed, for the filter chips
 async function nearbyFor(lat, lon) {
   return nearMemo('near', lat, lon, 150, async () => {
     const at = (r) => `(around:${r},${lat.toFixed(6)},${lon.toFixed(6)})`;
-    const q = `[out:json][timeout:25];(${NEAR_CATS.map((c) => c.q + at(c.r) + ';').join('')});out center qt;nwr["amenity"~"^(restaurant|fast_food)$"]${at(800)};out count;`;
+    // Everything but restaurants in one set; restaurants counted, and the first 60 listed.
+    const q = `[out:json][timeout:25];(${NEAR_CATS.filter((c) => c.q).map((c) => c.q + at(c.r) + ';').join('')});out center qt;`
+      + `nwr["amenity"~"^(restaurant|fast_food)$"]${at(800)}->.f;.f out count;.f out center qt 60;`;
     const j = await firstOf(OVERPASS.map((u) => [new URL(u).hostname.replace(/^www\./, ''), async () => {
       const r = await getJSON(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }, 30000)
         .catch((e) => { throw new Error(fetchMsg(e)); });
@@ -2093,24 +2156,207 @@ async function nearbyFor(lat, lon) {
         const la = e.lat ?? (e.center && e.center.lat), lo = e.lon ?? (e.center && e.center.lon);
         return la == null ? null : { name: e.tags.name || e.tags.brand || null, la, lo, subway: e.tags.station === 'subway' || e.tags.subway === 'yes' };
       }).filter(Boolean);
-      return { ...c, hits };
+      const seen = new Set();                         // the same place mapped as a point and an outline counts once
+      return { ...c, hits: hits.filter((h) => { const k = `${h.name}|${h.la.toFixed(3)}|${h.lo.toFixed(3)}`; return seen.has(k) ? false : seen.add(k); }) };
     });
     const cnt = (j.elements || []).find((e) => e.type === 'count');
     return { cats: out, restaurants: cnt && cnt.tags ? num(cnt.tags.total) : null };
   });
 }
-function nearHtml(d, lat, lon) {
-  const cats = d.cats.map((c) => {
+// Distances from this house (results are shared with houses next door).
+function nearCats(d, lat, lon) {
+  return d.cats.map((c) => {
     const hits = c.hits.map((h) => ({ ...h, d: distM(lat, lon, h.la, h.lo) })).filter((h) => h.d <= c.r).sort((a, b) => a.d - b.d);
-    return { ...c, best: hits[0] || null, n: hits.length };
+    return { ...c, hits, best: hits[0] || null, n: hits.length };
   });
-  const rows = cats.map((c) => {
-    if (!c.best) return `<div class="brow"><div class="l">${c.label}</div><div class="m"><small>None within ${miles(c.r)}</small></div></div>`;
-    const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || c.unnamed || c.label) + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
-    return `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(name)}</div><div class="r">${miles(c.best.d)}</div></div>`;
-  }).join('');
-  const food = d.restaurants != null ? `<div class="brow"><div class="l">Restaurants</div><div class="m">${d.restaurants} within half a mile</div></div>` : '';
-  return `<div class="bt">Nearby</div><div class="brows">${rows}${food}</div><div class="bl">Straight-line distance to the closest one. Places © OpenStreetMap contributors.</div>`;
+}
+// About how long it takes: walking at 3 mph on streets (a bit longer than a straight line), or driving past a mile and a half.
+function travelTime(m) {
+  if (m <= 2400) { const t = Math.max(1, Math.round(m * 1.25 / 80)); return `${t} min walk`; }
+  return `${Math.max(2, Math.round(m * 1.35 / 600))} min drive`;
+}
+const RING_M = [[402, '¼ mi'], [805, '½ mi'], [1609, '1 mi']];
+function radarSvg(L, cats, group) {
+  // Scale so the one-mile ring and its label fit inside the shorter side.
+  const proj = L.proj, [cx, cy] = L.c, W = 340, H = 300, k = (H / 2 - 16) / RING_M[RING_M.length - 1][0], R = W / 2 / k;
+  const ext = { x0: cx - W / 2 / k, y0: cy - H / 2 / k, w: W / k, h: H / k };
+  const X = (x) => ((x - ext.x0) * k).toFixed(1), Y = (y) => ((ext.y0 + ext.h - y) * k).toFixed(1);
+  // USGS topographic base map (public domain), faded so the dots read.
+  const [la0, lo0] = proj.inv(ext.x0, ext.y0), [la1, lo1] = proj.inv(ext.x0 + ext.w, ext.y0 + ext.h);
+  const z = Math.min(16, Math.max(11, Math.round(Math.log2(40075016.686 * Math.cos(rad((la0 + la1) / 2)) / 256 * k))));
+  const n = 2 ** z, xa = Math.floor((lo0 + 180) / 360 * n), xb = Math.floor((lo1 + 180) / 360 * n), ya = Math.floor(tileY(la1, n)), yb = Math.floor(tileY(la0, n));
+  let tiles = '';
+  if ((xb - xa + 1) * (yb - ya + 1) <= 30) for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) {
+    const [px0, py0] = proj.fwd(tileLat(y + 1, n), x / n * 360 - 180), [px1, py1] = proj.fwd(tileLat(y, n), (x + 1) / n * 360 - 180);
+    tiles += `<image href="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/${z}/${y}/${x}" x="${X(px0)}" y="${Y(py1)}" width="${((px1 - px0) * k + 0.6).toFixed(1)}" height="${((py1 - py0) * k + 0.6).toFixed(1)}" preserveAspectRatio="none"/>`;
+  }
+  const rings = RING_M.map(([m, t]) => `<circle cx="${X(cx)}" cy="${Y(cy)}" r="${(m * k).toFixed(1)}" fill="none" stroke="#1d1a17" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="${X(cx)}" y="${(+Y(cy) - m * k - 3).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">${t}</text>`).join('');
+  const dots = cats.filter((c) => group === 'all' || c.g === group).flatMap((c) => c.hits.filter((h) => h.d <= R).slice(0, c.g === 'dining' ? 24 : 10).map((h) => ({ h, c })))
+    .sort((a, b) => b.h.d - a.h.d)                    // nearest drawn last, on top
+    .map(({ h, c }) => { const [x, y] = proj.fwd(h.la, h.lo);
+      return `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="${GROUP[c.g].color}" stroke="#fff" stroke-width="2"><title>${esc((h.name || c.unnamed) + ' · ' + c.label + ' · ' + miles(h.d))}</title></circle>`; }).join('');
+  const home = `<circle cx="${X(cx)}" cy="${Y(cy)}" r="7" fill="#b4432c" stroke="#fff" stroke-width="2.5"/>`;
+  return `<div class="radar"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of nearby places with rings at a quarter, half and one mile">
+    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}</svg><span class="attr">Map: USGS · Places: OpenStreetMap</span></div>`;
+}
+function nearHtml(d, lat, lon, L, group = 'all') {
+  const cats = nearCats(d, lat, lon);
+  const chips = `<div class="nchips">${[{ id: 'all', label: 'All' }, ...NEAR_GROUPS.filter((g) => g.id !== 'other')].map((g) =>
+    `<button data-g="${g.id}" class="${g.id === group ? 'on' : ''}">${g.color ? `<i style="background:${g.color}"></i>` : ''}${g.label}</button>`).join('')}</div>`;
+  let rows;
+  if (group === 'all') {                             // the closest of each kind
+    rows = cats.filter((c) => c.list !== false).map((c) => {
+      if (!c.best) return `<div class="brow"><div class="l">${c.label}</div><div class="m"><small>None within ${miles(c.r)}</small></div></div>`;
+      const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || c.unnamed || c.label) + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
+      return `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(name)}<small>${travelTime(c.best.d)}</small></div><div class="r">${miles(c.best.d)}</div></div>`;
+    }).join('') + (d.restaurants != null ? `<div class="brow"><div class="l">Restaurants</div><div class="m">${d.restaurants} within half a mile</div></div>` : '');
+  } else {                                           // several of one kind, nearest first
+    const list = cats.filter((c) => c.g === group).flatMap((c) => c.hits.map((h) => ({ h, c }))).sort((a, b) => a.h.d - b.h.d).slice(0, 8);
+    rows = list.length ? list.map(({ h, c }) => `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(h.name || c.unnamed)}<small>${travelTime(h.d)}</small></div><div class="r">${miles(h.d)}</div></div>`).join('')
+      : `<div class="brow"><div class="m"><small>Nothing of this kind found nearby.</small></div></div>`;
+  }
+  return `<div class="bt">Nearby</div>${radarSvg(L, cats, group)}${chips}<div class="brows">${rows}</div>
+    <div class="bl">Walking times assume about 3 mph on streets; past a mile and a half it’s a rough drive time. Distances are straight-line. Places © OpenStreetMap contributors; base map USGS.</div>`;
+}
+
+/* =========================================================================
+   Monthly cost: a mortgage calculator using the card's own numbers.
+   ========================================================================= */
+const CALC_KEY = 'housepoint.calc';
+const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
+const STATE_INSURANCE = { MA: 1956, CT: 1980, NJ: 1284, FL: 6408 };   // average yearly premium for a $300k-dwelling policy (Insurify, 2026)
+const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
+let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
+try { const p = JSON.parse(localStorage.getItem(CALC_KEY) || '{}'); if (p.asOf === RATE30.asOf) Object.assign(calcPrefs, p); else if (p.down) Object.assign(calcPrefs, { down: p.down, term: p.term || 30 }); } catch (e) { /* defaults */ }
+const CALC_EDITS = new Map();                            // card key -> price/insurance/fee typed in
+function calcDefaults(s) {
+  const sale = s.condo ? null : s.sales.find((q) => q.p >= 10000);
+  const value = s.condo ? median(s.vals) : num(s.r0.TOTAL_VAL);
+  const price = Math.round(Math.max(value || 0, sale ? sale.p : 0) / 1000) * 1000;
+  const t = estimateTax(s);
+  const taxYr = !t || t.exempt ? 0 : (t.buyer || (t.lo + t.hi) / 2);
+  return { price, taxYr, taxKind: !t || t.exempt ? 'none' : t.actual ? 'actual' : t.buyer ? 'buyer' : 'estimate', ins: s.condo ? 0 : (STATE_INSURANCE[s.region.id] || 0), hoa: 0 };
+}
+function monthlyCost(c) {
+  const loan = Math.max(0, c.price * (1 - c.down / 100)), r = c.rate / 100 / 12, n = c.term * 12;
+  const pi = loan <= 0 ? 0 : r > 0 ? loan * r / (1 - Math.pow(1 + r, -n)) : loan / n;
+  const tax = (c.taxYr || 0) / 12, ins = (c.ins || 0) / 12, pmi = c.down < 20 ? loan * PMI_RATE / 12 : 0, hoa = c.hoa || 0;
+  return { loan, pi, tax, ins, pmi, hoa, total: pi + tax + ins + pmi + hoa, cash: c.price * c.down / 100 };
+}
+const calcFor = (key, s) => ({ ...calcDefaults(s), ...(CALC_EDITS.get(key) || {}), down: calcPrefs.down, rate: calcPrefs.rate, term: calcPrefs.term });
+const dollars = (v) => '$' + Math.round(v || 0).toLocaleString();
+const parseMoney = (v) => { const n = parseFloat(String(v).replace(/[^0-9.]/g, '')); return Number.isFinite(n) ? n : 0; };
+function calcHtml(L, s) {
+  const c = calcFor(L.p.key, s);
+  const chip = (attr, v, cur, label) => `<button data-${attr}="${v}" class="${+v === +cur ? 'on' : ''}">${label}</button>`;
+  return `<div class="bsec calc" id="bCalc"><div class="bt">Monthly cost${s.condo ? ' · a typical unit' : ''}</div><div class="cbig" id="cTotal"></div>
+    <div class="cgrid"><label>Price<input id="cPrice" inputmode="numeric" value="${dollars(c.price)}" aria-label="Price"></label>
+      <label>Rate %<input id="cRate" inputmode="decimal" value="${c.rate}" aria-label="Interest rate, percent"></label>
+      <label>Insurance a year<input id="cIns" inputmode="numeric" value="${dollars(c.ins)}" aria-label="Home insurance a year"></label>
+      <label>HOA or condo fee a month<input id="cHoa" inputmode="numeric" value="${dollars(c.hoa)}" aria-label="HOA or condo fee a month"></label></div>
+    <div class="cchips"><span>Down</span>${[3.5, 5, 10, 20, 25].map((v) => chip('down', v, c.down, v + '%')).join('')}</div>
+    <div class="cchips"><span>Loan</span>${[30, 20, 15].map((v) => chip('term', v, c.term, v + ' yr')).join('')}</div>
+    <div class="brows" id="cRows"></div><div class="bl" id="cNote"></div></div>`;
+}
+function wireCalc(L, s) {
+  const box = $('#bCalc'); if (!box) return;
+  const key = L.p.key;
+  const draw = () => {
+    const c = calcFor(key, s), m = monthlyCost(c);
+    $('#cTotal').innerHTML = c.price > 0 ? `≈ ${dollars(m.total)} <small>a month</small>` : '<small>Enter a price</small>';
+    const row = (l, v, sub) => `<div class="brow"><div class="l">${l}</div><div class="m">${sub ? `<small>${sub}</small>` : ''}</div><div class="r">${dollars(v)}</div></div>`;
+    $('#cRows').innerHTML = row('Loan payment', m.pi, `${dollars(m.loan)} at ${c.rate}% for ${c.term} years`) + row('Property tax', m.tax, c.taxKind === 'none' ? 'No figure for this property' : '')
+      + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
+    const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: 'the estimate above', none: 'not included' }[c.taxKind];
+    $('#cNote').innerHTML = `Rate: Freddie Mac’s average 30-year rate was ${RATE30.rate}% (${RATE30.asOf}); yours depends on credit and points${c.term !== 30 ? ', and shorter loans usually run a bit lower' : ''}. `
+      + `Price starts at the ${s.condo ? 'typical unit value' : 'town’s value or the last sale, whichever is higher'}; type the asking price. Tax: ${taxWhy}. `
+      + `Insurance: ${s.condo ? 'add your condo policy quote' : `${esc(s.region.name)}’s average policy; get a real quote`}.${m.pmi ? ` Mortgage insurance is a rough ${PMI_RATE * 100}% a year.` : ''} `
+      + `Cash needed: <b>${dollars(m.cash)}</b> down plus closing costs, often 2–5% of the loan.`;
+    patchSaved(key, { calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } });
+  };
+  const edit = (field) => (e) => { CALC_EDITS.set(key, { ...(CALC_EDITS.get(key) || {}), [field]: parseMoney(e.target.value) }); draw(); };
+  $('#cPrice').oninput = edit('price'); $('#cIns').oninput = edit('ins'); $('#cHoa').oninput = edit('hoa');
+  const money0 = (el) => { el.onblur = () => { el.value = dollars(parseMoney(el.value)); }; };
+  [$('#cPrice'), $('#cIns'), $('#cHoa')].forEach(money0);
+  $('#cRate').oninput = (e) => { const r = parseFloat(e.target.value); if (r >= 0 && r < 30) { calcPrefs.rate = r; saveCalcPrefs(); draw(); } };
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('.cchips button'); if (!b) return;
+    if (b.dataset.down) calcPrefs.down = +b.dataset.down; if (b.dataset.term) calcPrefs.term = +b.dataset.term;
+    box.querySelectorAll('.cchips button').forEach((x) => x.classList.toggle('on', x.dataset.down ? +x.dataset.down === calcPrefs.down : +x.dataset.term === calcPrefs.term));
+    saveCalcPrefs(); draw();
+  });
+  draw();
+}
+function saveCalcPrefs() { try { localStorage.setItem(CALC_KEY, JSON.stringify({ ...calcPrefs, asOf: RATE30.asOf })); } catch (e) { /* fine */ } }
+
+/* =========================================================================
+   Saved houses and the side-by-side comparison (kept on this phone)
+   ========================================================================= */
+const SAVED_KEY = 'housepoint.saved.v1' + (DEMO ? '.demo' : '');
+const MAX_SAVED = 24;
+function loadSaved() { try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch (e) { return []; } }
+function storeSaved(a) { try { localStorage.setItem(SAVED_KEY, JSON.stringify(a.slice(0, MAX_SAVED))); } catch (e) { /* storage full or off */ } }
+const isSaved = (key) => loadSaved().some((x) => x.key === key);
+const STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
+const STAR_O = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
+function saveBtnHtml(key) { const on = isSaved(key); return `<button class="savebtn${on ? ' on' : ''}" id="saveBtn" aria-pressed="${on}">${on ? STAR : STAR_O}${on ? 'Saved' : 'Save'}</button>`; }
+function floodShort(env) {
+  const fl = env && env.flood; if (!fl) return null; if (fl.none) return 'Not mapped';
+  const c = fl.here; return `${c.badge} · ${{ high: 'high risk', moderate: 'moderate', low: 'minimal', unknown: 'not mapped', water: 'water' }[c.risk] || ''}`;
+}
+function snapshot(L, s) {
+  const [lat, lon] = L.proj.inv(L.c[0], L.c[1]), r = s.r0, sale = s.sales.find((q) => q.p >= 10000), t = estimateTax(s), c = calcFor(L.p.key, s);
+  return { key: L.p.key, addr: s.addr, town: s.town, rid: s.region.id, lat, lon, ts: Date.now(), year: s.year,
+    use: s.condo ? `Condo building · ${s.units} units` : s.park ? 'Mobile home park' : s.use,
+    value: s.condo || s.commonOnly ? null : num(r.TOTAL_VAL), range: s.condo && s.vals.length ? [Math.min(...s.vals), Math.max(...s.vals)] : null, valueWord: s.region.valueWord || 'Assessed',
+    sale: sale ? { p: sale.p, d: sale.d.toISOString().slice(0, 10) } : null,
+    tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual }) : null,
+    calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa },
+    living: s.condo || s.park ? null : num(r.RES_AREA) || num(r.BLD_AREA) || null, beds: num(r.BEDS) || null, baths: num(r.BATHS) ? bathText(r) : null,
+    lot: Math.round(lotSqft(L)), flood: null, school: null, grocery: null, ...(BUY_FACTS.get(L.p.key) || {}) };
+}
+function toggleSave(L, s) {
+  const a = loadSaved(), i = a.findIndex((x) => x.key === L.p.key);
+  if (i >= 0) { a.splice(i, 1); storeSaved(a); toast('Removed from Saved', 1600); }
+  else {
+    const snap = snapshot(L, s);
+    a.unshift(snap); storeSaved(a); saveHistory({ L });
+    envFor(L).then((env) => patchSaved(L.p.key, { flood: floodShort(env) })).catch(() => {});   // already looked up for this card: no new request
+    toast(a.length > MAX_SAVED ? `Saved. Only the newest ${MAX_SAVED} are kept.` : 'Saved. Compare saved houses from the list button.', 2200);
+  }
+  const b = $('#saveBtn'); if (b) b.outerHTML = saveBtnHtml(L.p.key);
+  const nb = $('#saveBtn'); if (nb) nb.onclick = () => toggleSave(L, s);
+}
+// What the buying section found for a house, kept so saving it later (or now) fills in the comparison.
+const BUY_FACTS = new Map();
+function noteBuy(key, patch) { BUY_FACTS.set(key, { ...(BUY_FACTS.get(key) || {}), ...patch }); patchSaved(key, patch); }
+function patchSaved(key, patch) {
+  const a = loadSaved(), x = a.find((h) => h.key === key); if (!x) return;
+  Object.assign(x, patch); storeSaved(a);
+}
+function renderSaved() {
+  const a = loadSaved();
+  if (!a.length) return '<div class="empty">Tap Save on a house card to keep it here. With two or more saved, they line up side by side to compare.</div>';
+  const cols = a.map((x, i) => ({ x, i, m: x.calc && x.calc.price ? monthlyCost({ ...x.calc, down: calcPrefs.down, rate: calcPrefs.rate, term: calcPrefs.term }) : null }));
+  const cell = (v, sub) => `<td>${v == null || v === '' ? '—' : esc(v)}${sub ? `<small>${esc(sub)}</small>` : ''}</td>`;
+  const rows = [
+    ['Value', (x) => cell(x.range ? `${money(x.range[0])}–${money(x.range[1])}` : money(x.value), x.range ? 'unit values' : x.valueWord.toLowerCase())],
+    ['Last sale', (x) => cell(x.sale ? moneyFull(x.sale.p) : null, x.sale ? x.sale.d.slice(0, 4) : '')],
+    ['Property tax', (x) => cell(x.tax && x.tax.exempt ? 'None' : x.tax ? `${x.tax.actual ? '' : '≈ '}${moneyFull(round10(x.tax.lo))}${x.tax.hi > x.tax.lo + 10 ? '+' : ''}` : null, x.tax && !x.tax.exempt ? (x.tax.actual ? 'last year, per year' : 'estimate, per year') : '')],
+    ['Monthly cost', (x, m) => cell(m ? `≈ ${dollars(m.total)}` : null, m ? `at ${calcPrefs.down}% down, ${calcPrefs.rate}%` : '')],
+    ['Built', (x) => cell(x.year)],
+    ['Living area', (x) => cell(x.living ? `${Math.round(x.living).toLocaleString()} ft²` : null)],
+    ['Beds · baths', (x) => cell(x.beds || x.baths ? `${x.beds || '—'} · ${x.baths || '—'}` : null)],
+    ['Lot', (x) => cell(x.lot ? (x.lot >= 21780 ? `${(x.lot / 43560).toFixed(1)} ac` : `${x.lot.toLocaleString()} ft²`) : null)],
+    ['Flood zone', (x) => cell(x.flood)],
+    ['Elementary', (x) => cell(x.school, x.school ? '' : 'open its card’s buying section')],
+    ['Grocery', (x) => cell(x.grocery)],
+  ];
+  const head = `<tr><th></th>${cols.map(({ x, i }) => `<th class="h"><a href="#" data-open="${i}">${esc(x.addr)}</a><small>${esc([x.town, x.rid].filter(Boolean).join(', '))}</small><button data-remove="${i}">Remove</button></th>`).join('')}</tr>`;
+  const body = rows.map(([label, f]) => `<tr><td>${label}</td>${cols.map(({ x, m }) => f(x, m)).join('')}</tr>`).join('');
+  return `<div class="sum"><b>${a.length}</b> saved on this phone.${a.length > 1 ? ' Swipe the table sideways to compare.' : ' Save another house to compare side by side.'}</div>
+    <div class="cmpwrap"><table class="cmp"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 function floodBoxHtml(L) {
@@ -2122,6 +2368,7 @@ function paintFlood(L) {
     const box = $('#floodBox'); if (!box || box.dataset.k !== key) return;   // the card has moved on
     const v = floodView(env);
     box.className = 'flood ' + v.cls; box.innerHTML = v.html;
+    patchSaved(key, { flood: floodShort(env) });
   });
 }
 
@@ -2949,16 +3196,29 @@ function renderMine() {
   return h.map((x, i) => `<button class="item" data-h="${i}"><div class="badge">${esc(x.year || '—')}</div><div><div class="t1">${esc(x.addr)}</div><div class="t2">${esc([x.town, x.val ? money(x.val) : null, new Date(x.ts).toLocaleDateString()].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
 }
 function renderPanel() {
-  $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine');
-  $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>';
+  $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine'); $('#tabSaved').classList.toggle('on', panelTab === 'saved');
+  const nSaved = loadSaved().length; $('#tabSaved').textContent = nSaved ? `Saved (${nSaved})` : 'Saved';
+  $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : panelTab === 'saved' ? renderSaved() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>';
 }
 function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panelScroll').scrollTop = 0; }
 function closePanel() { $('#panel').classList.remove('open'); }
 $('#tabNear').onclick = () => { panelTab = 'near'; renderPanel(); };
 $('#tabMine').onclick = () => { panelTab = 'mine'; renderPanel(); };
+$('#tabSaved').onclick = () => { panelTab = 'saved'; renderPanel(); };
 $('#panelGrab').onclick = closePanel;
 $('#panelBody').addEventListener('click', (e) => {
   if (e.target.closest('#panelAbout')) { openAbout(); return; }
+  const rm = e.target.closest('[data-remove]');
+  if (rm) { const a = loadSaved(); a.splice(+rm.dataset.remove, 1); storeSaved(a); renderPanel(); return; }
+  const op = e.target.closest('[data-open]');
+  if (op) {
+    e.preventDefault();
+    const x = loadSaved()[+op.dataset.open]; if (!x) return;
+    closePanel();
+    const L = S.local.find((l) => l.p.key === x.key);
+    if (L) openFor(L); else { S.map.R = 70; startMapMode({ lat: x.lat, lon: x.lon, selectKey: x.key }, 'Loading…'); }
+    return;
+  }
   const b = e.target.closest('.item'); if (!b) return;
   if (b.dataset.i !== undefined) { const L = panelItems[+b.dataset.i]; if (L) { closePanel(); openFor(L); } return; }
   const x = loadHistory()[+b.dataset.h]; if (!x) return;
@@ -3012,7 +3272,9 @@ const ABOUT = `
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
     <li><b>Neighborhood:</b> U.S. Census Bureau, American Community Survey 5-year estimates for the census tract (tract found with the Census Bureau’s TIGERweb, or the FCC’s area lookup as a backup).</li>
     <li><b>Safety:</b> crimes local police departments report to the FBI (Uniform Crime Reporting), via the FBI Crime Data Explorer.</li>
-    <li><b>Nearby places:</b> © OpenStreetMap contributors, via the Overpass API (Open Database License).</li>
+    <li><b>Nearby places:</b> © OpenStreetMap contributors, via the Overpass API (Open Database License). Walking and driving times are rough figures from straight-line distance.</li>
+    <li><b>Nearby map:</b> USGS National Map topographic base map (public domain).</li>
+    <li><b>Monthly cost:</b> the starting rate is Freddie Mac’s Primary Mortgage Market Survey average for a 30-year fixed loan; insurance starts at the state’s average homeowners policy for a $300,000 home (Insurify, 2026); mortgage insurance is a rough 0.6% of the loan a year. Change any of them to match a real quote.</li>
     <li><b>Street view and listings:</b> open Google Maps, Zillow or a Google search; Housepoint doesn’t read anything from those sites.</li>
   </ul>
   <h3>How accurate is it?</h3>

@@ -21,6 +21,9 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 - **Point mode:** aim at a house and tap for its card. Small tags float over the other houses in view (year built and value); tap one to open it. "Labels on/off" hides them.
 - **Card:** year built, value, last sale, estimated property tax, lot, flood zone and ground elevation, and a shareable image.
 - **Map:** color every lot by age, value or last sale year, with a legend.
+- **Monthly cost:** in "Thinking of buying?", a mortgage calculator that starts from the card's own numbers (price, estimated tax, the state's average insurance) and Freddie Mac's latest 30-year rate. Type the asking price or your own rate; down payment and loan length are remembered.
+- **Nearby:** walk or drive times to the closest grocery, school, park, train and more, a map with ¼, ½ and 1 mile rings (USGS base map), and filters for groceries, dining, parks, transit and health.
+- **Save & compare:** star a house on its card; the Saved tab lines starred houses up side by side (value, last sale, tax, monthly cost, size, flood zone, nearest school and grocery). Saved houses stay on the phone.
 
 ## Try it
 - Open the live link in Safari or Chrome on your phone, tap **Start pointing**, and allow camera, location and motion.
