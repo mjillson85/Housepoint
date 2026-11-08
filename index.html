@@ -255,6 +255,7 @@
   .bsec .bl { font-size: 13px; color: var(--mute); line-height: 1.42; margin-top: 4px; }
   .bsec .bl b { color: var(--ink); font-weight: 600; }
   .bsec .why { font-size: 12px; color: var(--mute); margin-top: 4px; word-break: break-word; }
+  .bsec .bretry { margin-top: 8px; height: 32px; padding: 0 14px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-size: 13.5px; font-weight: 600; }
   .bsec a { color: var(--brick); font-weight: 600; text-decoration: none; }
   .blinks { display: flex; gap: 8px; margin-top: 9px; }
   .blinks a { flex: 1; padding: 9px 0; border-radius: 10px; background: var(--paper-2); color: var(--ink); text-align: center; font-size: 14px; }
@@ -916,11 +917,20 @@ const svcFor = (rid) => SVC[rid] || (SVC[rid] = { ready: null });
 const anyServiceUp = () => Object.values(SVC).some((x) => x.layerUrl);
 
 async function getJSON(url, opts = {}, ms = 20000) {
+  // `whole: true` makes the time limit cover the entire answer, not just its first bytes. OpenStreetMap's servers send the
+  // first bytes at once and the rest only when the search finishes, which on a busy server can take minutes.
+  const { whole, signal, ...init } = opts;
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
-  let r;
-  try { r = await fetch(url, { ...opts, signal: ctl.signal }); } finally { clearTimeout(t); }
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const j = await r.json();
+  if (signal) signal.addEventListener('abort', () => ctl.abort());     // a caller can cancel too
+  let r, j;
+  try {
+    try { r = await fetch(url, { ...init, signal: ctl.signal }); } finally { if (!whole) clearTimeout(t); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    j = await r.json();
+  } catch (e) {
+    if (ctl.signal.aborted && !(signal && signal.aborted)) throw new Error(`no answer in ${Math.round(ms / 1000)} seconds`);
+    throw e;
+  } finally { clearTimeout(t); }
   if (j && j.error) throw new Error(j.error.message || 'Service error');
   return j;
 }
@@ -1838,8 +1848,10 @@ function openBuy(L, s) {
     const b = $('#buyBox'); if (!b || b.dataset.k !== key) return;          // the card has moved on
     const el = $('#' + id); if (!el) return;
     // A short reason in small print makes a failure on someone's phone something we can actually fix.
-    el.innerHTML = html || `<div class="bt">${title}</div><div class="bl">Couldn’t load this right now. Try again later.</div><div class="why">${esc(whyFailed(err))}</div>`;
+    el.innerHTML = html || `<div class="bt">${title}</div><div class="bl">Couldn’t load this right now.</div><div class="why">${esc(whyFailed(err))}</div><button class="bretry" data-retry>Try again</button>`;
   });
+  box.onclick = (e) => { if (e.target.closest('[data-retry]')) openBuy(L, s); };     // finished sections come back from memory; failed ones are asked again
+  setTimeout(() => { const el = $('#bNear .bl'); if ($('#buyBox') && $('#buyBox').dataset.k === key && el && /^Finding/.test(el.textContent)) el.textContent = 'Still waiting on OpenStreetMap. Its servers are run by volunteers and can be slow; this tries another one if the first is busy.'; }, 9000);
   wireCalc(L, s);
   put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => {
     const el = schoolPicks(d, lat, lon)[0]; if (el && el.s) noteBuy(key, { school: `${el.s.name} · ${miles(el.s.d)}` });
@@ -1887,6 +1899,23 @@ async function firstOf(tries) {
     try { const v = await fn(); if (v) return v; errs.push(`${label}: nothing found`); } catch (e) { errs.push(`${label}: ${(e && e.message) || e}`); }
   }
   throw new Error(errs.join(' · '));
+}
+// Ask one server; if it hasn't answered after `gap` ms (or fails), ask the next as well. First answer wins; the rest are cancelled.
+function hedge(tries, gap = 7000) {
+  return new Promise((resolve, reject) => {
+    const errs = [], ctls = []; let next = 0, failed = 0, done = false, timer;
+    const finish = () => { done = true; clearTimeout(timer); ctls.forEach((c) => c.abort()); };
+    const launch = () => {
+      if (done || next >= tries.length) return;
+      const i = next++, [label, fn] = tries[i], ctl = new AbortController(); ctls.push(ctl);
+      clearTimeout(timer); timer = setTimeout(launch, gap);
+      fn(ctl.signal).then((v) => { if (!done) { finish(); resolve(v); } }, (e) => {
+        if (done) return; errs[i] = `${label}: ${(e && e.message) || e}`;
+        if (++failed === tries.length) { finish(); reject(new Error(errs.filter(Boolean).join(' · '))); } else launch();
+      });
+    };
+    launch();
+  });
 }
 const fetchMsg = (e) => (/failed to fetch|load failed|networkerror/i.test(String(e && e.message)) ? 'blocked or offline' : (e && e.message) || String(e));
 
@@ -2139,31 +2168,33 @@ const NEAR_GROUPS = [   // fixed color per group (validated categorical palette;
   { id: 'health', label: 'Health', color: '#e87ba4' }, { id: 'other', label: 'Services', color: '#6250d6' }];
 const GROUP = Object.fromEntries(NEAR_GROUPS.map((g) => [g.id, g]));
 const NEAR_CATS = [
-  { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
-  { label: 'Pharmacy', g: 'health', unnamed: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
-  { label: 'Coffee', g: 'dining', unnamed: 'Café', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
+  // nw = points and outlines; only parks and hospitals (often mapped as multi-part areas) also ask for relations, which are slow.
+  { label: 'Grocery', g: 'groceries', unnamed: 'Grocery store', r: 3200, q: 'nw["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
+  { label: 'Pharmacy', g: 'health', unnamed: 'Pharmacy', r: 3200, q: 'nw["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
+  { label: 'Coffee', g: 'dining', unnamed: 'Café', r: 1600, q: 'nw["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
   { label: 'Restaurant', g: 'dining', unnamed: 'Restaurant', r: 800, list: false, is: (t) => /^(restaurant|fast_food)$/.test(t.amenity || '') },
   { label: 'Park', g: 'parks', unnamed: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
-  { label: 'Playground', g: 'parks', unnamed: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
-  { label: 'Train', g: 'transit', unnamed: 'Station', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
+  { label: 'Playground', g: 'parks', unnamed: 'Playground', r: 1600, q: 'nw["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
+  { label: 'Train', g: 'transit', unnamed: 'Station', r: 6400, q: 'nw["railway"="station"]', is: (t) => t.railway === 'station' },
   { label: 'Bus stop', g: 'transit', unnamed: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
   { label: 'Hospital', g: 'health', unnamed: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
-  { label: 'Library', g: 'other', unnamed: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
-  { label: 'Fire station', g: 'other', unnamed: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
+  { label: 'Library', g: 'other', unnamed: 'Library', r: 4800, q: 'nw["amenity"="library"]', is: (t) => t.amenity === 'library' },
+  { label: 'Fire station', g: 'other', unnamed: 'Fire station', r: 4800, q: 'nw["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
 ];
 const NEAR_VIEW = new Map();      // card key -> what Nearby last showed, for the filter chips
 async function nearbyFor(lat, lon) {
   return nearMemo('near', lat, lon, 150, async () => {
     const at = (r) => `(around:${r},${lat.toFixed(6)},${lon.toFixed(6)})`;
     // Everything but restaurants in one set; restaurants counted, and the first 60 listed.
-    const q = `[out:json][timeout:25];(${NEAR_CATS.filter((c) => c.q).map((c) => c.q + at(c.r) + ';').join('')});out center qt;`
-      + `nwr["amenity"~"^(restaurant|fast_food)$"]${at(800)}->.f;.f out count;.f out center qt 60;`;
-    const j = await firstOf(OVERPASS.map((u) => [new URL(u).hostname.replace(/^www\./, ''), async () => {
-      const r = await getJSON(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }, 30000)
+    const q = `[out:json][timeout:20];(${NEAR_CATS.filter((c) => c.q).map((c) => c.q + at(c.r) + ';').join('')});out center qt;`
+      + `nw["amenity"~"^(restaurant|fast_food)$"]${at(800)}->.f;.f out count;.f out center qt 60;`;
+    // The servers are run by volunteers and can be slow: if one hasn't answered in 7 seconds, ask the next one too.
+    const j = await hedge(OVERPASS.map((u) => [new URL(u).hostname.replace(/^www\./, ''), async (signal) => {
+      const r = await getJSON(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal, whole: true }, 25000)
         .catch((e) => { throw new Error(fetchMsg(e)); });
       if (r.remark && /error|timed out/i.test(r.remark) && !(r.elements || []).length) throw new Error(r.remark.slice(0, 80));
       return r;
-    }]));
+    }]), 7000);
     const els = (j.elements || []).filter((e) => e.type !== 'count');
     const out = NEAR_CATS.map((c) => {
       const hits = els.filter((e) => e.tags && c.is(e.tags)).map((e) => {
