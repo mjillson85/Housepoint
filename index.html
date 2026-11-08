@@ -464,6 +464,7 @@ const DECLINATION = -14.2;      // magnetic declination for Massachusetts (degre
 const QUERY_RADIUS = 220;       // meters of parcels to load around you
 const MAX_RANGE = 170;          // farthest house we'll target, meters
 const MIN_RANGE = 2;
+const INSIDE_YIELD_M = 60;      // no roof outline for the lot you're on: a house squarely in the circle within this many meters wins anyway
 const INSIDE_FIRST_M = 12;      // standing on a lot and pointing across >= this many meters of it? then it's probably the one you mean
 const CONE = [[-11, .4], [-5.5, .8], [0, 1], [5.5, .8], [11, .4]]; // ray offsets (deg) and weights
 
@@ -1312,12 +1313,21 @@ function findCandidates(lat, lon, heading) {
   const list = [...scores.values()].sort((a, b) => (b.center - a.center) || (b.score - a.score) || (a.dist - b.dist));
   // If you're pointing across a good stretch of the lot you're on, that lot is most likely the one you mean.
   // Otherwise keep it as a fallback you can reach with "Not it".
-  const h0 = rad(heading);
+  const h0 = rad(heading), dx0 = Math.sin(h0), dy0 = Math.cos(h0);
   for (const L of inside) {
-    const exitT = rayEntry(ox, oy, Math.sin(h0), Math.cos(h0), L.rings, MAX_RANGE);
+    const exitT = rayEntry(ox, oy, dx0, dy0, L.rings, MAX_RANGE);
     const across = exitT === null ? MAX_RANGE : exitT;
-    const s = { L, score: 1, dist: 0, center: true, inside: true, across };
-    if (across >= INSIDE_FIRST_M) list.unshift(s); else list.splice(Math.min(2, list.length), 0, s);   // keep it within the first few "Not it" taps
+    // Is the circle on one of this lot's own roofs? (Aiming past your own house means you want the one beyond it.)
+    let roofT = null;
+    for (const b of S.bldgs) {
+      if (b.L !== L || rayBoxT(ox, oy, dx0, dy0, b.bb, across) < 0) continue;
+      const t = rayEntry(ox, oy, dx0, dy0, b.rings, across); if (t !== null && (roofT === null || t < roofT)) roofT = t;
+    }
+    const other = list[0];
+    const aimingHere = roofT !== null
+      || (!L.hasBldg && across >= INSIDE_FIRST_M && !(other && other.center && other.dist <= INSIDE_YIELD_M));   // no outline on file: fall back to the old rule unless a house sits squarely in the circle
+    const s = { L, score: 1, dist: roofT == null ? 0 : roofT, center: true, inside: true, across };
+    if (aimingHere) list.unshift(s); else list.splice(Math.min(2, list.length), 0, s);   // keep it within the first few "Not it" taps
   }
   return list.map((s) => ({ ...s, bearing: norm(Math.atan2(s.L.c[0] - ox, s.L.c[1] - oy) * 180 / Math.PI), cdist: Math.hypot(s.L.c[0] - ox, s.L.c[1] - oy) }));
 }
