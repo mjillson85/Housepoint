@@ -2027,7 +2027,8 @@ async function acsRow(year, forClause, inClause) {
   const tries = KEYS.census && censusKeyWorks ? [`${base}&key=${KEYS.census}`, base] : [base];
   let j, first;
   for (const [n, url] of tries.entries()) {
-    try { j = await getJSON(url, {}, 15000); if (n > 0) censusKeyWorks = false; break; } catch (e) { first = first || e; }
+    try { j = await getJSON(url, {}, 15000); if (n > 0) censusKeyWorks = false; break; }
+    catch (e) { first = first || e; if (/^HTTP \d/.test(String(e && e.message))) break; }   // the Census answered (e.g. a year not out yet): the key isn't the problem
   }
   if (j === undefined) {
     const e = first, both = tries.length > 1 ? ' (with and without the key)' : '';
