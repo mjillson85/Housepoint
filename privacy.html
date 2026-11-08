@@ -32,8 +32,10 @@
   <h2>What gets sent to public data services</h2>
   <p>To show records, Housepoint asks public government and mapping services for the properties around a map location (the spot you're
   looking at or searched for): the Massachusetts, Connecticut, New Jersey and Florida parcel services, building outlines, aerial photos, FEMA flood zones and USGS
-  elevation. If you open “Thinking of buying?”, the house's map location is also sent to federal school data (NCES), the Census Bureau,
-  the FBI's crime data service and OpenStreetMap's Overpass service. These requests contain map coordinates, and like any web request they come from your device's internet address. They don't
+  elevation. Several of those parcel layers and the building outlines are hosted on ArcGIS Online (Esri's hosting service), where the app
+  also looks up their current addresses. If you open “Thinking of buying?”, the house's map location is also sent to federal school data
+  (NCES), the Census Bureau (and, if that lookup fails, the FCC's census-area lookup), the FBI's crime data service, and OpenStreetMap
+  Overpass servers run by volunteers (overpass-api.de, overpass.private.coffee, overpass.kumi.systems). These requests contain map coordinates, and like any web request they come from your device's internet address. They don't
   include your name, account or contact details, because Housepoint doesn't have any. Each service has its own policies.</p>
 
   <h2>Owner names</h2>

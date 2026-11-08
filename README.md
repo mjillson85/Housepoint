@@ -10,10 +10,10 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 - Connecticut: the Connecticut GIS Office's statewide CAMA and Parcel Layer (town assessor records, public domain). Near the Massachusetts line both states' records load together.
 - New Jersey: the NJ Office of GIS statewide parcels joined to the state's MOD-IV tax list (assessed value, last sale, year built, and last year's actual tax bill). Towns assess at different shares of market value, so the app doesn't compare New Jersey values to sale prices.
 - Florida: the Florida Geographic Information Office's statewide parcel layer (Dept. of Revenue tax roll from county property appraisers).
-- Owner names are never requested or shown, in either state. No accounts, ads or tracking; fonts are served from this site. See [privacy.html](privacy.html).
+- Owner names are never requested or shown, in any state. No accounts, ads or tracking; fonts are served from this site. See [privacy.html](privacy.html).
 - Aerial photos: MassGIS 2025 aerial imagery in Massachusetts (15 cm, leaf-off), USGS NAIP elsewhere and as a fallback.
 - Building outlines (to aim at roofs, not lawns): MassGIS Building Structures; FEMA/ORNL USA Structures in Connecticut, New Jersey and Florida, with Florida's statewide footprints as a backup.
-- Flood zone: FEMA National Flood Hazard Layer (Esri's hosted copy as a fallback). Ground elevation: USGS Elevation Point Query Service.
+- Flood zone: FEMA National Flood Hazard Layer. Ground elevation: USGS Elevation Point Query Service.
 - "Thinking of buying?" (on each card, loaded when opened): listing links (Zillow, a listings search), the nearest public schools and school district (NCES), Census tract figures next to the state's (American Community Survey), the local police department's crime rates from the FBI, and distances to groceries, transit, parks and more (OpenStreetMap). Free keys go in `KEYS` near the top of that section of index.html: a Census key (api.census.gov/data/key_signup.html) and an api.data.gov key for the FBI (the shared DEMO_KEY works for light use).
 - Estimated property tax: assessed value × the town's FY2026 residential rate (Massachusetts Division of Local Services); assessed value (70% of the town's appraisal) × the town's FY2026 mill rate (Connecticut OPM); last year's actual bill from the MOD-IV tax list (New Jersey); or the county's taxable value × its average tax rate (Florida TaxWatch, from Dept. of Revenue data). It's an estimate, not the actual bill.
 

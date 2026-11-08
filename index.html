@@ -199,6 +199,7 @@
   #scan { position: fixed; left: 0; right: 0; height: 2px; top: 44%; z-index: 6; background: linear-gradient(90deg, transparent, #f0a48f, transparent); opacity: 0; }
   #scan.on { animation: scan 0.9s ease-in-out infinite; opacity: 1; }
   @keyframes scan { 0% { transform: translateY(-120px); } 50% { transform: translateY(120px); } 100% { transform: translateY(-120px); } }
+  @media (prefers-reduced-motion: reduce) { #scan.on { animation: none; } * { scroll-behavior: auto !important; } }
   .demo-flag { position: fixed; left: 50%; transform: translateX(-50%); top: calc(66px + var(--safe-t)); z-index: 13; text-decoration: none; font-size: 11px; font-weight: 600; letter-spacing: .4px; background: #e0614b; color: #fff; padding: 4px 8px; border-radius: 6px; }
 
   /* aerial photo on card */
@@ -253,7 +254,7 @@
   .bsec .bt { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
   .bsec .bl { font-size: 13px; color: var(--mute); line-height: 1.42; margin-top: 4px; }
   .bsec .bl b { color: var(--ink); font-weight: 600; }
-  .bsec .why { font-size: 11px; color: var(--mute); opacity: .8; margin-top: 4px; word-break: break-word; }
+  .bsec .why { font-size: 12px; color: var(--mute); margin-top: 4px; word-break: break-word; }
   .bsec a { color: var(--brick); font-weight: 600; text-decoration: none; }
   .blinks { display: flex; gap: 8px; margin-top: 9px; }
   .blinks a { flex: 1; padding: 9px 0; border-radius: 10px; background: var(--paper-2); color: var(--ink); text-align: center; font-size: 14px; }
@@ -320,7 +321,7 @@
   </button>
   <button class="btn-ghost" id="goMap">Use the map instead</button>
   <button class="btn-link" id="goDemo">Try a sample neighborhood</button>
-  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera, location and compass stay on this device. Covers Massachusetts, Connecticut, New Jersey and Florida.
+  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera and compass stay on this device; only map locations go to public record services. Covers Massachusetts, Connecticut, New Jersey and Florida.
     <a href="#" id="openAbout">About &amp; sources</a> · <a href="privacy.html">Privacy</a></div>
 </section>
 
@@ -337,7 +338,7 @@
 <div id="ar"></div>
 <div id="reticle" class="hidden"></div>
 <div id="scan"></div>
-<div id="liveLabel" class="dim"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
+<div id="liveLabel" class="dim" role="button" tabindex="0" aria-label="Open the full story for this house"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
 <div id="hint" class="hidden"></div>
 <div id="sim" class="hidden"><span>Compass</span><input type="range" id="simRange" min="0" max="359" value="90"><span id="simVal">90°</span></div>
 <div id="bar" class="hidden">
@@ -379,7 +380,7 @@
 
 <!-- CARD -->
 <div id="sheet"><div class="card">
-  <div class="grab"></div>
+  <div class="grab" role="button" tabindex="0" aria-label="Close"></div>
   <div class="card-scroll" id="cardBody"></div>
   <div class="card-actions">
     <button id="prevC" aria-label="Previous candidate">‹ Not it</button>
@@ -392,7 +393,7 @@
 
 <!-- HIGHLIGHTS / HISTORY PANEL -->
 <div id="panel"><div class="card">
-  <div class="grab" id="panelGrab"></div>
+  <div class="grab" id="panelGrab" role="button" tabindex="0" aria-label="Close"></div>
   <div class="card-scroll" id="panelScroll">
     <div class="tabs"><button id="tabNear" class="on">Around here</button><button id="tabMine">Your houses</button></div>
     <div id="panelBody" class="list"></div>
@@ -547,7 +548,9 @@ function njDate(v) {
   if (!/^\d{6}$/.test(s)) return null;
   const yy = +s.slice(0, 2), mm = +s.slice(2, 4), dd = +s.slice(4, 6);
   if (mm < 1 || mm > 12) return null;
-  return `${yy + (yy <= THIS_YEAR % 100 ? 2000 : 1900)}${String(mm).padStart(2, '0')}${String(dd || 1).padStart(2, '0')}`;
+  let y = yy + (yy <= THIS_YEAR % 100 ? 2000 : 1900);
+  if (new Date(y, mm - 1, dd || 1) > new Date()) y -= 100;          // a 1926 deed reads "26": not a future date
+  return `${y}${String(mm).padStart(2, '0')}${String(dd || 1).padStart(2, '0')}`;
 }
 // Last year's tax, in dollars. Some copies of the list keep it in cents with no decimal point; a tax is a few percent of the value, which tells them apart.
 function njTax(v, val) {
@@ -778,7 +781,7 @@ const REGIONS = {
       USE_CODE: ['State_Use'], USE_DESC: ['State_Use_Description', 'State_Use_Desc'],
       YEAR_BUILT: ['AYB', 'Year_Built', 'Actual_Year_Built'], EFF_YEAR: ['EYB', 'Effective_Year_Built'],
       RES_AREA: ['Living_Area'], NUM_ROOMS: ['Total_Rooms'], BEDS: ['Number_of_Bedroom', 'Number_of_Bedrooms'],
-      BATHS: ['Number_of_Baths'], HALF_BATHS: ['Number_of_Half_Baths'], UNITS: ['Occupancy'], COLL_YR: ['Collection_Year'],
+      BATHS: ['Number_of_Baths'], HALF_BATHS: ['Number_of_Half_Baths'], UNITS: ['Occupancy'], COLL_YR: ['Collection_Year'], QUALIFIED: ['Qualified'],
     },
     // Connecticut taxes 70% of the town's appraisal, so the full appraisal is the comparable figure to show.
     derive: (o) => {
@@ -1308,7 +1311,8 @@ function summarize(p) {
     fy: num(r0.FY), region, commonOnly,
     approxYear: !year && eff.length ? Math.max(...eff) : null,
     updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null,
-    multiSale: recs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))) };
+    multiSale: recs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))),
+    unqualified: recs.length === 1 && /^\s*(U|N|NO|UNQ)/i.test(String(r0.QUALIFIED ?? '')) };     // a sale the town flagged as not a typical market sale
 }
 
 function acresOf(p) {
@@ -1388,7 +1392,7 @@ function renderCard(cand, total, idx) {
       const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
       if (sale.p && sale.p >= 10000) {
         const ratio = v ? v / sale.p : null;
-        const ch = ratio && !s.multiSale && !s.region.noDelta && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
+        const ch = ratio && !s.multiSale && !s.unqualified && !s.region.noDelta && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
         saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else {
@@ -1418,6 +1422,7 @@ function renderCard(cand, total, idx) {
   const unitList = s.condo ? unitListHtml(s) : '';
 
   const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${Math.round(cand.cdist)} m ${compass8(cand.bearing)}` : '';
+  $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
     <div class="addr">${esc(s.addr)}</div>
@@ -1600,8 +1605,7 @@ function taxBoxHtml(s) {
    Both are free public services; nothing about the house is sent except its location.
    ========================================================================= */
 const FLOOD_SOURCES = [
-  'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28',                                              // FEMA National Flood Hazard Layer
-  'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Flood_Hazard_Reduced_Set_gdb/FeatureServer/0',   // Esri's hosted copy of it
+  'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28',   // FEMA National Flood Hazard Layer
 ];
 const EPQS_URL = 'https://epqs.nationalmap.gov/v1/json';
 let floodSrc = 0;            // the source that answered last; tried first next time
@@ -1764,7 +1768,20 @@ function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
 }
 function wireBuy(L, s) {
-  if (buyAuto) { openBuy(L, s); return; }
+  if (wireBuy.io) { wireBuy.io.disconnect(); wireBuy.io = null; }
+  if (buyAuto) {
+    // Wait until it's on screen: flipping past houses with "Not it" shouldn't fire a dozen requests each.
+    const box = $('#buyBox'); if (!box) return;
+    box.innerHTML = '<div class="buy-h">Thinking of buying?</div><div class="bsec"><div class="bl">Scroll down to load schools, neighborhood, safety and what’s nearby.</div></div>';
+    if (!('IntersectionObserver' in window)) { setTimeout(() => { const b = $('#buyBox'); if (b && b.dataset.k === L.p.key) openBuy(L, s); }, 800); return; }
+    const io = new IntersectionObserver((es) => {
+      if (!es.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      const b = $('#buyBox'); if (b && b.dataset.k === L.p.key) openBuy(L, s);
+    }, { root: $('#cardBody'), rootMargin: '0px 0px 120px 0px' });
+    io.observe(box); wireBuy.io = io;
+    return;
+  }
   const b = $('#buyBtn'); if (b) b.onclick = () => { buyAuto = true; try { localStorage.setItem(BUY_KEY, '1'); } catch (e) { /* fine */ } openBuy(L, s); };
 }
 function openBuy(L, s) {
@@ -1823,18 +1840,20 @@ function listingHtml(s) {
 }
 
 // Find the layer in a list of services whose fields include all of `need` (services renumber their layers now and then).
-async function findLayer(urls, need, geom) {
+async function findLayer(urls, need, geom, all = false) {
   for (const u0 of urls) {
     try {
       const u = u0.replace(/\/+$/, '');
       let layerUrls;
       if (/\/(FeatureServer|MapServer)\/\d+$/i.test(u)) layerUrls = [u];
       else { const m = await getJSON(u + '?f=json', {}, 12000); layerUrls = (m.layers || []).filter((l) => !geom || !l.geometryType || geom.test(l.geometryType)).map((l) => `${u}/${l.id}`); }
+      const found = [];
       for (const lu of layerUrls.slice(0, 8)) {
         const lm = await getJSON(lu + '?f=json', {}, 12000);
         const up = new Map((lm.fields || []).map((fd) => [fd.name.toUpperCase(), fd.name]));
-        if (need.every((n) => up.has(n)) && (!geom || geom.test(lm.geometryType || ''))) return { url: lu, f: up };
+        if (need.every((n) => up.has(n)) && (!geom || geom.test(lm.geometryType || ''))) { if (!all) return { url: lu, f: up }; found.push({ url: lu, f: up }); }
       }
+      if (found.length) return found;
     } catch (e) { /* try the next one */ }
   }
   throw new Error('no layer with ' + need.join(','));
@@ -1861,24 +1880,25 @@ const gradeTxt = (g) => { const n = gradeNum(g); return n == null ? null : n ===
 async function schoolsFor(lat, lon) {
   return nearMemo('sch', lat, lon, 400, async () => {
     const [sl, dl] = await Promise.all([memo('schL', () => findLayer(SCHOOL_SVCS, ['SCH_NAME', 'GSLO', 'GSHI'], /Point/i)),
-      memo('disL', () => findLayer(DISTRICT_SVCS, ['LEA_NAME', 'LEAID'], /Polygon/i)).catch(() => null)]);
+      memo('disL', () => findLayer(DISTRICT_SVCS, ['LEA_NAME', 'LEAID'], /Polygon/i, true)).catch(() => null)]);
     const [feats, dfeats] = await Promise.all([
       queryLayer(sl, lat, lon, 6500, ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT',
         'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'], { returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' }),
-      dl ? queryLayer(dl, lat, lon, 0, ['LEAID', 'LEA_NAME', 'MEMBER', 'STUTERATIO', 'GSLO', 'GSHI', 'SCH']).catch(() => []) : []]);
+      dl ? Promise.all(dl.map((l) => queryLayer(l, lat, lon, 0, ['LEAID', 'LEA_NAME', 'MEMBER', 'STUTERATIO', 'GSLO', 'GSHI', 'SCH']).then((fs) => fs.map((ft) => ({ ft, l }))).catch(() => [])))
+        .then((r) => r.flat()) : []]);
     const schools = feats.map((ft) => {
       const a = ft.attributes || {}, g = ft.geometry || {}, P = (n) => pick(a, sl.f, n);
-      const la = num(P('LATCOD')) || g.y, lo = num(P('LONCOD')) || g.x;
-      return { id: P('NCESSCH'), name: titleCaseSchool(P('SCH_NAME')), lea: String(P('LEAID') ?? ''), leaName: P('LEA_NAME'), lo: gradeNum(P('GSLO')), hi: gradeNum(P('GSHI')),
+      const lat = num(P('LATCOD')) || g.y, lng = num(P('LONCOD')) || g.x;
+      return { id: P('NCESSCH'), name: titleCaseSchool(P('SCH_NAME')), lea: String(P('LEAID') ?? ''), leaName: P('LEA_NAME'), glo: gradeNum(P('GSLO')), ghi: gradeNum(P('GSHI')),
         gslo: P('GSLO'), gshi: P('GSHI'), students: num(P('MEMBER')) || num(P('TOTAL')), ratio: num(P('STUTERATIO')), charter: /^yes/i.test(String(P('CHARTER_TEXT') || '')),
         magnet: /^yes/i.test(String(P('MAGNET_TEXT') || '')), type: String(P('SCHOOL_TYPE_TEXT') || ''), virtual: String(P('VIRTUAL') || ''), status: String(P('SY_STATUS_TEXT') || ''),
-        year: P('SURVYEAR'), la, lo };
-    }).filter((x) => x.name && x.la && x.lo && (!x.type || /regular/i.test(x.type)) && !/^(full|yes)/i.test(x.virtual) && !/closed|inactive|future/i.test(x.status));
+        year: P('SURVYEAR'), lat, lng };
+    }).filter((x) => x.name && x.lat && x.lng && (!x.type || /regular/i.test(x.type)) && !/^(full|yes)/i.test(x.virtual) && !/closed|inactive|future/i.test(x.status));
     const districts = []; const seen = new Set();
-    for (const ft of dfeats) {
-      const a = ft.attributes || {}, P = (n) => pick(a, dl.f, n), id = String(P('LEAID') ?? '');
+    for (const { ft, l } of dfeats) {
+      const a = ft.attributes || {}, P = (n) => pick(a, l.f, n), id = String(P('LEAID') ?? '');
       if (seen.has(id)) continue; seen.add(id);
-      districts.push({ id, name: titleCaseSchool(P('LEA_NAME')), students: num(P('MEMBER')), ratio: num(P('STUTERATIO')), lo: gradeNum(P('GSLO')), hi: gradeNum(P('GSHI')) });
+      districts.push({ id, name: titleCaseSchool(P('LEA_NAME')), students: num(P('MEMBER')), ratio: num(P('STUTERATIO')), glo: gradeNum(P('GSLO')), ghi: gradeNum(P('GSHI')) });
     }
     return { schools, districts };
   });
@@ -1890,10 +1910,10 @@ function titleCaseSchool(n) {
 // Nearest public school for each stage, preferring schools in the house's own district over charter and out-of-district ones.
 function schoolPicks(d, lat, lon) {
   const mine = new Set(d.districts.map((x) => x.id));
-  const all = d.schools.map((x) => ({ ...x, d: distM(lat, lon, x.la, x.lo) })).filter((x) => x.d <= 6500);
+  const all = d.schools.map((x) => ({ ...x, d: distM(lat, lon, x.lat, x.lng) })).filter((x) => x.d <= 6500);
   const stages = [['Elementary', 3], ['Middle', 7], ['High', 10]];
   return stages.map(([label, g]) => {
-    const fits = all.filter((x) => x.lo != null && x.hi != null && x.lo <= g && x.hi >= g);
+    const fits = all.filter((x) => x.glo != null && x.ghi != null && x.glo <= g && x.ghi >= g);   // grade numbers: PreK -1, K 0
     fits.sort((a, b) => ((mine.has(b.lea) && !b.charter) - (mine.has(a.lea) && !a.charter)) || a.d - b.d);
     return { label, s: fits[0] || null };
   });
@@ -1915,7 +1935,6 @@ function schoolsHtml(d, s, lat, lon) {
 /* Neighborhood: Census Bureau American Community Survey, 5-year estimates for the census tract, next to the state's. */
 const ACS_VARS = { pop: 'B01003_001E', income: 'B19013_001E', value: 'B25077_001E', occ: 'B25003_001E', owned: 'B25003_002E', built: 'B25035_001E', rent: 'B25064_001E' };
 const TIGER = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer';
-const ESRI_TRACTS = 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Census_Tracts/FeatureServer/0';
 // The 11-digit tract code (state, county, tract) from whatever a service calls it.
 function tractFromAttrs(a) {
   if (!a) return null;
@@ -1930,8 +1949,7 @@ async function tractFor(lat, lon) {
   const q = (extra) => new URLSearchParams({ ...pt, ...extra }).toString();
   const t = await firstOf([
     ['Census map', async () => { const lu = await tigerLayer().catch((e) => { throw new Error(fetchMsg(e)); });
-      return tractFromAttrs((((await getJSON(`${lu}/query?${q({ outFields: 'STATE,COUNTY,TRACT,BASENAME' })}`, {}, 12000)).features || [])[0] || {}).attributes); }],
-    ['Census map (backup)', async () => tractFromAttrs((((await getJSON(`${ESRI_TRACTS}/query?${q({ outFields: '*' })}`, {}, 12000).catch((e) => { throw new Error(fetchMsg(e)); })).features || [])[0] || {}).attributes)],
+      return tractFromAttrs((((await getJSON(`${lu}/query?${q({ outFields: 'STATE,COUNTY,TRACT,BASENAME' })}`, {}, 12000).catch((e) => { throw new Error(fetchMsg(e)); })).features || [])[0] || {}).attributes); }],
     ['Census map (script)', async () => {
       const m = await jsonp(`${TIGER}?f=json`); const l = (m.layers || []).find((x) => /^census tracts$/i.test(x.name)); if (!l) throw new Error('no tract layer');
       return tractFromAttrs((((await jsonp(`${TIGER}/${l.id}/query?${q({ outFields: 'STATE,COUNTY,TRACT,BASENAME' })}`)).features || [])[0] || {}).attributes); }],
@@ -1947,8 +1965,8 @@ async function acsRow(year, forClause, inClause) {
   try { j = await getJSON(url, {}, 15000); }
   catch (e) {
     if (/JSON|token|parse|expected pattern/i.test(String(e && e.message))) throw new Error('Census data: the Census key isn’t active yet (click the link in the Census email)');
-    if (/^HTTP \d/.test(String(e && e.message))) throw new Error(`Census data: ${e.message} for ${year}`);   // the server answered: no point trying another way
-    try { j = await jsonp(url, 'jsonp'); } catch (e2) { throw new Error(`Census data: ${fetchMsg(e)}. If the Census key is new, check that it’s activated.`); }
+    if (/^HTTP \d/.test(String(e && e.message))) throw new Error(`Census data: ${e.message} for ${year}`);
+    throw new Error(`Census data: ${fetchMsg(e)}. If the Census key is new, check that it’s activated.`);
   }
   if (!Array.isArray(j) || j.length < 2) throw new Error(`Census data: no figures for ${forClause}`);
   const row = Object.fromEntries(j[0].map((h, i) => [h, j[1][i]]));
@@ -1973,7 +1991,7 @@ async function neighborhoodFor(lat, lon) {
 function hoodHtml(d, s) {
   const { here: h, st } = d, stName = s.region.name;
   const row = (label, a, b, f) => (a == null ? '' : `<div class="brow"><div class="l">${label}</div><div class="m">${f(a)}</div><div class="r"><small>${esc(stName)}</small>${b == null ? '—' : f(b)}</div></div>`);
-  const usd = (v) => '$' + nfmt(v), pct = (v) => `${Math.round(v)}%`, yr = (v) => String(Math.round(v));
+  const usd = (v) => '$' + nfmt(v), pct = (v) => `${Math.round(v)}%`, yr = (v) => (v < 1940 ? '1939 or earlier' : String(Math.round(v)));   // the Census tops out at "1939 or earlier"
   const rows = [row('Household income', h.income, st.income, usd), row('Home value', h.value, st.value, usd), row('Owner-occupied', h.ownPct, st.ownPct, pct),
     row('Typical home built', h.built, st.built, yr), row('Rent', h.rent, st.rent, usd)].join('');
   if (!rows) return `<div class="bt">Neighborhood</div><div class="bl">The Census Bureau has no estimates for this area.</div>`;
@@ -1983,7 +2001,7 @@ function hoodHtml(d, s) {
 
 /* Safety: crimes the local police department reported to the FBI (Uniform Crime Reporting), per 1,000 residents, next to the state's. */
 const normPlace = (x) => String(x || '').toUpperCase().replace(/POLICE DEPARTMENT|POLICE DEPT|POLICE|DEPARTMENT|\bPD\b/g, ' ')
-  .replace(/\b(CITY|TOWN|TOWNSHIP|BOROUGH|VILLAGE|OF|THE)\b/g, ' ').replace(/[^A-Z]/g, '');
+  .replace(/\b(CITY|TOWN|TOWNSHIP|TWP|TWSP|BOROUGH|BORO|VILLAGE|VLG|OF|THE)\b/g, ' ').replace(/[^A-Z]/g, '');
 async function agencyFor(s, lat, lon) {
   const st = s.region.id;
   const all = await memo('ag:' + st, async () => {
@@ -1998,7 +2016,7 @@ async function agencyFor(s, lat, lon) {
       .filter((x) => x.d < maxM).sort((a, b) => a.d - b.d)[0];
     const n = near(local.filter((a) => !/university|college|school|transit|state police|park/i.test(a.agency_name || '')), 6000)
       || near(all.filter((a) => /county/i.test(a.agency_type_name || '')), 60000);
-    hit = n && n.a;
+    hit = n && { ...n.a, guessed: true };
   }
   return hit || null;
 }
@@ -2006,23 +2024,33 @@ function cdeSeries(j, stateName) {
   const rates = j && j.offenses && j.offenses.rates; if (!rates) return null;
   const keys = Object.keys(rates);
   const us = keys.find((k) => /united states/i.test(k));
-  const st = keys.find((k) => k !== us && k.toUpperCase().includes(stateName.toUpperCase()));
+  const exact = new RegExp(`^${stateName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( offenses)?$`, 'i');
+  // An exact state name first, so "Florida City Police Department" isn't taken for the state of Florida.
+  const st = keys.find((k) => k !== us && exact.test(k.trim())) || keys.find((k) => k !== us && k.toUpperCase().includes(stateName.toUpperCase()) && !/police|sheriff|department/i.test(k));
   const ag = keys.find((k) => k !== us && k !== st);
-  const yearRate = (k) => { const v = k ? Object.values(rates[k] || {}).map(Number).filter(Number.isFinite) : []; return v.length ? { per1000: v.reduce((a, b) => a + b, 0) * 12 / v.length / 100, months: v.length } : null; };
+  const yearRate = (k) => {                       // months the department didn't report are left out, not counted as zero
+    const v = k ? Object.values(rates[k] || {}).filter((x) => x != null && x !== '').map(Number).filter(Number.isFinite) : [];
+    return v.length ? { per1000: v.reduce((a, b) => a + b, 0) * 12 / v.length / 100, months: v.length } : null;
+  };
   const a = yearRate(ag), b = yearRate(st);
   return a ? { here: a.per1000, months: a.months, state: b ? b.per1000 : null } : null;
 }
+const CDE_CODES = [['violent-crime', 'property-crime'], ['V', 'P']];
 async function safetyFor(s, lat, lon) {
   const ag = await agencyFor(s, lat, lon);
   if (!ag) return null;
   return memo('crime:' + ag.ori, async () => {
     for (const y of [THIS_YEAR - 1, THIS_YEAR - 2]) {
-      const get = (off) => getJSON(`https://api.usa.gov/crime/fbi/cde/summarized/agency/${encodeURIComponent(ag.ori)}/${off}?from=01-${y}&to=12-${y}&API_KEY=${KEYS.fbi}`, {}, 20000);
-      const [v, p] = await Promise.all([get('violent-crime'), get('property-crime')]);
-      const vs = cdeSeries(v, s.region.name), ps = cdeSeries(p, s.region.name);
-      if (vs && ps && vs.months >= 6) return { agency: titleCase(ag.agency_name), year: y, violent: vs, property: ps };
+      const get = (off) => getJSON(`https://api.usa.gov/crime/fbi/cde/summarized/agency/${encodeURIComponent(ag.ori)}/${off}?from=01-${y}&to=12-${y}&API_KEY=${KEYS.fbi}`, {}, 20000).catch(() => null);
+      // The FBI's documentation names the offenses two ways; try the long names, then the codes.
+      for (const [vo, po] of CDE_CODES) {
+        const [v, p] = await Promise.all([get(vo), get(po)]);
+        const vs = cdeSeries(v, s.region.name), ps = cdeSeries(p, s.region.name);
+        if (vs && ps && vs.months >= 6) { if (CDE_CODES[0][0] !== vo) CDE_CODES.reverse(); return { agency: titleCase(ag.agency_name), year: y, violent: vs, property: ps, guessed: ag.guessed }; }
+        if (v || p) break;                           // the service understood the request; this year just isn't in yet
+      }
     }
-    return { agency: titleCase(ag.agency_name), none: true };
+    return { agency: titleCase(ag.agency_name), none: true, guessed: ag.guessed };
   });
 }
 function safetyHtml(d, s) {
@@ -2030,24 +2058,24 @@ function safetyHtml(d, s) {
   if (d.none) return `<div class="bt">Safety</div><div class="bl">${esc(d.agency)} hasn’t sent recent crime counts to the FBI.</div>`;
   const row = (label, x) => `<div class="brow"><div class="l">${label}</div><div class="m">${x.here.toFixed(1)} <small>per 1,000 residents a year</small></div><div class="r"><small>${esc(s.region.name)}</small>${x.state == null ? '—' : x.state.toFixed(1)}</div></div>`;
   const part = d.violent.months < 12 ? ` They reported ${d.violent.months} months of ${d.year}, scaled to a full year.` : '';
+  const guess = d.guessed ? ' This is the nearest department in the FBI’s list; it may not be the one that patrols this address.' : '';
   return `<div class="bt">Safety · ${esc(d.agency)}, ${d.year}</div><div class="brows">${row('Violent crime', d.violent)}${row('Property crime', d.property)}</div>
-    <div class="bl">Crimes the department reported to the FBI for its whole town or area, not this street.${part}</div>`;
+    <div class="bl">Crimes the department reported to the FBI for its whole town or area, not this street.${part}${guess}</div>`;
 }
 
 /* Nearby: OpenStreetMap places (© OpenStreetMap contributors), straight-line distance. */
-const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 const NEAR_CATS = [
-  { label: 'Grocery', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
-  { label: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
-  { label: 'Coffee', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
-  { label: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
-  { label: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
-  { label: 'Train', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
+  { label: 'Grocery', unnamed: 'Grocery store', r: 3200, q: 'nwr["shop"~"^(supermarket|grocery)$"]', is: (t) => /^(supermarket|grocery)$/.test(t.shop || '') },
+  { label: 'Pharmacy', unnamed: 'Pharmacy', r: 3200, q: 'nwr["amenity"="pharmacy"]', is: (t) => t.amenity === 'pharmacy' },
+  { label: 'Coffee', unnamed: 'Café', r: 1600, q: 'nwr["amenity"="cafe"]', is: (t) => t.amenity === 'cafe' },
+  { label: 'Park', unnamed: 'Park', r: 1600, q: 'nwr["leisure"="park"]["name"]', is: (t) => t.leisure === 'park' },
+  { label: 'Playground', unnamed: 'Playground', r: 1600, q: 'nwr["leisure"="playground"]', is: (t) => t.leisure === 'playground' },
+  { label: 'Train', unnamed: 'Station', r: 6400, q: 'nwr["railway"="station"]', is: (t) => t.railway === 'station' },
   { label: 'Bus stop', r: 800, q: 'node["highway"="bus_stop"]', is: (t) => t.highway === 'bus_stop', count: true },
-  { label: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
-  { label: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
-  { label: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
+  { label: 'Hospital', unnamed: 'Hospital', r: 16000, q: 'nwr["amenity"="hospital"]["name"]', is: (t) => t.amenity === 'hospital' },
+  { label: 'Library', unnamed: 'Library', r: 4800, q: 'nwr["amenity"="library"]', is: (t) => t.amenity === 'library' },
+  { label: 'Fire station', unnamed: 'Fire station', r: 4800, q: 'nwr["amenity"="fire_station"]', is: (t) => t.amenity === 'fire_station' },
 ];
 async function nearbyFor(lat, lon) {
   return nearMemo('near', lat, lon, 150, async () => {
@@ -2078,7 +2106,7 @@ function nearHtml(d, lat, lon) {
   });
   const rows = cats.map((c) => {
     if (!c.best) return `<div class="brow"><div class="l">${c.label}</div><div class="m"><small>None within ${miles(c.r)}</small></div></div>`;
-    const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || '') + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
+    const name = c.count ? `${c.n} within ${miles(c.r)}` : (c.best.name || c.unnamed || c.label) + (c.label === 'Train' && c.best.subway ? ' (subway)' : '');
     return `<div class="brow"><div class="l">${c.label}</div><div class="m">${esc(name)}</div><div class="r">${miles(c.best.d)}</div></div>`;
   }).join('');
   const food = d.restaurants != null ? `<div class="brow"><div class="l">Restaurants</div><div class="m">${d.restaurants} within half a mile</div></div>` : '';
@@ -2103,7 +2131,10 @@ function paintFlood(L) {
 function openSheet(cands, idx = 0) {
   S.candidates = cands; S.cIdx = idx; S.locked = true;
   renderCard(cands[idx], cands.length, idx);
-  saveHistory(cands[idx]); prepareShare(cands[idx]);
+  // Only houses you actually looked at go in "Your houses", not every "Not it" on the way.
+  clearTimeout(openSheet.hist); const seenCand = cands[idx];
+  openSheet.hist = setTimeout(() => { if (S.candidates[S.cIdx] === seenCand && $('#sheet').classList.contains('open')) saveHistory(seenCand); }, 2500);
+  prepareShare(cands[idx]);
   closePanel();
   $('#sheet').classList.add('open');
   $('#reticle').classList.add('locked');
@@ -2117,6 +2148,7 @@ $('#prevC').onclick = () => { if (S.cIdx > 0) openSheet(S.candidates, S.cIdx - 1
 $('#nextC').onclick = () => { if (S.cIdx < S.candidates.length - 1) openSheet(S.candidates, S.cIdx + 1); };
 $('#shareC').onclick = async () => {
   const cand = S.candidates[S.cIdx];
+  saveHistory(cand);
   if (!sharePrep || sharePrep.cand !== cand) prepareShare(cand);
   if (sharePrep.blob) {
     // Image is ready: open the share sheet straight from this tap.
@@ -2268,6 +2300,10 @@ function tick(ts) {
 }
 
 $('#liveLabel').onclick = () => $('#shutter').click();
+// Keyboard and switch users: Enter or Space on anything acting as a button.
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); }
+});
 $('#shutter').onclick = async () => {
   if (!S.pos) { toast('Still finding your location…'); return; }
   if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
@@ -2969,7 +3005,8 @@ const ABOUT = `
     <li><b>Florida property records and lot lines:</b> Florida’s county property appraisers and the Florida Department of Revenue, Property Tax Oversight, via the Florida Geographic Information Office.</li>
     <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey and Florida), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
-    <li><b>Flood zones:</b> FEMA National Flood Hazard Layer (Esri’s hosted copy as a backup). Not an official flood determination.</li>
+    <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
+    <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
     <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
