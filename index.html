@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14110f">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Housepoint">
+<meta name="description" content="Point your phone at any house in Massachusetts, Connecticut, New Jersey or Florida and see when it was built, what it last sold for and what it’s valued at. Public records only; no owner names.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Housepoint: point at any house, get its story">
+<meta property="og:description" content="Year built, value, last sale and more, from public records. No owner names, no accounts, no tracking.">
+<meta property="og:url" content="https://mjillson85.github.io/Housepoint/">
+<meta property="og:image" content="https://mjillson85.github.io/Housepoint/icons/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Housepoint</title>
 <style>
   /* Fonts are served from this site (SIL Open Font License), so no third party sees your visit. */
@@ -68,7 +82,7 @@
     border: 1px solid rgba(255,255,255,.18); }
   .fine { margin-top: 14px; font-size: 12px; line-height: 1.5; color: #8f857a; }
   .fine b { color: #d8cfc3; font-weight: 600; }
-  .fine a { color: #f0a48f; }
+  .fine a { color: #f0a48f; display: inline-block; padding: 8px 2px; }
   .btn-link { width: 100%; height: 44px; margin-top: 4px; color: #f0a48f; font-weight: 600; font-size: 15px; }
   #shutter.fuzzy { opacity: .55; }
   .chip.star { background: var(--ink); color: var(--paper); }
@@ -171,7 +185,7 @@
   .units .all-btn { display: block; width: 100%; padding: 12px 0; color: var(--brick); font-weight: 600; font-size: 14px; text-align: center; border-bottom: 1px solid var(--line); }
   .units.all .all-btn { display: none; }
   .stale { margin: 8px 0 0; padding: 9px 12px; border-radius: 12px; background: #f6e3cf; font-size: 13px; line-height: 1.45; color: var(--ink); }
-  .stale a { color: var(--accent, #b4432c); font-weight: 600; }
+  .stale a { color: var(--brick-2); font-weight: 600; }
   .park { margin: 14px 0 4px; padding: 12px 16px 13px; border-radius: 14px; background: #f3ead8; border: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; color: var(--ink); }
   .park b { font-weight: 600; }
   .card-actions { display: flex; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--line); background: var(--paper); }
@@ -338,7 +352,7 @@
   .arc.below::after { bottom: auto; top: -5px; border-top: 0; border-bottom: 5px solid rgba(246,241,231,.93); }   /* tag under its house points up */
   .arc.led::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1.5px; height: var(--lead); margin-left: -.75px; background: rgba(246,241,231,.8); }
   .arc.led.below::before { top: auto; bottom: 100%; }
-  .arc.far { padding: 3px 8px 4px; border-radius: 9px; }                 /* distant houses: just the year, so more fit near the horizon */
+  .arc.far { padding: 7px 10px 8px; border-radius: 10px; }               /* distant houses: just the year, so more fit near the horizon (still tall enough to tap) */
   .arc.far .y { font-size: 13px; }
   .arc.far .m { display: none; }
   #arPill.off { opacity: .6; }
@@ -399,7 +413,7 @@
 <!-- MAP MODE -->
 <div id="mapView" class="hidden"><svg id="mapSvg"></svg></div>
 <div id="mapTop" class="hidden">
-  <form id="search"><input id="q" type="search" placeholder="Address, town" autocomplete="off" enterkeyhint="search"><button type="submit">Go</button></form>
+  <form id="search"><input id="q" type="search" placeholder="Address, town" aria-label="Search for an address" autocomplete="off" enterkeyhint="search"><button type="submit">Go</button></form>
   <button class="round" id="mapToPoint" aria-label="Point mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg></button>
 </div>
 <div id="mapColor" class="hidden">
@@ -488,7 +502,13 @@ const qs = new URLSearchParams(location.search);
 const DEMO = qs.has('demo');
 const DEBUG = qs.has('debug');
 const DECL_OVERRIDE = qs.has('decl') ? parseFloat(qs.get('decl')) : NaN;   // e.g. ?decl=0 if a phone already reports true north
-const SERVICE_OVERRIDE = qs.get('service');
+// ?service= swaps in another copy of the Massachusetts parcel service (testing only). Only MassGIS's own ArcGIS account or a
+// .gov site is accepted, so a shared link can't feed the app made-up records.
+const SERVICE_OVERRIDE = (() => {
+  try { const u = new URL(qs.get('service') || ''); const h = u.hostname.toLowerCase();
+    return u.protocol === 'https:' && (h.endsWith('.gov') || (h.endsWith('.arcgis.com') && u.pathname.split('/')[1] === MASSGIS_ORG)) ? u.href : null; }
+  catch (e) { return null; }
+})();
 
 /* =========================================================================
    Small helpers
@@ -3459,7 +3479,7 @@ if (DEMO) {
 
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
-  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, get sharePrep() { return sharePrep; } };
+  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; } };
 })();
 </script>
 </body>

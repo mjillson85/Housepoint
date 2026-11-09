@@ -1,0 +1,7 @@
+{
+  "name": "housepoint-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "sh run-all.sh" },
+  "dependencies": { "puppeteer-core": "^23.11.1" }
+}

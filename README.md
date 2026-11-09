@@ -32,3 +32,8 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 - If the floating tags are all shifted to one side of the houses, that's compass error: `?decl=` sets the compass correction (about −14 in Massachusetts, −13 in Connecticut, −12 in New Jersey, −7 in Florida). If tags are spread too far apart or bunched together, `?fov=` sets how wide the camera view is, in degrees (about 34 on an iPhone held upright).
 
 It's a single file (`index.html`), no build step.
+
+## Tests
+`tests/` holds the automated checks (headless Chrome; the public services are faked, so no network is needed):
+
+    cd tests && npm install && npm test

@@ -1,0 +1,23 @@
+import puppeteer from 'puppeteer-core';
+import fs from 'fs';
+import { fileURLToPath } from 'node:url';
+const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+await page.goto(`file://${HP_ROOT}/index.html?demo=1`);
+await page.click('#goPoint'); await new Promise(r => setTimeout(r, 700));
+await page.evaluate(() => window.__hp.setHeading(15));
+await page.click('#shutter'); await new Promise(r => setTimeout(r, 900));
+await page.click('.grab'); await new Promise(r => setTimeout(r, 500));
+await page.click('#toMap'); await new Promise(r => setTimeout(r, 900));
+console.log('map visible:', await page.$eval('#mapView', el => !el.classList.contains('hidden')), '| parcels drawn:', await page.$$eval('#mParcels path', els => els.length), '| photo tiles:', await page.$$eval('#mImg image', els => els.length));
+await page.screenshot({ path: 'n_map.png' });
+await page.mouse.click(250, 520); await new Promise(r => setTimeout(r, 500));
+console.log('map card:', await page.$eval('#cardBody .addr', el => el.innerText), '| next button:', await page.$eval('#nextC', el => el.innerText));
+await page.click('#useHighlights').catch(() => {});
+const dataUrl = await page.evaluate(async () => { const b = await window.__hp.makeShareImage(window.__hp.S.candidates[0]); return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); }); });
+fs.writeFileSync('n_share2.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
+console.log('errors:', errors.length ? errors : 'none');
+await browser.close();
