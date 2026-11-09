@@ -51,21 +51,26 @@ await page.evaluate(() => window.__hp.setBuildings([]));
 for (const [name, x, y, h, want] of [['no roof outlines: driveway, aim N over the back fence', 35.5, 15, 0, /^236 Prospect Hill Rd$/], ['no roof outlines: by the garage, aim S across the street', 36, 20, 180, /^176 Chestnut St$/]]) {
   const r = await probe(name, x, y, h); check(want.test(r.opened || ''), `${name} → ${r.opened}`);
 }
-// Looking down the street: distant houses get (smaller) tags too, none hidden under the big label, none overlapping, none under the top buttons.
+// Looking down the street: a clearly visible distant house gets a (smaller) tag; far-off houses and slivers peeking between nearer
+// houses don't; at most 6 tags; none hidden under the big label, overlapping, or under the top buttons.
 await page.reload(); await sleep(500); await page.click('#goPoint'); await sleep(1200);   // roof outlines back
 await page.evaluate(() => { const S = window.__hp.S; const [lat, lon] = S.proj.inv(27, 0); S.pos = { lat, lon }; S.acc = 6; S.beta = 90; window.__hp.setHeading(90); });
 await sleep(1600);
 const far = await page.evaluate(() => {
   const hp = window.__hp, S = hp.S, f = hp.camFocalPx(), half = Math.atan(innerWidth / 2 / f) * 180 / Math.PI;
-  const shown = hp.AR.items.filter((i) => !i.hidden && i.el.style.opacity === '1').map((i) => ({ d: i.dist, r: i.el.getBoundingClientRect(), far: i.el.classList.contains('far') }));
+  const shown = hp.AR.items.filter((i) => !i.hidden && i.el.style.opacity === '1').map((i) => ({ d: i.dist, n: i.n, r: i.el.getBoundingClientRect(), far: i.el.classList.contains('far') }));
+  const cand = hp.arScan(...S.proj.fwd(S.pos.lat, S.pos.lon), S.heading, half).filter((v) => v.L.p.key !== (S.live && S.live.L.p.key));
   const inView = hp.AR.items.filter((i) => Math.abs(((i.bearing - S.heading + 540) % 360) - 180) <= half - 3);
   const lr = document.querySelector('#liveLabel').getBoundingClientRect(), hud = document.querySelector('#arPill').getBoundingClientRect();
   const over = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   return { inView: inView.length, inViewShown: inView.filter((i) => !i.hidden && i.el.style.opacity === '1').length, farShown: shown.filter((x) => x.d > 80).length, farSmall: shown.filter((x) => x.d > 80).every((x) => x.far),
+    count: shown.length, maxD: Math.max(0, ...shown.map((x) => x.d)), sliverFar: shown.some((x) => x.n < 2 && x.d > 50),
+    skippedFar: cand.filter((v) => v.dist > 100).length, skippedSliver: cand.filter((v) => v.n < 2 && v.dist > 50 && v.dist <= 100).length,
     clash: shown.some((a, i) => over(a.r, lr) || a.r.top < hud.bottom || shown.some((b, j) => j > i && over(a.r, b.r))) };
 });
 console.log('down the street:', JSON.stringify(far));
-check(far.inViewShown === far.inView && far.farShown >= 4 && far.farSmall, `every house in view has a tag, distant ones included (${far.inViewShown}/${far.inView}, ${far.farShown} far)`);
+check(far.inViewShown === far.inView && far.farShown >= 1 && far.farSmall, `a clearly visible house 90 m down the street gets a small tag (${far.inViewShown}/${far.inView}, ${far.farShown} far)`);
+check(far.maxD <= 100 && !far.sliverFar && far.count <= 6 && far.skippedFar >= 2 && far.skippedSliver >= 1, `no tags past 100 m or for far slivers, at most 6 (${far.count} shown, farthest ${Math.round(far.maxD)} m; left out ${far.skippedFar} far, ${far.skippedSliver} slivers)`);
 check(!far.clash, 'tags don’t overlap each other, the big label, or the top buttons');
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');

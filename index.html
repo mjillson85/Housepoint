@@ -3038,7 +3038,11 @@ function drawRadar() {
    ========================================================================= */
 const FOV_OVERRIDE = qs.has('fov') ? parseFloat(qs.get('fov')) : NaN;   // side-to-side view in degrees, if the default is off for a phone
 const CAM_HALF_LONG = 33.7;    // half the view across the long side of a phone's main (1x) camera, degrees
-const AR_MAX = 9, AR_FAR = 75, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
+const AR_MAX = 6, AR_FAR = 75, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
+// Which houses get a tag. Past about 100 m a house is tiny on screen, and a compass off by 10° moves its tag ~17 m sideways,
+// often onto the neighbor's house. A far house that only peeks through a gap between nearer ones (one ray wide) isn't really
+// in view either. Aiming the circle right at a house still reaches MAX_RANGE.
+const AR_RANGE = 100, AR_SLIVER_M = 50;
 const AR = { on: true, items: [], els: new Map(), at: 0, proj: null, f: 0, liveRect: null };
 try { AR.on = localStorage.getItem('housepoint.ar') !== '0'; } catch (e) {}
 const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
@@ -3119,7 +3123,7 @@ function arChipHtml(L) {
 function arRelayout(f, half) {
   const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
   const liveKey = S.live ? S.live.L.p.key : null;          // the big label already covers the house in the circle
-  const seen = arScan(ox, oy, S.heading, half + 12).filter((v) => v.L.p.key !== liveKey);
+  const seen = arScan(ox, oy, S.heading, half + 12).filter((v) => v.L.p.key !== liveKey && v.dist <= AR_RANGE && (v.n >= 2 || v.dist <= AR_SLIVER_M));
   const rank = (a, b) => (b.n - a.n) || (a.dist - b.dist);
   const inView = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) <= half).sort(rank).slice(0, AR_MAX);
   const edge = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) > half).sort(rank).slice(0, 4);   // just outside, so they slide in smoothly
@@ -3790,7 +3794,7 @@ if (DEMO) {
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
-  CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor };
+  CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan };
 })();
 </script>
 </body>

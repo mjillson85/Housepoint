@@ -33,7 +33,7 @@ async function newPage(errors) {
   const tags = await page.$$eval('.arc', (els) => els.map((el) => { const r = el.getBoundingClientRect(); return { k: el.dataset.k, t: el.innerText.replace(/\n/g, ' / '), op: getComputedStyle(el).opacity, x: r.left, y: r.top, w: r.width, h: r.height }; }));
   const shown = tags.filter((t) => +t.op > 0.4);
   console.log('tags shown:', shown.map((t) => `${t.t} @${Math.round(t.x)},${Math.round(t.y)}`).join(' | '));
-  check(shown.length >= 3 && shown.length <= 7, `3–7 tags visible looking down the street (got ${shown.length})`);
+  check(shown.length >= 1 && shown.length <= 6, `1–6 tags visible looking down the street, only houses really in view (got ${shown.length})`);   // at most 6, within 100 m, no slivers between nearer houses
   check(shown.every((t) => t.x + t.w / 2 >= 0 && t.x + t.w / 2 <= 390 && t.y > 100 && t.y < 700), 'tag centers sit inside the camera area');
   let overlap = 0;
   for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {

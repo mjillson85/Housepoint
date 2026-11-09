@@ -60,7 +60,7 @@ const newPage = async (errors, w = 390, h = 844) => {
   check(b.n > 100 && b.withB === b.lots, 'every demo lot has a house outline');
   await page.evaluate(() => window.__hp.setHeading(80)); await sleep(900);
   const tags = await page.$$eval('.arc', (els) => els.filter((e) => e.style.opacity !== '0').length);
-  check(tags >= 3, `tags still show with roof anchors (${tags})`);
+  check(tags >= 1, `tags still show with roof anchors (${tags})`);
   // the oldest demo house gets a badge
   const badge = await page.evaluate(() => {
     const S = window.__hp.S, sum = window.__hp.summarize;
