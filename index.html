@@ -389,7 +389,7 @@
   <div id="hudLeft">
     <div class="pill" id="brandPill">Housepoint</div>
     <div class="pill" id="gpsPill"><span class="dot"></span><span id="gpsTxt">Finding you…</span></div>
-    <div class="pill" id="hdgPill"><span id="hdgTxt">Compass…</span></div>
+    <div class="pill" id="hdgPill"><span class="dot hidden"></span><span id="hdgTxt">Compass…</span></div>
     <button class="pill" id="arPill" aria-pressed="true">Labels on</button>
   </div>
   <div id="radarWrap"><svg id="radar" viewBox="-100 -100 200 200"></svg></div>
@@ -1093,44 +1093,280 @@ async function queryRegion(region, lat, lon, radius) {
 
 const STREET_ABBR = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'DR', COURT: 'CT', PLACE: 'PL', TERRACE: 'TER', CIRCLE: 'CIR',
   BOULEVARD: 'BLVD', PARKWAY: 'PKWY', SQUARE: 'SQ', HIGHWAY: 'HWY', WAY: 'WAY' };
-const STATE_WORDS = /^(fl|fla|florida|ma|mass|massachusetts|ct|conn|connecticut|nj|new jersey)$/i;
-async function searchAddress(text) {
-  const parts = text.split(',').map((x) => x.trim()).filter(Boolean);
-  const addr = (parts[0] || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
-    .split(' ').map((w) => STREET_ABBR[w] || w).join(' ');
-  if (!addr || DEMO) return null;
-  const town = parts.slice(1).find((x) => !STATE_WORDS.test(x)) || null;
-  const said = parts.slice(1).find((x) => STATE_WORDS.test(x)) || '';
-  const ref = (S.mode === 'map' && S.map.center) || S.pos;
-  const here = ref && regionFor(ref.lat, ref.lon);
-  let order = [/^f/i.test(said) ? REGIONS.FL : /^m/i.test(said) ? REGIONS.MA : /^c/i.test(said) ? REGIONS.CT : /^n/i.test(said) ? REGIONS.NJ : null, here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL];
-  order = order.filter((r, i) => r && order.indexOf(r) === i);
-  for (const region of order) {
-    try { const hit = await searchIn(region, addr, town); if (hit) return hit; } catch (e) { console.warn('search failed', region.id, e); }
+const STREET_WORD = /\b(ST|STREET|AVE?|AVENUE|RD|ROAD|LN|LANE|DR|DRIVE|CT|COURT|PL|PLACE|TER|TERRACE|CIR|CIRCLE|BLVD|BOULEVARD|PKWY|PARKWAY|SQ|SQUARE|HWY|HIGHWAY|WAY|ROW|PATH|TRL|TRAIL|LOOP|PIKE|TPKE|TURNPIKE)\.?$/i;
+// Every state, so a place outside the four covered states gets a plain answer instead of a slow search that finds nothing.
+const US_STATES = ('AL Alabama|AK Alaska|AZ Arizona|AR Arkansas|CA California|CO Colorado|CT Connecticut|DE Delaware|DC District of Columbia|FL Florida|GA Georgia|'
+  + 'HI Hawaii|ID Idaho|IL Illinois|IN Indiana|IA Iowa|KS Kansas|KY Kentucky|LA Louisiana|ME Maine|MD Maryland|MA Massachusetts|MI Michigan|MN Minnesota|'
+  + 'MS Mississippi|MO Missouri|MT Montana|NE Nebraska|NV Nevada|NH New Hampshire|NJ New Jersey|NM New Mexico|NY New York|NC North Carolina|ND North Dakota|'
+  + 'OH Ohio|OK Oklahoma|OR Oregon|PA Pennsylvania|RI Rhode Island|SC South Carolina|SD South Dakota|TN Tennessee|TX Texas|UT Utah|VT Vermont|VA Virginia|'
+  + 'WA Washington|WV West Virginia|WI Wisconsin|WY Wyoming|PR Puerto Rico').split('|').map((x) => [x.slice(0, 2), x.slice(3)]);
+const STATE_BY_WORD = new Map([...US_STATES.flatMap(([c, n]) => [[c, c], [n.toUpperCase(), c]]), ['MASS', 'MA'], ['CONN', 'CT'], ['FLA', 'FL'], ['N J', 'NJ'], ['D C', 'DC']]);
+const STATE_NAME = Object.fromEntries(US_STATES);
+// Without a comma, only a two-letter code or a covered state's name counts ("Mount Washington" is a Massachusetts town).
+const STATE_TAIL = new RegExp(`(?:^|\\s)(${[...STATE_BY_WORD.keys()].filter((k) => k.length <= 4 || ['MASSACHUSETTS', 'CONNECTICUT', 'NEW JERSEY', 'FLORIDA'].includes(k))
+  .sort((a, b) => b.length - a.length).join('|')})$`);
+const SEARCH_LOT_MS = 4500;      // exact-lot lookup in the state parcel services
+const SEARCH_GEO_MS = 5000;      // then the address and town lookups; together a search answers in about 10 seconds at worst
+const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first hasn't answered by then
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL' };
+const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
+const COMPASS_WORD = /^(N|S|E|W|NE|NW|SE|SW|NORTH|SOUTH|EAST|WEST)$/;
+const cleanUp = (s) => s.toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const abbrStreet = (s) => cleanUp(s).split(' ').map((w) => STREET_ABBR[w] || w).join(' ');
+const sqlq = (x) => x.replace(/'/g, "''");
+const timeLimit = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`no answer in ${Math.round(ms / 1000)} seconds`)), ms))]);
+
+// Split what was typed into house number, street, town and state. Commas help but aren't needed for a trailing state ("Holbrook MA").
+function parseQuery(text) {
+  const parts = String(text).split(',').map((x) => x.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const q = { text: String(text).trim(), num: null, street: null, town: null, state: null };
+  if (parts.length > 1) parts[parts.length - 1] = parts[parts.length - 1].replace(/\s*\d{5}(-\d{4})?$/, '').trim() || parts[parts.length - 1];   // zip code
+  const lastU = cleanUp(parts[parts.length - 1]);
+  const numFirst = /^\d+[A-Z]?\b/i.test(parts[0]);
+  // "12 Main St, Washington" and "…, Delaware" are towns here (Washington in three of the covered states, Delaware Township in
+  // New Jersey), so after a street they aren't read as the far-away states.
+  const townNotState = parts.length === 2 && /^(WASHINGTON|DELAWARE)$/.test(lastU) && (numFirst || STREET_WORD.test(cleanUp(parts[0])));
+  if (parts.length > 1 && STATE_BY_WORD.has(lastU) && !townNotState) { q.state = STATE_BY_WORD.get(lastU); parts.pop(); }
+  else if (!townNotState) {
+    const m = STATE_TAIL.exec(lastU), w = lastU.split(' '), st = m && STATE_BY_WORD.get(m[1]);
+    // In a lone "number street" part, a last word can be part of the street: "12 Elm Ct" is a court, not Connecticut (but
+    // "12 Elm St CT" is), and "500 Beach Dr NE" is northeast, not Nebraska.
+    const streetBit = parts.length === 1 && numFirst && ((st === 'CT' && !STREET_END.has(w[w.length - 2])) || st === 'NE');
+    if (m && m.index > 0 && !streetBit) {
+      q.state = st;
+      parts[parts.length - 1] = lastU.slice(0, m.index).trim();
+    }
   }
-  return null;
+  const first = parts[0] || '';
+  const nm = /^(\d+[A-Z]?)(?:-\d+)?\s+(.+)$/i.exec(first);
+  if (nm) {
+    q.num = nm[1].toUpperCase(); q.street = nm[2]; q.town = parts[1] || null;
+    // No comma ("6 Mosesso Drive Holbrook"): words after the street's last "Drive"/"St"/… are taken as the town. It's a guess
+    // (q.loose), so the lot lookup tries the text both ways.
+    if (!q.town) {
+      const w = cleanUp(q.street).split(' ');
+      let i = w.length - 1; while (i > 0 && !STREET_END.has(w[i])) i--;
+      let j = i + 1; if (j < w.length && COMPASS_WORD.test(w[j])) j++;                      // "Beach Dr NE"
+      if (j < w.length - 1 && /^(APT|UNIT|STE|SUITE|FL|FLOOR|RM|LOT)$/.test(w[j])) j += 2;   // "Apt 2"
+      const rest = w.slice(j);
+      if (i > 0 && rest.length && rest.every((x) => /^[A-Z]+$/.test(x))) { q.full = q.street; q.street = w.slice(0, j).join(' '); q.town = rest.join(' '); q.loose = true; }
+    }
+  }
+  else if (STREET_WORD.test(cleanUp(first))) { q.street = first; q.town = parts[1] || null; }
+  else if (parts.length > 1) { q.street = first; q.town = parts[1]; }     // "Route 9, Framingham": look for it there, or at least show the town
+  else q.town = first || null;
+  if (q.town) q.town = q.town.replace(/\s+/g, ' ').trim() || null;
+  if (!q.num && !q.street && !q.town && !q.state) return null;
+  return q;
 }
-async function searchIn(region, addr, town) {
+
+// Massachusetts and Connecticut town names are known here, so a near miss ("Holbrok") can be fixed before asking anyone.
+function editDist(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function knownTown(name) {
+  const k = String(name || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (k.length < 3) return null;
+  const lists = [['MA', MA_TOWNS], ['CT', CT_TOWNS]], exact = [], close = [];
+  for (const [st, list] of lists) for (const t of list) {
+    const tk = t.n.toUpperCase().replace(/[^A-Z]/g, '');
+    if (tk === k) exact.push({ name: t.n, state: st });
+    else if (k.length >= 5 && editDist(k, tk) <= (k.length >= 8 ? 2 : 1)) close.push({ name: t.n, state: st });
+  }
+  if (exact.length) return { name: exact[0].name, states: exact.map((x) => x.state) };
+  const names = [...new Set(close.map((x) => x.name))];
+  return names.length === 1 ? { name: names[0], states: close.map((x) => x.state), fixed: true } : null;
+}
+
+// Which states to look in, most likely first: the one typed; otherwise the one the town is known to be in, the one the
+// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida.
+function searchOrder(q, kt) {
+  if (q.state) return REGIONS[q.state] ? [REGIONS[q.state]] : [];
+  const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
+  // The town lists cover only Massachusetts and Connecticut, so with the map in New Jersey or Florida, that state still comes first.
+  const townSt = kt && (!here || here.id === 'MA' || here.id === 'CT') ? (here && kt.states.includes(here.id) ? here.id : kt.states[0]) : null;
+  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL];
+  return order.filter((r, i) => r && order.indexOf(r) === i);
+}
+
+async function searchAddress(text) {
+  if (DEMO) return null;                      // the demo neighborhood is made up: nothing to look up, and nothing is sent anywhere
+  const q = parseQuery(text);
+  if (!q) return null;
+  if (q.state && !REGIONS[q.state]) return { kind: 'outside', name: STATE_NAME[q.state] };
+  const kt = q.town ? knownTown(q.town) : null;
+  // A near miss is only a guess (New Jersey's Clifton isn't a misspelled Clinton), so the town map gets both names, and the typed one wins.
+  if (kt && !kt.fixed) q.town = kt.name; else if (kt) q.townFix = kt.name;
+  const order = searchOrder(q, kt);
+  if (!q.num && !q.street && !q.town) return null;    // just a state
+  // 1. The exact lot, from the state parcel services: all likely states at once, the most likely one's answer first.
+  if (q.num) {
+    const addr = abbrStreet(`${q.num} ${q.street}`);
+    const alts = [{ addr, town: q.town }];
+    if (q.townFix) alts.push({ addr, town: q.townFix });                              // "Holbrok" → Holbrook
+    if (q.loose) alts.push({ addr: abbrStreet(`${q.num} ${q.full}`), town: null });   // the trailing words were part of the street after all
+    const asks = order.map((r) => timeLimit(searchIn(r, alts), SEARCH_LOT_MS).catch((e) => { console.warn('search failed', r.id, e); return null; }));
+    for (const a of asks) { const hit = await a; if (hit) return { kind: 'lot', ...hit }; }
+  }
+  // 2. Not found: look the address (or street) up, and the town alongside it in case the address can't be found.
+  const townP = q.town ? timeLimit(townPlace(q.town, order, q.townFix), SEARCH_GEO_MS).catch((e) => { console.warn('town search failed', e); return null; }) : null;
+  // A house number: the Census first (it places the number along the street; Geoapify often knows only the street), with
+  // Geoapify as the backup for typos. Anything else: Geoapify first when there's a key.
+  const census = ['Census', async () => {
+    const st0 = q.state ? null : (order[0] && order[0].id);      // it needs a state: the most likely one, when none was typed
+    try { return await censusSearch(q.text, st0); }
+    catch (e) {
+      // The town lookup may know better: the state the town is really in ("12 Main St, Clifton" with the map in Massachusetts),
+      // or the town's right spelling. Try once more with that.
+      const t = townP && await townP;
+      if (!t || !t.st) throw e;
+      const text = t.guess && q.town ? q.text.replace(q.town, t.town) : q.text, st = q.state ? null : t.st;
+      if (text === q.text && st === st0) throw e;
+      return censusSearch(text, st);
+    }
+  }];
+  const geoapify = ['Geoapify', (sig) => geoapifySearch(q, sig)];
+  const tries = [];
+  if (q.num) { tries.push(census); if (KEYS.geoapify) tries.push(geoapify); }
+  else { if (KEYS.geoapify) tries.push(geoapify); if (q.street && q.town) tries.push(['Parcels', () => streetSearch(q, order)]); }
+  if (tries.length) {
+    const r = await timeLimit(hedge(tries, SEARCH_GAP_MS), SEARCH_GEO_MS).catch((e) => { console.warn('address search failed', e); return null; });
+    if (r) return r;
+  }
+  const t = townP && await townP;
+  return t ? { ...t, missed: !!(q.num || q.street) } : null;
+}
+// alts: ways to read what was typed, each { addr, town }. With a town, the same address in another town isn't a match.
+async function searchIn(region, alts, town, street) {
   await initService(region);
   const sv = SVC[region.id];
   const A = sv.canon.get('SITE_ADDR'), C = sv.canon.get('CITY');
   if (!A) return null;
-  const sqlq = (x) => x.replace(/'/g, "''");
+  const inTown = (t) => (t && C ? ` AND UPPER(${C}) LIKE '${sqlq(t.toUpperCase().replace(/[^A-Z0-9 .'-]/g, ''))}%'` : '');
+  const T = inTown(town);
   const tries = [];
-  if (town && C) tries.push(`UPPER(${A}) LIKE '${sqlq(addr)}%' AND UPPER(${C}) LIKE '${sqlq(town.toUpperCase().replace(/[^A-Z0-9 .-]/g, ''))}%'`);
-  tries.push(`UPPER(${A}) LIKE '${sqlq(addr)}%'`);
+  if (street) { if (!T) return null; tries.push(`(UPPER(${A}) LIKE '% ${sqlq(street)}' OR UPPER(${A}) LIKE '% ${sqlq(street)} %')${T}`); }
+  else tries.push(alts.map((a) => `(UPPER(${A}) LIKE '${sqlq(a.addr)}%'${inTown(a.town)})`).join(' OR '));
   for (const where of tries) {
-    const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: '5', f: 'json' });
-    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, 12000);
+    const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '5', f: 'json' });
+    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, SEARCH_LOT_MS);
     const ps = buildParcels(j.features || [], region.id);
     if (ps.length) {
       const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
-      const c = centroid(ps[0].ringsLL.map((r) => r.map(([lo, la]) => proj.fwd(la, lo))));
-      const [la, lo] = proj.inv(c[0], c[1]);
-      return { lat: la, lon: lo, key: ps[0].key };
+      const cs = ps.map((p) => centroid(p.ringsLL.map((r) => r.map(([lo, la]) => proj.fwd(la, lo)))));
+      // For a street, the lot nearest the middle of the ones found, so the map lands on the street rather than beside it.
+      const mx = cs.reduce((s, c) => s + c[0], 0) / cs.length, my = cs.reduce((s, c) => s + c[1], 0) / cs.length;
+      const i = street ? cs.reduce((b, c, k) => (Math.hypot(c[0] - mx, c[1] - my) < Math.hypot(cs[b][0] - mx, cs[b][1] - my) ? k : b), 0) : 0;
+      const [la, lo] = proj.inv(cs[i][0], cs[i][1]);
+      return { lat: la, lon: lo, key: ps[i].key };
     }
   }
   return null;
+}
+// A street without a house number: find lots on it in the town typed.
+async function streetSearch(q, order) {
+  const st = abbrStreet(q.street);
+  const asks = order.map((r) => timeLimit(searchIn(r, null, q.town, st), SEARCH_GEO_MS).catch(() => null));
+  for (const a of asks) { const hit = await a; if (hit) return { kind: 'street', lat: hit.lat, lon: hit.lon, name: `${titleCase(st)}, ${q.town}` }; }
+  throw new Error('nothing found');
+}
+// Outside the covered states, say so; inside, keep it.
+function placeResult(kind, lat, lon, name) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return regionFor(lat, lon) ? { kind, lat, lon, name } : { kind: 'outside', name: null };
+}
+// Geoapify (when a key is set): handles towns, streets, addresses and typos. Results near the map come first.
+async function geoapifySearch(q, signal) {
+  const ref = refPoint();
+  const u = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(q.text)}&filter=countrycode:us&format=json&limit=5`
+    + (ref ? `&bias=proximity:${ref.lon.toFixed(5)},${ref.lat.toFixed(5)}` : '') + `&apiKey=${encodeURIComponent(KEYS.geoapify)}`;
+  const j = await getJSON(u, { signal }, SEARCH_GEO_MS);
+  const list = (j.results || (j.features || []).map((ft) => { const p = ft.properties || {}, g = (ft.geometry && ft.geometry.coordinates) || [];
+    return { ...p, lat: p.lat ?? g[1], lon: p.lon ?? g[0] }; }))
+    .map((r) => ({ ...r, lat: num(r.lat), lon: num(r.lon) }))
+    .filter((r) => r.lat != null && r.lon != null && !/^(state|country)$/.test(r.result_type || ''));   // a whole state is no place to center
+  if (!list.length) throw new Error('nothing found');
+  const r = list.find((x) => regionFor(x.lat, x.lon)) || list[0];
+  const t = r.result_type || '';
+  const kind = r.housenumber || /^(building|amenity)$/.test(t) ? 'address' : t === 'street' ? 'street' : 'town';
+  const name = kind === 'street' ? [r.street || r.name, r.city].filter(Boolean).join(', ') : kind === 'town' ? (r.city || r.name || r.formatted) : r.formatted;
+  return placeResult(kind, r.lat, r.lon, name || q.text);
+}
+// U.S. Census Bureau geocoder: free and needs no key, but only finds street addresses. It sends no cross-site headers, so it's
+// read as a script (JSONP). It needs a state, so the most likely one is added when none was typed.
+async function censusSearch(text, st) {
+  const addr = st ? `${text}, ${st}` : text;
+  const j = await jsonp(`https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(addr)}&benchmark=Public_AR_Current&format=jsonp`, 'callback', SEARCH_GEO_MS);
+  const m = j && j.result && (j.result.addressMatches || [])[0];
+  if (!m || !m.coordinates) throw new Error('nothing found');
+  return placeResult('address', num(m.coordinates.y), num(m.coordinates.x), m.matchedAddress ? titleCase(m.matchedAddress) : text);
+}
+// A town on its own: the Census Bureau's TIGERweb map has every town (county subdivisions: New England and New Jersey towns)
+// and city (incorporated and census-designated places: Florida's cities), each with a point inside it.
+async function twGet(url) {
+  return hedge([['fetch', (signal) => getJSON(url, { signal }, SEARCH_GEO_MS)], ['script', () => jsonp(url, 'callback', SEARCH_GEO_MS)]], 2000);
+}
+async function townPlace(town, order, alt) {
+  const layers = await memo('twTowns', async () => {
+    const m = await twGet(`${TIGER}?f=json`), find = (re) => (m.layers || []).find((l) => re.test(String(l.name).trim()));
+    const out = { cousub: find(/^county subdivisions$/i), place: find(/^incorporated places$/i), cdp: find(/^census designated places$/i) };
+    if (!out.cousub && !out.place && !out.cdp) throw new Error('no town layers');
+    return out;
+  });
+  const up = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
+  const T = up(town);
+  if (!T) return null;
+  const names = new Set([T]);
+  const saint = /^(ST\.?|SAINT) (.+)$/.exec(T); if (saint) ['ST.', 'ST', 'SAINT'].forEach((p) => names.add(`${p} ${saint[2]}`));   // St. Augustine
+  const typed = new Set(names);
+  if (alt) names.add(up(alt));
+  const where = `UPPER(BASENAME) IN (${[...names].map((n) => `'${sqlq(n)}'`).join(',')}) AND STATE IN (${Object.keys(STATE_FIPS).map((s) => `'${s}'`).join(',')})`;
+  const found = [];
+  await Promise.all(Object.entries(layers).filter(([, l]) => l).map(async ([kind, l]) => {
+    const p = new URLSearchParams({ where, outFields: '*', returnGeometry: 'true', outSR: '4326', maxAllowableOffset: '0.005', f: 'json' });
+    const j = await twGet(`${TIGER}/${l.id}/query?${p}`).catch(() => null);
+    for (const ft of (j && j.features) || []) {
+      const a = {}; for (const [k, v] of Object.entries(ft.attributes || {})) a[k.toUpperCase()] = v;
+      const st = STATE_FIPS[String(a.STATE ?? String(a.GEOID || '').slice(0, 2)).padStart(2, '0')];
+      if (!st) continue;
+      let lat = parseFloat(a.INTPTLAT ?? a.CENTLAT), lon = parseFloat(a.INTPTLON ?? a.CENTLON);   // a point inside the town ("+42.15")
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {     // no point given: the middle of its outline
+        const pts = ((ft.geometry && ft.geometry.rings) || []).flat();
+        if (!pts.length) continue;
+        const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+        lon = (Math.min(...xs) + Math.max(...xs)) / 2; lat = (Math.min(...ys) + Math.max(...ys)) / 2;
+      }
+      found.push({ st, kind, lat, lon, name: titleCase(a.BASENAME || a.NAME || town), guess: !typed.has(up(a.BASENAME)) });
+    }
+  }));
+  // Same name in two states: the state order decides. Within a state, towns first in New England and New Jersey, cities in Florida.
+  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  const rank = (x) => (x.guess ? 100 : 0) + ids.indexOf(x.st) * 10 + pref(x);      // the name as typed beats a corrected guess
+  const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => rank(a) - rank(b));   // only the state typed, if one was
+  if (!ok.length) return null;
+  const b = ok[0];
+  return { kind: 'town', lat: b.lat, lon: b.lon, name: `${b.name}, ${b.st}`, st: b.st, town: b.name, guess: b.guess };
+}
+// The lot at a geocoded address: the one with the same house number close by, or else the one the point falls in.
+// (Geocoders often put the point out on the street, a little off the lot itself.)
+function lotForAddress(lat, lon, hn) {
+  if (!S.proj || !S.local.length) return null;
+  const [x, y] = S.proj.fwd(lat, lon);
+  const inside = S.local.find((l) => pointInRings(x, y, l.rings)) || null;
+  if (!hn) return inside;
+  const re = new RegExp(`^\\s*${hn.replace(/[^0-9A-Z]/gi, '')}\\b`, 'i');
+  const has = (l) => l.p.records.some((r) => re.test(String(r.SITE_ADDR || '')));
+  if (inside && has(inside)) return inside;
+  const d = (l) => Math.hypot(l.c[0] - x, l.c[1] - y);
+  return S.local.filter((l) => has(l) && d(l) < 60).sort((a, b) => d(a) - d(b))[0] || inside;
 }
 
 /* =========================================================================
@@ -1185,6 +1421,7 @@ const S = {
   pos: null, acc: null,          // GPS
   heading: null, beta: null,     // compass (true north)
   hbuf: [], gotOrientation: false, orientSource: null,
+  accBuf: [], compassAcc: null, rawCompassAcc: null, compassBad: false, compassWarned: false,   // iPhone compass accuracy (± degrees, -1 = needs calibrating)
   parcels: [], center: null, proj: null, local: [], loading: null, bldgs: [], bldgVer: 0,
   candidates: [], cIdx: 0, locked: false,
   map: { center: null, R: 110, selectedKey: null },
@@ -2576,10 +2813,28 @@ function pushHeading(h) {
   let sx = 0, sy = 0; for (const v of S.hbuf) { sx += Math.sin(rad(v)); sy += Math.cos(rad(v)); }
   S.heading = norm(Math.atan2(sx, sy) * 180 / Math.PI);
 }
+// iPhones say how far off their compass might be (± degrees; -1 means it needs calibrating). A bad compass is the main reason
+// the app picks the wrong house, so warn. The middle value of the last few readings is used, so one odd reading doesn't flash
+// a warning. Android doesn't report this, and there's no cheap, reliable stand-in: a confused compass usually reads steadily
+// but wrong, so how jumpy the heading is doesn't tell. So Android phones get no warning.
+const COMPASS_POOR = 30;        // ± degrees; worse than this (or -1) shows the warning. Tune with ?debug=1 on a real phone.
+function pushCompassAcc(a) {
+  if (!Number.isFinite(a)) return;
+  S.accBuf.push(a < 0 ? 999 : a); if (S.accBuf.length > 9) S.accBuf.shift();
+  const m = S.accBuf.slice().sort((x, y) => x - y)[Math.floor(S.accBuf.length / 2)];
+  S.compassAcc = S.accBuf.length < 3 ? null : m >= 999 ? -1 : m; S.rawCompassAcc = a;   // wait for a few readings before judging
+  // Once it's poor it stays "poor" until it's clearly better (5° inside the line), so the warning doesn't flicker at the edge.
+  const c = S.compassAcc;
+  if (c == null) S.compassBad = false; else if (c < 0 || c > COMPASS_POOR) S.compassBad = true; else if (c <= COMPASS_POOR - 5) S.compassBad = false;
+  if (!S.compassBad) S.compassWarned = false;    // fixed: warn again next time it goes bad
+}
+const compassPoor = () => !!S.compassBad;
 function onOrientation(e) {
   let h = null;
-  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) { h = e.webkitCompassHeading; S.orientSource = 'ios'; }
-  else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) {
+  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
+    h = e.webkitCompassHeading; S.orientSource = 'ios';
+    if (typeof e.webkitCompassAccuracy === 'number') pushCompassAcc(e.webkitCompassAccuracy);
+  } else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) {
     h = compassFromEuler(e.alpha, e.beta, e.gamma); S.orientSource = 'abs';
   } else return;
   S.beta = e.beta; S.gotOrientation = true;
@@ -2612,16 +2867,48 @@ async function startSensors() {
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   }
 
-  // Camera
-  if ($('#cam').srcObject) return;                                    // already running
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-    const v = $('#cam'); v.srcObject = stream; show(v); show($('#fakecam'), false); await v.play().catch(() => {});
-  } catch (e) {
-    show($('#fakecam'));
-    if (e && e.name === 'NotAllowedError' && S.mode === 'point') toast('Camera is off. You can still aim with the compass, or use the map.', 4200);
-  }
+  if (S.mode === 'point') await startCamera(true);   // a fresh tap may ask again after a "no"
 }
+
+// The camera runs only while point mode is on screen: on the map or in the background it would keep the phone's camera light on
+// and drain the battery. It's asked for the first time from the "point" tap, so map-only users never see a camera prompt.
+const CAM = { want: false, pending: null, failed: false };
+async function startCamera(retry = false) {
+  if (CAM.failed && !retry) return;                                   // denied or missing: only a fresh tap on "point" asks again
+  CAM.want = true;
+  const v = $('#cam');
+  if (v.srcObject && !v.srcObject.getVideoTracks().some((t) => t.readyState === 'live')) { stopCamera(); CAM.want = true; }   // the phone ended it (a call, say): start over
+  if (v.srcObject) { if (S.mode === 'point') { show(v); show($('#fakecam'), false); } v.play().catch(() => {}); return; }   // already running
+  if (CAM.pending) return CAM.pending;                                 // one request at a time
+  CAM.pending = (async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      if (!CAM.want) { stream.getTracks().forEach((t) => t.stop()); return; }   // left point mode while the phone was still asking
+      CAM.failed = false;
+      v.srcObject = stream;
+      if (S.mode === 'point') { show(v); show($('#fakecam'), false); }
+      await v.play().catch(() => {});
+    } catch (e) {
+      CAM.failed = !(e && /^(NotReadableError|AbortError)$/.test(e.name));   // camera busy or interrupted: try again next time; refused or missing: don't keep asking
+      if (S.mode === 'point') show($('#fakecam'));
+      if (e && e.name === 'NotAllowedError' && S.mode === 'point') toast('Camera is off. You can still aim with the compass, or use the map.', 4200);
+    } finally { CAM.pending = null; }
+  })();
+  return CAM.pending;
+}
+function stopCamera() {
+  CAM.want = false;
+  const v = $('#cam'), st = v.srcObject;
+  try { v.pause(); } catch (e) {}
+  if (st) { st.getTracks().forEach((t) => t.stop()); v.srcObject = null; }
+  show(v, false); if (S.mode === 'point') show($('#fakecam'));        // the plain background until the camera is back
+}
+// Leaving the page (switching apps, locking the phone) turns the camera off; coming back to point mode turns it on again.
+// iPhones often return a frozen or black picture after a trip to the background, so a fresh camera is also the fix for that.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopCamera();
+  else if (S.mode === 'point' && S.sensorsStarted) startCamera();
+});
 
 /* =========================================================================
    Point mode loop
@@ -2629,9 +2916,10 @@ async function startSensors() {
 let rafOn = false, lastLive = 0;
 function startPointMode() {
   S.mode = 'point'; document.body.classList.remove('mapmode');
-  const cam = $('#cam');
-  if (cam.srcObject) { show(cam); show($('#fakecam'), false); cam.play().catch(() => {}); }
-  else if (S.sensorsStarted) show($('#fakecam'));
+  if (S.sensorsStarted) {                // the first time, the "point" tap asks for the compass first, then the camera
+    if (!$('#cam').srcObject) show($('#fakecam'));
+    startCamera();
+  }
   show($('#start'), false); [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint')].forEach((el) => show(el));
   [$('#mapView'), $('#mapTop'), $('#mapColor'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el, false));
   if (!rafOn) { rafOn = true; requestAnimationFrame(tick); }
@@ -2651,6 +2939,8 @@ function tick(ts) {
     $('#gpsPill .dot').className = 'dot ' + (a <= 15 ? 'ok' : a <= 35 ? '' : 'bad');
   }
   $('#hdgTxt').textContent = S.heading == null ? 'Compass…' : `${Math.round(S.heading)}° ${compass8(S.heading)}`;
+  const cd = $('#hdgPill .dot'), ca = S.compassAcc;    // only iPhones say how good the compass is; elsewhere no dot
+  cd.className = ca == null ? 'dot hidden' : compassPoor() ? 'dot bad' : ca <= COMPASS_POOR / 2 ? 'dot ok' : 'dot';
   $('#shutter').classList.toggle('fuzzy', !DEMO && (S.acc || 0) > 30);
 
   let hint = '';
@@ -2660,6 +2950,9 @@ function tick(ts) {
   else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
   else if (!DEMO && S.center && !S.loading && !S.failAt && !S.local.length) hint = `No property records here. Housepoint covers ${COVERAGE} for now.`;
   else if (S.beta != null && Math.abs(S.beta) < 35 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';
+  // After "hold it up" (holding it right comes first, and is quick to fix) but before fuzzy GPS: a bad compass swings the aim
+  // further than fuzzy GPS moves it (30° off at 50 m is 25 m sideways, a house or two over), so it's the more useful thing to fix.
+  else if (compassPoor()) hint = 'Compass is off. Wave your phone in a figure 8, away from cars and metal.';
   else if (S.acc > 35) hint = 'GPS is fuzzy right now. Results may be off.';
   $('#hint').textContent = hint;
 
@@ -2669,7 +2962,7 @@ function tick(ts) {
     if (!el) { el = document.createElement('div'); el.id = 'debug'; document.body.appendChild(el); }
     const top = S.pos && S.heading != null && S.local.length ? findCandidates(S.pos.lat, S.pos.lon, S.heading)[0] : null;
     el.textContent = [
-      `src ${S.orientSource || '—'}  raw ${S.rawHeading == null ? '—' : S.rawHeading.toFixed(1)}°`,
+      `src ${S.orientSource || '—'}  raw ${S.rawHeading == null ? '—' : S.rawHeading.toFixed(1)}°  acc ${S.compassAcc == null ? '—' : S.compassAcc < 0 ? 'needs calibrating' : '±' + Math.round(S.compassAcc) + '°'}${S.rawCompassAcc == null ? '' : ` (now ${Math.round(S.rawCompassAcc)})`}${compassPoor() ? ' POOR' : ''}`,
       `decl ${declinationAt(S.pos).toFixed(1)}° ${S.pos && regionFor(S.pos.lat, S.pos.lon) ? '(' + regionFor(S.pos.lat, S.pos.lon).id + ')' : ''}  heading ${S.heading == null ? '—' : S.heading.toFixed(1)}°`,
       `tilt(beta) ${S.beta == null ? '—' : S.beta.toFixed(0)}°`,
       `gps ${S.pos ? S.pos.lat.toFixed(5) + ', ' + S.pos.lon.toFixed(5) : '—'}  ±${S.acc == null ? '—' : Math.round(S.acc)} m`,
@@ -2703,7 +2996,8 @@ document.addEventListener('keydown', (e) => {
 $('#shutter').onclick = async () => {
   if (!S.pos) { toast('Still finding your location…'); return; }
   if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
-  if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${Math.round(S.acc)} m), so this might not be the house you mean.`, 3400);
+  if (compassPoor() && !S.compassWarned) { S.compassWarned = true; toast('Your compass is off, so this might not be the house you mean. Wave your phone in a figure 8 to fix it.', 4200); }
+  else if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${Math.round(S.acc)} m), so this might not be the house you mean.`, 3400);
   $('#scan').classList.add('on');
   try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
   const cands = findCandidates(S.pos.lat, S.pos.lon, S.heading).slice(0, 6);
@@ -2920,7 +3214,7 @@ syncArPill();
    ========================================================================= */
 async function startMapMode(center, msg) {
   S.mode = 'map'; document.body.classList.add('mapmode'); closeSheet();
-  try { $('#cam').pause(); } catch (e) {}
+  stopCamera();
   [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint'), $('#cam'), $('#fakecam'), $('#sim')].forEach((el) => show(el, false));
   $('#liveLabel').classList.add('dim');
   show($('#start'), false); [$('#mapView'), $('#mapTop'), $('#mapColor'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el));
@@ -2930,7 +3224,7 @@ async function startMapMode(center, msg) {
   else drawMap();
 }
 
-async function centerMap(lat, lon, selectKey) {
+async function centerMap(lat, lon, selectKey, help) {
   S.map.center = { lat, lon };
   $('#mapHelpTxt').textContent = 'Loading properties…';
   try { await ensureData(lat, lon, true); }
@@ -2939,7 +3233,8 @@ async function centerMap(lat, lon, selectKey) {
     if (rg && !(SVC[rg.id] && SVC[rg.id].layerUrl) && !DEMO) notifyServiceDown(rg); else $('#mapHelpTxt').textContent = 'Could not load property data here.';
     return;
   }
-  $('#mapHelpTxt').textContent = S.local.length ? 'Tap any lot to see its story.'
+  $('#mapHelpTxt').textContent = help && (DEMO || regionFor(lat, lon)) ? help      // a search result says where you are, even if no lots load right there
+    : S.local.length ? 'Tap any lot to see its story.'
     : (DEMO || regionFor(lat, lon)) ? 'No parcels found here. Try a sample spot.' : `Housepoint covers ${COVERAGE} for now. Try a sample spot.`;
   refreshMapImagery(); drawMap();
   if (selectKey) {
@@ -3146,14 +3441,28 @@ $('#samples').addEventListener('click', (e) => {
   }
   $('#q').value = b.dataset.name; centerMap(+b.dataset.lat, +b.dataset.lon);
 });
+let searchSeq = 0;
 $('#search').addEventListener('submit', async (e) => {
   e.preventDefault(); const text = $('#q').value.trim(); if (!text) return;
   $('#q').blur(); $('#mapHelpTxt').textContent = 'Searching…';
+  const seq = ++searchSeq, help = (t) => { if (seq === searchSeq) $('#mapHelpTxt').textContent = t; };   // a newer search wins
   try {
     const r = await searchAddress(text);
-    if (!r) { $('#mapHelpTxt').textContent = 'No match. Try "number street, town".'; return; }
-    S.map.R = 70; await centerMap(r.lat, r.lon, r.key);
-  } catch (err) { $('#mapHelpTxt').textContent = 'Search failed. Check your connection.'; }
+    if (seq !== searchSeq) return;
+    if (!r) { help(navigator.onLine === false ? 'Search failed. Check your connection.' : 'No match. Try “number street, town”, or just a town.'); return; }
+    if (r.kind === 'outside') { help(`${r.name ? r.name + ' is' : 'That place is'} outside Housepoint’s area. It covers ${COVERAGE} for now.`); return; }
+    if (r.kind === 'lot') { S.map.R = 70; await centerMap(r.lat, r.lon, r.key); return; }
+    if (r.kind === 'address') {
+      S.map.R = 70; closeSheet(); await centerMap(r.lat, r.lon);
+      const L = seq === searchSeq && S.map.center && S.map.center.lat === r.lat && lotForAddress(r.lat, r.lon, parseQuery(text).num);
+      if (L) selectLot(L);
+      return;
+    }
+    // A street or a whole town: show the area, pick nothing, and say what to do next.
+    S.map.R = r.kind === 'street' ? 150 : QUERY_RADIUS; closeSheet();
+    await centerMap(r.lat, r.lon, null, r.missed ? `Couldn’t find that address, so here’s ${r.name}. Tap a house.`
+      : r.kind === 'street' ? `Showing ${r.name}. Tap a house, or add a house number.` : `Showing ${r.name}. Tap a house, or add a street address.`);
+  } catch (err) { console.warn('search', err); help('Search failed. Check your connection.'); }
 });
 window.addEventListener('resize', () => { if (S.mode === 'map') { refreshMapImagery(); drawMap(); } });
 
@@ -3426,8 +3735,8 @@ const ABOUT = `
   when it last sold, an estimated property tax, and its flood zone.</p>
   <h3>Privacy</h3>
   <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
-  compass are used only on your phone. To look up records, the app sends the map location you’re looking at (not who you are) to the public
-  services below. There are no accounts, ads or tracking. Houses you look up are saved only on this phone. <a href="privacy.html">Privacy policy</a></p>
+  compass are used only on your phone, and the camera is on only while you’re pointing. To look up records, the app sends the map location you’re looking at (not who you are) to the public
+  services below. When you search the map, what you type goes to the search services listed below. There are no accounts, ads or tracking. Houses you look up are saved only on this phone. <a href="privacy.html">Privacy policy</a></p>
   <h3>Where the facts come from</h3>
   <ul>
     <li><b>Massachusetts property records and lot lines:</b> town assessors via MassGIS (Bureau of Geographic Information), Commonwealth of Massachusetts EOTSS.</li>
@@ -3438,6 +3747,7 @@ const ABOUT = `
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
+    <li><b>Map search:</b> the state parcel services above, then the U.S. Census Bureau’s address lookup (Census Geocoder) and its TIGERweb map for towns; Geoapify’s address search helps with streets, towns and typos once its key is set up.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
     <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
@@ -3479,7 +3789,8 @@ if (DEMO) {
 
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
-  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; } };
+  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
+  CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor };
 })();
 </script>
 </body>

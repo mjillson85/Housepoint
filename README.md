@@ -14,6 +14,7 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 - Aerial photos: MassGIS 2025 aerial imagery in Massachusetts (15 cm, leaf-off), USGS NAIP elsewhere and as a fallback.
 - Building outlines (to aim at roofs, not lawns): MassGIS Building Structures; FEMA/ORNL USA Structures in Connecticut, New Jersey and Florida, with Florida's statewide footprints as a backup.
 - Flood zone: FEMA National Flood Hazard Layer. Ground elevation: USGS Elevation Point Query Service.
+- Map search: an address with a house number is looked up in the state parcel services first (the exact lot); then the U.S. Census Bureau geocoder (free, no key) finds the address, and the Census Bureau's TIGERweb map finds a town on its own. When a Geoapify key is set, Geoapify's address search leads for streets and towns and backs up the Census for house numbers (it handles typos). What you type is sent to these services.
 - "Thinking of buying?" (on each card, loaded when opened): listing links (Zillow, a listings search), the nearest public schools and school district (NCES), Census tract figures next to the state's (American Community Survey), the local police department's crime rates from the FBI, and distances to groceries, transit, parks and more (OpenStreetMap places via Geoapify, with public Overpass servers as a backup). Free keys go in `KEYS` near the top of that section of index.html: a Census key (api.census.gov/data/key_signup.html), an api.data.gov key for the FBI, and a Geoapify key (free plan, 3,000 credits a day). Both are free rate-limit keys, not secrets.
 - Estimated property tax: assessed value × the town's FY2026 residential rate (Massachusetts Division of Local Services); assessed value (70% of the town's appraisal) × the town's FY2026 mill rate (Connecticut OPM); last year's actual bill from the MOD-IV tax list (New Jersey); or the county's taxable value × its average tax rate (Florida TaxWatch, from Dept. of Revenue data). It's an estimate, not the actual bill.
 
@@ -28,7 +29,7 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 ## Try it
 - Open the live link in Safari or Chrome on your phone, tap **Start pointing**, and allow camera, location and motion.
 - Add `?demo=1` to the URL to explore a made-up neighborhood without going outside.
-- Add `?debug=1` to see the compass, GPS and camera view readings.
+- Add `?debug=1` to see the compass, GPS and camera view readings. On an iPhone the first line also shows the compass accuracy (`acc ±N°`); the app warns when it's worse than ±30°.
 - If the floating tags are all shifted to one side of the houses, that's compass error: `?decl=` sets the compass correction (about −14 in Massachusetts, −13 in Connecticut, −12 in New Jersey, −7 in Florida). If tags are spread too far apart or bunched together, `?fov=` sets how wide the camera view is, in degrees (about 34 on an iPhone held upright).
 
 It's a single file (`index.html`), no build step.
