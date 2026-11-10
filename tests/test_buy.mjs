@@ -10,6 +10,7 @@ const ORIGIN = 'http://localhost:8775';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const CT_SVC = 'https://services3.arcgis.com/3FL1kr7L4LvwA2Kb/arcgis/rest/services/Connecticut_CAMA_and_Parcel_Layer/FeatureServer/0';
 const SCH = 'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer';
+const NCES_SCH = 'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer';
 const DIS = 'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_District_Characteristics_Current/FeatureServer';
 const TW = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer';
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
@@ -41,6 +42,11 @@ page.on('request', (req) => {
       { geometry: { rings: [ring(15, -12, 40, 12, b)] }, attributes: { OBJECTID: 1, Town_Name: 'WETHERSFIELD', Location: '211 MAIN ST', Assessed_Total: 350000, AYB: 1752, State_Use_Description: 'Single Fam', Collection_Year: '2025' } },
       { geometry: { rings: [ring(-40, -12, -15, 12, b)] }, attributes: { OBJECTID: 2, Town_Name: 'WETHERSFIELD', Location: '220 MAIN ST', Assessed_Total: 300000, AYB: 1800, State_Use_Description: 'Single Fam', Collection_Year: '2025' } }] });
   }
+  // The Department of Education's 2023-24 server: lists its layer, then refuses every search (as the ArcGIS Online copy did in
+  // November 2026). The app moves on to the next service.
+  if (u.startsWith(NCES_SCH + '?f=json')) return json({ layers: [{ id: 1, name: 'Public School Administrative Data 2023-24', geometryType: 'esriGeometryPoint' }] });
+  if (u.startsWith(NCES_SCH + '/1?f=json')) return json({ geometryType: 'esriGeometryPoint', fields: ['NCESSCH', 'SCH_NAME', 'GSLO', 'GSHI'].map((name) => ({ name })) });
+  if (u.startsWith(NCES_SCH + '/1/query')) { hit('ncesQuery'); return json({ error: { code: 400, message: 'Cannot perform query. Invalid query parameters.' } }); }
   // NCES schools and districts (layer numbers found through the service list)
   if (u.startsWith(SCH + '?f=json')) { hit('schSvc'); return json({ layers: [{ id: 3, name: 'Public School Characteristics', geometryType: 'esriGeometryPoint' }] }); }
   if (u.startsWith(SCH + '/3?f=json')) return json({ geometryType: 'esriGeometryPoint', fields: ['OBJECTID', 'NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO',
@@ -142,6 +148,7 @@ check(/Middle \| Silas Deane Middle School/.test(buy) && /High \| Riverside High
 check(!/(Elementary|Middle) \| Riverside High/.test(buy), 'a nearer high school is never picked as the elementary or middle school');
 check(/Grades K–5 · 400 students · 12\.3 per teacher/.test(buy) && /0\.4 mi/.test(buy), 'school details and distance');
 check(/Source: NCES, 2023-2024/.test(buy) && /state report cards/.test(buy), 'school source and report-card link');
+check(count.ncesQuery >= 1 && /Elementary/.test(buy), `a school service that refuses the search: the next one is asked, and schools still show (${count.ncesQuery} refused)`);
 check(/census tract 4919/i.test(buy) && /Household income \| \$112,500 \| Connecticut \| \$93,760/.test(buy), 'neighborhood income next to the state');
 check(/Owner-occupied \| 79% \| Connecticut \| 66%/.test(buy) && /Typical home built \| 1956/.test(buy) && !/Rent \|/.test(buy), 'owner share computed; missing rent hidden');
 check(/2019–2023/.test(buy) && asked.census.some((x) => /\/data\/2023\//.test(x)), 'falls back to the previous Census year');

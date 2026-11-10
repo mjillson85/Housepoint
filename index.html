@@ -2689,23 +2689,44 @@ async function queryLayer(layer, lat, lon, distance, want, extra = {}) {
 }
 
 /* Schools: federal NCES school and district data (public domain). */
-const SCHOOL_SVCS = ['https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer',
+// The Department of Education's own servers first (they answer in a fraction of a second); its copy on ArcGIS Online last: in
+// November 2026 that one listed its layers but timed out on every search ("Invalid query parameters" after 12 s). The newest
+// school year comes first; a year not published yet just fails and the next is tried.
+const SCHOOL_SVCS = ['https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2425/MapServer',
   'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer',
-  'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2223/MapServer'];
-const DISTRICT_SVCS = ['https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_District_Characteristics_Current/FeatureServer',
+  'https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2223/MapServer',
+  'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer'];
+const DISTRICT_SVCS = ['https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2425/MapServer',
   'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2324/MapServer',
-  'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2223/MapServer'];
+  'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2223/MapServer',
+  'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_District_Characteristics_Current/FeatureServer'];
+// Each service in turn until one answers the search too: a service can list its layers and still fail every query. The one that
+// worked is asked first next time.
+const SVC_GOOD = new Map();
+async function firstAnswer(tag, urls, need, geom, all, run) {
+  const order = SVC_GOOD.has(tag) ? [SVC_GOOD.get(tag), ...urls.filter((u) => u !== SVC_GOOD.get(tag))] : urls;
+  let last;
+  for (const u of order) {
+    try {
+      const l = await memo(`layer:${u}:${need.join()}`, () => findLayer([u], need, geom, all));
+      const v = await run(l);
+      SVC_GOOD.set(tag, u);
+      return { l, v };
+    } catch (e) { last = e; console.warn(tag, 'service failed', u, e && e.message); }
+  }
+  throw last || new Error('no service answered');
+}
 const gradeNum = (g) => { const t = String(g ?? '').trim().toUpperCase(); if (t === 'PK') return -1; if (t === 'KG' || t === 'K') return 0; const n = parseInt(t, 10); return n >= 1 && n <= 13 ? n : null; };
 const gradeTxt = (g) => { const n = gradeNum(g); return n == null ? null : n === -1 ? 'PreK' : n === 0 ? 'K' : String(n); };
 async function schoolsFor(lat, lon) {
   return nearMemo('sch', lat, lon, 400, async () => {
-    const [sl, dl] = await Promise.all([memo('schL', () => findLayer(SCHOOL_SVCS, ['SCH_NAME', 'GSLO', 'GSHI'], /Point/i)),
-      memo('disL', () => findLayer(DISTRICT_SVCS, ['LEA_NAME', 'LEAID'], /Polygon/i, true)).catch(() => null)]);
-    const [feats, dfeats] = await Promise.all([
-      queryLayer(sl, lat, lon, 6500, ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT',
-        'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'], { returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' }),
-      dl ? Promise.all(dl.map((l) => queryLayer(l, lat, lon, 0, ['LEAID', 'LEA_NAME', 'MEMBER', 'STUTERATIO', 'GSLO', 'GSHI', 'SCH']).then((fs) => fs.map((ft) => ({ ft, l }))).catch(() => [])))
-        .then((r) => r.flat()) : []]);
+    const [sres, dres] = await Promise.all([
+      firstAnswer('schools', SCHOOL_SVCS, ['SCH_NAME', 'GSLO', 'GSHI'], /Point/i, false, (sl) => queryLayer(sl, lat, lon, 6500, ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME',
+        'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT', 'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'],
+        { returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' })),
+      firstAnswer('districts', DISTRICT_SVCS, ['LEA_NAME', 'LEAID'], /Polygon/i, true, (dl) => Promise.all(dl.map((l) => queryLayer(l, lat, lon, 0, ['LEAID', 'LEA_NAME', 'MEMBER', 'STUTERATIO', 'GSLO', 'GSHI', 'SCH'])
+        .then((fs) => fs.map((ft) => ({ ft, l }))))).then((r) => r.flat())).catch(() => ({ l: null, v: [] }))]);
+    const sl = sres.l, feats = sres.v, dfeats = dres.v;
     const schools = feats.map((ft) => {
       const a = ft.attributes || {}, g = ft.geometry || {}, P = (n) => pick(a, sl.f, n);
       const lat = num(P('LATCOD')) || g.y, lng = num(P('LONCOD')) || g.x;
