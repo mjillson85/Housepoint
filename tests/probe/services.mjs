@@ -72,6 +72,22 @@ const variants = await page.evaluate(async () => {
   }
   return out;
 });
+const nces = await page.evaluate(async () => {
+  const out = {};
+  for (const svc of ['https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer/1',
+    'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2324/MapServer/1']) {
+    const meta = await (await fetch(svc + '?f=json')).json();
+    const q = { geometry: '-71.1752,42.2493', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: '*', returnGeometry: 'true', outSR: '4326', distance: /PUBLICSCH/.test(svc) ? '6500' : '0', units: 'esriSRUnit_Meter' };
+    const t0 = performance.now(); let r;
+    try { const j = await (await fetch(svc + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(q).toString() })).json();
+      r = { ms: Math.round(performance.now() - t0), n: j.features ? j.features.length : null, err: j.error ? JSON.stringify(j.error).slice(0, 200) : null, sample: j.features && j.features[0] ? JSON.stringify(j.features[0].attributes).slice(0, 500) : null }; }
+    catch (e) { r = { ms: Math.round(performance.now() - t0), fetchError: String(e) }; }
+    out[svc.split('/services/')[1]] = { fields: (meta.fields || []).map((f) => f.name).join(','), ...r };
+  }
+  return out;
+});
+log('== the Department of Education servers');
+for (const [k, v] of Object.entries(nces)) log(`  ${k}: ${JSON.stringify(v).slice(0, 1500)}`);
 log('== the school query, taken apart');
 for (const [k, v] of Object.entries(variants)) log(`  ${k}: ${JSON.stringify(v).slice(0, 900)}`);
 await browser.close(); srv.close();
