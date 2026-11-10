@@ -2160,8 +2160,8 @@ function floodView(env) {
    Only the house's location is sent, never anything about you.
    ========================================================================= */
 // Free sign-up keys (they limit request rates; they aren't secrets): api.census.gov/data/key_signup.html and api.data.gov/signup
-// Free rate-limit keys (not secrets). Geoapify: free plan, 3,000 credits a day; without a key Nearby uses public Overpass servers.
-const KEYS = { census: 'd7e5755c018834c78e91aaa1039626e6baedd907', fbi: 'QJ7CG8JwMNtGqqNg8BNCBD9kqQd8tLrqhbhRbDc8', geoapify: '' };
+// Free rate-limit keys (not secrets). Geoapify: free plan, 3,000 credits a day; if it fails, Nearby uses public Overpass servers.
+const KEYS = { census: 'd7e5755c018834c78e91aaa1039626e6baedd907', fbi: 'QJ7CG8JwMNtGqqNg8BNCBD9kqQd8tLrqhbhRbDc8', geoapify: '314fe68fd13a4912bfb0de565fdf960f' };
 const BUY_KEY = 'housepoint.buyOpen';
 let buyAuto = false; try { buyAuto = localStorage.getItem(BUY_KEY) === '1'; } catch (e) { /* private mode */ }
 const BUY = new Map();
@@ -3869,7 +3869,7 @@ const ABOUT = `
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
-    <li><b>Map search:</b> the state parcel services above, then the U.S. Census Bureau’s address lookup (Census Geocoder) and its TIGERweb map for towns; Geoapify’s address search helps with streets, towns and typos once its key is set up.</li>
+    <li><b>Map search:</b> the state parcel services above, then the U.S. Census Bureau’s address lookup (Census Geocoder) and its TIGERweb map for towns; Geoapify’s address search helps with streets, towns and typos.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
     <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>

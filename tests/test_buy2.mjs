@@ -86,6 +86,7 @@ page.on('request', (req) => {
 await page.goto(ORIGIN + '/');
 await page.evaluate(() => { localStorage.setItem('housepoint.buyOpen', '1'); });
 await page.reload(); await sleep(300);
+await page.evaluate(() => { window.__hp.KEYS.geoapify = ''; });   // first the volunteer servers on their own; the Geoapify part comes later
 await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(200);
 const run = async (m, lat, lon) => {
   mode = m;

@@ -136,6 +136,7 @@ async function newPage(url) {
     return req.abort();
   });
   await page.goto(ORIGIN + url);
+  await page.evaluate(() => { window.__hp.KEYS.geoapify = ''; });   // without a key first; the Geoapify part sets one
   return page;
 }
 const help = (page) => page.$eval('#mapHelpTxt', (el) => el.textContent);
