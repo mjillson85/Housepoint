@@ -20,7 +20,8 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 
 ## Features
 - **Point mode:** aim at a house and tap for its card. Small tags float over the other houses in view (year built and value); tap one to open it. "Labels on/off" hides them.
-- **Card:** year built, value, last sale, estimated property tax, lot, flood zone and ground elevation, and a shareable image.
+- **Card:** year built, value, last sale, price per square foot, estimated property tax, lot, flood zone and ground elevation, and a shareable image with a link that opens the same house on the map (`?h=lat,lon&k=key`).
+- **Pointing:** the screen stays awake while you point (where the phone supports it).
 - **Map:** color every lot by age, value or last sale year, with a legend.
 - **Monthly cost:** in "Thinking of buying?", a mortgage calculator that starts from the card's own numbers (price, estimated tax, the state's average insurance) and Freddie Mac's latest 30-year rate. Type the asking price or your own rate; down payment and loan length are remembered.
 - **Nearby:** walk or drive times to the closest grocery, pharmacy, park, train and more, a map with ¼, ½ and 1 mile rings (USGS base map), and filters for groceries, dining, parks, transit and health.
@@ -38,3 +39,5 @@ It's a single file (`index.html`), no build step.
 `tests/` holds the automated checks (headless Chrome; the public services are faked, so no network is needed):
 
     cd tests && npm install && npm test
+
+They also run on GitHub after every push (`.github/workflows/tests.yml`).

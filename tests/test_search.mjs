@@ -408,6 +408,32 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
   await gp.close();
 }
 
+// 9c. A shared house link opens that house on the map
+{
+  const sp = await newPage('/');
+  await sp.click('#goMap'); await sleep(300);
+  r = await search(sp, '12 Elm Street, Holbrook, MA');
+  const info = await sp.evaluate(() => { const c = window.__hp.S.candidates[window.__hp.S.cIdx]; return { link: window.__hp.houseLink(c), text: window.__hp.shareText(c) }; });
+  console.log('share link:', info.link);
+  check(r.open && /\?h=42\.\d{6},-71\.\d{6}&k=E12$/.test(info.link) && info.text.endsWith('\n' + info.link), 'sharing a card includes a link to the house');
+  const u = new URL(info.link);
+  const open = async (q) => {
+    const lp = await newPage('/' + q); await sleep(2500);
+    const st = await lp.evaluate(() => ({ mode: window.__hp.S.mode, start: !document.querySelector('#start').classList.contains('hidden'),
+      open: document.querySelector('#sheet').classList.contains('open'), card: document.querySelector('#sheet').classList.contains('open') ? window.__hp.summarize(window.__hp.S.candidates[window.__hp.S.cIdx].L.p).addr : '' }));
+    st.errors = lp.errors; await lp.close(); return st;
+  };
+  let st = await open(u.search);
+  check(st.mode === 'map' && !st.start && st.open && /^12 Elm St$/i.test(st.card), 'opening the link: straight to that house’s card on the map ' + JSON.stringify(st));
+  st = await open(u.search.replace(/&k=.*$/, '&k=REDRAWN'));
+  check(st.open && /^12 Elm St$/i.test(st.card), 'a link whose record key changed still opens the house by its location');
+  st = await open('?h=47.606200,-122.332100');
+  check(st.start && st.mode !== 'map', 'a link outside the covered states: the start screen, as usual');
+  st = await open('?h=12,abc&k=x');
+  check(st.start && !st.errors.length, 'a mangled link: the start screen, no errors');
+  await sp.close();
+}
+
 // 10. Demo mode: no lookups at all
 reset();
 const demo = await newPage('/?demo=1');

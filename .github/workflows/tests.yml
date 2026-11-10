@@ -1,0 +1,24 @@
+# Runs the Housepoint tests (tests/, headless Chrome; the public services are faked) on every push and pull request.
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install the test tools
+        working-directory: tests
+        run: npm install --no-audit --no-fund
+      - name: Run the tests
+        working-directory: tests
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: npm test

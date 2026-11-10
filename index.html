@@ -1811,6 +1811,8 @@ function renderCard(cand, total, idx) {
   const cells = [];
   const living = s.condo || s.park ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
   if (living) cells.push(['Living area', `${Math.round(living).toLocaleString('en-US')} ft²`]);
+  const pf = perSqft(s);
+  if (pf) cells.push([pf.kind === 'sale' ? 'Sale per ft²' : 'Value per ft²', moneyFull(pf.v)]);
   if (!s.condo && !s.park && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
   if (!s.condo && !s.park && num(r.BEDS)) cells.push(['Bedrooms', num(r.BEDS)]);
   if (!s.condo && !s.park && num(r.BATHS)) cells.push(['Baths', bathText(r)]);
@@ -1824,7 +1826,7 @@ function renderCard(cand, total, idx) {
 
   const unitList = s.condo ? unitListHtml(s) : '';
 
-  const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${Math.round(cand.cdist)} m ${compass8(cand.bearing)}` : '';
+  const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${feet(cand.cdist)} ${compass8(cand.bearing)}` : '';
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
@@ -1856,6 +1858,32 @@ function renderCard(cand, total, idx) {
   $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
 }
 
+// Price per square foot of living area: from the last market sale if it's under ten years old, otherwise from the town's value
+// (not in New Jersey, where towns assess at a fraction of market value). Not for condos (the card covers the whole building).
+function perSqft(s) {
+  const r = s.r0, living = s.condo || s.park || s.commonOnly ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
+  if (!living || living < 300) return null;
+  const sale = !s.multiSale && !s.unqualified && s.sales[0] && s.sales[0].p >= 10000 && Date.now() - s.sales[0].d < 3.156e11 ? s.sales[0] : null;
+  if (sale) return { v: sale.p / living, kind: 'sale' };
+  const tv = num(r.TOTAL_VAL);
+  return tv && s.region.id !== 'NJ' ? { v: tv / living, kind: 'value' } : null;
+}
+// A link that opens this house on the map for whoever gets it: a point inside the lot, plus its record key.
+function houseLink(cand) {
+  const L = cand.L, proj = L.proj || S.proj;
+  if (DEMO || !proj) return null;
+  let [x, y] = L.c;
+  if (!pointInRings(x, y, L.rings)) {            // an L-shaped lot's middle can be outside it: use the inside point nearest the middle
+    const xs = L.rings.flat().map((p) => p[0]), ys = L.rings.flat().map((p) => p[1]), pts = [];
+    for (let i = 1; i < 8; i++) for (let j = 1; j < 8; j++) {
+      const px = Math.min(...xs) + (Math.max(...xs) - Math.min(...xs)) * i / 8, py = Math.min(...ys) + (Math.max(...ys) - Math.min(...ys)) * j / 8;
+      if (pointInRings(px, py, L.rings)) pts.push([px, py]);
+    }
+    if (pts.length) [x, y] = pts.sort((a, b) => Math.hypot(a[0] - L.c[0], a[1] - L.c[1]) - Math.hypot(b[0] - L.c[0], b[1] - L.c[1]))[0];
+  }
+  const [lat, lon] = proj.inv(x, y);
+  return `${location.origin}${location.pathname}?h=${lat.toFixed(6)},${lon.toFixed(6)}&k=${encodeURIComponent(L.p.key)}`;
+}
 function shareText(cand) {
   const s = summarize(cand.L.p), r = s.r0;
   const bits = [`${s.addr}${s.town ? ', ' + s.town : ''}`];
@@ -1867,7 +1895,8 @@ function shareText(cand) {
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? `Whole park ${vw.toLowerCase()}` : vw} ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
   const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(tx.actual ? `Property tax ${moneyFull(tx.lo)}/yr` : `Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
-  return bits.join('\n') + '\n\nFound with Housepoint';
+  const link = houseLink(cand);
+  return bits.join('\n') + '\n\nFound with Housepoint' + (link ? `\n${link}` : '');
 }
 
 // Condo units: sorted by unit number, each with its own details when tapped.
@@ -2177,6 +2206,8 @@ function nearMemo(kind, lat, lon, m, fn) {
   return e.p;
 }
 const distM = (la1, lo1, la2, lo2) => { const a = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(a)); };
+// Short distances in feet (to the nearest 10, or 5 for small ones), longer ones in miles: "420 ft", "0.3 mi".
+const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toFixed(1)} mi` : `${Math.max(5, Math.round(f / (f < 100 ? 5 : 10)) * (f < 100 ? 5 : 10))} ft`; };
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/' };
@@ -2774,7 +2805,7 @@ function snapshot(L, s) {
     sale: sale ? { p: sale.p, d: sale.d.toISOString().slice(0, 10) } : null,
     tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual }) : null,
     calc: calcApplies(s) ? { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } : null,
-    living: s.condo || s.park ? null : num(r.RES_AREA) || num(r.BLD_AREA) || null, beds: num(r.BEDS) || null, baths: num(r.BATHS) ? bathText(r) : null,
+    living: s.condo || s.park ? null : num(r.RES_AREA) || num(r.BLD_AREA) || null, ppsf: perSqft(s), beds: num(r.BEDS) || null, baths: num(r.BATHS) ? bathText(r) : null,
     lot: Math.round(lotSqft(L)), flood: null, school: null, grocery: null, ...(BUY_FACTS.get(L.p.key) || {}) };
 }
 function toggleSave(L, s) {
@@ -2808,6 +2839,7 @@ function renderSaved() {
     ['Monthly cost', (x, m) => cell(m && Number.isFinite(m.total) ? `≈ ${dollars(m.total)}` : null, m && Number.isFinite(m.total) ? `at ${calcPrefs.down}% down, ${calcPrefs.rate}%` : '')],
     ['Built', (x) => cell(x.year)],
     ['Living area', (x) => cell(x.living ? `${Math.round(x.living).toLocaleString('en-US')} ft²` : null)],
+    ['Per ft²', (x) => cell(x.ppsf ? moneyFull(x.ppsf.v) : null, x.ppsf ? (x.ppsf.kind === 'sale' ? 'last sale' : 'value') : '')],
     ['Beds · baths', (x) => cell(x.beds || x.baths ? `${x.beds || '—'} · ${x.baths || '—'}` : null)],
     ['Lot', (x) => cell(x.lot ? (x.lot >= 21780 ? `${(x.lot / 43560).toFixed(1)} ac` : `${x.lot.toLocaleString('en-US')} ft²`) : null)],
     ['Flood zone', (x) => cell(x.flood)],
@@ -2993,6 +3025,19 @@ function stopCamera() {
 }
 // Leaving the page (switching apps, locking the phone) turns the camera off; coming back to point mode turns it on again.
 // iPhones often return a frozen or black picture after a trip to the background, so a fresh camera is also the fix for that.
+// Keep the screen from dimming while pointing (you're holding the phone up, not touching it). The phone drops the lock when
+// the app goes to the background, so it's asked for again on return. Phones without it just dim as usual.
+const WAKE = { lock: null, want: false };
+async function keepAwake(on) {
+  WAKE.want = on;
+  try {
+    if (on && !WAKE.lock && navigator.wakeLock && !document.hidden) {
+      const l = await navigator.wakeLock.request('screen');
+      if (!WAKE.want) { l.release().catch(() => {}); return; }          // left point mode while it was being granted
+      WAKE.lock = l; l.addEventListener('release', () => { if (WAKE.lock === l) WAKE.lock = null; });
+    } else if (!on && WAKE.lock) { const l = WAKE.lock; WAKE.lock = null; await l.release(); }
+  } catch (e) { WAKE.lock = null; }
+}
 // On the map: no new camera is wanted, and a running one is paused and stopped after the grace period.
 function parkCamera() {
   CAM.want = false; clearTimeout(CAM.stopTimer);
@@ -3001,7 +3046,7 @@ function parkCamera() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopCamera();
-  else if (S.mode === 'point' && S.sensorsStarted) startCamera();
+  else if (S.mode === 'point' && S.sensorsStarted) { startCamera(); keepAwake(true); }
 });
 // Opening the privacy page and coming back can skip visibilitychange in some browsers.
 window.addEventListener('pagehide', () => stopCamera());
@@ -3013,6 +3058,7 @@ window.addEventListener('pageshow', (e) => { if (e.persisted && S.mode === 'poin
 let rafOn = false, lastLive = 0;
 function startPointMode(tapped = false) {
   S.mode = 'point'; document.body.classList.remove('mapmode');
+  keepAwake(true);
   if (S.sensorsStarted) {                // the first time, the "point" tap asks for the compass first, then the camera
     if (!$('#cam').srcObject) show($('#fakecam'));
     startCamera(tapped);                 // a tap may ask again after an earlier "no"
@@ -3039,7 +3085,7 @@ function tick(ts) {
   // status pills
   if (S.pos) {
     const a = Math.round(S.acc || 0);
-    $('#gpsTxt').textContent = `GPS ±${a} m`;
+    $('#gpsTxt').textContent = `GPS ±${feet(a)}`;
     $('#gpsPill .dot').className = 'dot ' + (a <= 15 ? 'ok' : a <= 35 ? '' : 'bad');
   }
   $('#hdgTxt').textContent = S.heading == null ? 'Compass…' : `${Math.round(S.heading)}° ${compass8(S.heading)}`;
@@ -3085,7 +3131,7 @@ function tick(ts) {
       const val = s.park ? (s.sites ? `Mobile home park · ${s.sites} sites` : 'Mobile home park') : s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
       $('#liveB').textContent = c.inside
         ? [val, s.year && !s.park ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
-        : [s.year && !s.park ? `Built ${s.year}` : null, val, `${Math.round(c.dist)} m away`].filter(Boolean).join(' · ');
+        : [s.year && !s.park ? `Built ${s.year}` : null, val, `${feet(c.dist)} away`].filter(Boolean).join(' · ');
       label.classList.remove('dim'); S.live = c; return;
     }
   }
@@ -3101,7 +3147,7 @@ $('#shutter').onclick = async () => {
   if (!S.pos) { toast('Still finding your location…'); return; }
   if (S.heading == null) { toast('Waiting for the compass. Try moving your phone in a figure 8.'); return; }
   if (compassPoor() && !S.compassWarned) { S.compassWarned = true; toast('Your compass is off, so this might not be the house you mean. Wave your phone in a figure 8 to fix it.', 4200); }
-  else if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${Math.round(S.acc)} m), so this might not be the house you mean.`, 3400);
+  else if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${feet(S.acc)}), so this might not be the house you mean.`, 3400);
   $('#scan').classList.add('on');
   try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
   const cands = findCandidates(S.pos.lat, S.pos.lon, S.heading).slice(0, 6);
@@ -3331,7 +3377,7 @@ syncArPill();
    ========================================================================= */
 async function startMapMode(center, msg) {
   S.mode = 'map'; document.body.classList.add('mapmode'); closeSheet();
-  parkCamera();
+  parkCamera(); keepAwake(false);
   [$('#hud'), $('#reticle'), $('#bar'), $('#shade'), $('#hint'), $('#cam'), $('#fakecam'), $('#sim')].forEach((el) => show(el, false));
   $('#liveLabel').classList.add('dim');
   show($('#start'), false); [$('#mapView'), $('#mapTop'), $('#mapColor'), $('#mapZoom'), $('#mapHelp'), $('#mapAttr')].forEach((el) => show(el));
@@ -3909,10 +3955,21 @@ if (DEMO) {
   navigator.geolocation && (navigator.geolocation.watchPosition = () => 0);
 }
 
+// A shared house link (?h=lat,lon&k=key): skip the start screen and open that house on the map. Outside the covered states,
+// or with a mangled link, the start screen stays.
+const SHARED = (() => {
+  const m = /^(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)$/.exec(qs.get('h') || '');
+  if (DEMO || !m) return null;
+  const lat = +m[1], lon = +m[2];
+  return regionFor(lat, lon) ? { lat, lon, key: (qs.get('k') || '').slice(0, 120) || 'link' } : null;
+})();
+if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.key }, 'Opening the shared house…');
+
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
-  CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan };
+  CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
+  get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>
