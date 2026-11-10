@@ -81,7 +81,7 @@ for (const set of sets) {
       const lists = [...body.querySelectorAll('.units')].map((ul) => [...ul.querySelectorAll('.unit > span:first-child')].map((x) => x.textContent));
       const details = [...body.querySelectorAll('.udet')].map((d) => d.innerText);
       const cand = S.candidates[S.cIdx];
-      return { text: body.innerText, town: (body.querySelector('.town') || {}).textContent || '', value: (body.querySelector('.value .v') || {}).textContent || '',
+      return { addr: (body.querySelector('.addr') || {}).textContent || '', text: body.innerText, town: (body.querySelector('.town') || {}).textContent || '', value: (body.querySelector('.value .v') || {}).textContent || '',
         buy: !!body.querySelector('#buyBox'), heads, lists, details, chip: hp.arChipHtml(L).replace(/<[^>]+>/g, ' '), share: hp.shareText(cand),
         kind: s.kind, building: s.building, kinds: s.kinds, isHome: s.isHome, residential: s.residential, houseLike: s.houseLike, condo: s.condo,
         units: s.units, unitCodes: s.unitRecs.map((u) => String(u.USE_CODE ?? '')), unitVals: s.unitRecs.map((u) => +u.TOTAL_VAL || 0), vals: s.vals,
@@ -120,8 +120,11 @@ for (const set of sets) {
     for (const m of (T + '\n' + st.details.join('\n')).matchAll(new RegExp(AMT + String.raw`\s·\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b`, 'g'))) check(dollars(m) >= 10000, `a nominal deed shown as a sale price (${m[0]}): ${name}`);
     for (const m of T.matchAll(new RegExp(String.raw`(?:Last sold|Latest unit sale|Sold before that for)\s+` + AMT, 'g'))) check(dollars(m) >= 10000, `a nominal deed shown as a sale (${m[0]}): ${name}`);
     for (const m of st.share.matchAll(new RegExp('Last sold ' + AMT, 'g'))) check(dollars(m) >= 10000, `share text: nominal deed as a sale: ${name}`);
+    // An address in any of the states' address fields shows on the card
+    const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1'].some((k) => String(f.attributes[k] ?? '').trim()));
+    if (rawAddr) check(st.addr !== 'Address not listed', `the records have an address but the card says "Address not listed": ${name}`);
     // A real sale in the records shows on the card
-    if (!st.condo && !st.commonOnly && st.r0Sale.p >= 10000 && st.r0Sale.d) check(/Last sold|part of a multi-lot sale/.test(T), `the record has a ${st.r0Sale.p} sale (${st.r0Sale.d}) but the card shows none: ${name}`);
+    if (!st.condo && !st.commonOnly && st.r0Sale.p >= 10000 && st.r0Sale.d) check(/last sold|part of a multi-lot sale/i.test(T), `the record has a ${st.r0Sale.p} sale (${st.r0Sale.d}) but the card shows none: ${name}`);
     // Tax: a residential rate only for residential records; "None" only for exempt ones
     if (set.state === 'MA' && /residential rate/.test(T)) check(st.unitCodes.some((c) => /^1/.test(c.replace(/\D/g, ''))), `MA residential rate on non-residential records: ${name}`);
     if (/Estimated property tax\s*None|Property tax\s*None/.test(T)) check(st.kinds.some((k) => k === 'exempt'), `tax "None" on a lot that isn't exempt: ${name}`);
@@ -156,7 +159,7 @@ console.log('health:', health.join('\n        '));
 for (const st of sets.map((x) => x.state)) {
   const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida' }[st];
   const mine = health.filter((h) => h.includes(`${name}:`));
-  check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^ok\|/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
+  check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^(ok|warn)\|.* \d+ lots/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
 }
 check(health.some((h) => /^bad\|Census address lookup.*Not answering/.test(h)), 'health: a service that doesn’t answer is shown as not answering');
 check(await page.evaluate(() => document.querySelector('#start').classList.contains('hidden')), 'health: the start screen is out of the way');

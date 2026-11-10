@@ -5,7 +5,7 @@ name: capture real records
 on:
   push:
     branches: [main]
-    paths: ['tests/capture/**']
+    paths: ['tests/capture/**', '.github/workflows/capture.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -32,8 +32,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/fixtures
-          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
-          git commit -m "Refresh real-record test fixtures"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          # The new capture wins: start from the latest main (another run may have pushed meanwhile) and put these files on it
+          mkdir -p /tmp/fx && cp tests/fixtures/*.json /tmp/fx/
+          for i in 1 2 3; do
+            git fetch origin main && git reset --hard origin/main
+            cp /tmp/fx/*.json tests/fixtures/ && git add tests/fixtures
+            if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+            git commit -m "Refresh real-record test fixtures" && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

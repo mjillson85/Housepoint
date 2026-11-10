@@ -982,7 +982,7 @@ const REGIONS = {
     discover: 'type:"Feature Service" AND (title:"Connecticut CAMA and Parcel Layer" OR title:"Connecticut State Parcel Layer")',
     detect: ['ASSESSED_TOTAL', 'STATE_USE', 'TOWN_NAME'],
     fields: {
-      SITE_ADDR: ['Location', 'Property_Location'], CITY: ['Town_Name', 'Town', 'Municipality'], ZIP: ['Property_Zip'],
+      SITE_ADDR: ['Location', 'Property_Location'], SITE_ADDR2: ['Location_1'], CITY: ['Town_Name', 'Town', 'Municipality'], ZIP: ['Property_Zip'],
       ASSESSED: ['Assessed_Total'], LAND_VAL: ['Appraised_Land'], BLDG_VAL: ['Appraised_Building'],
       LS_PRICE: ['Sale_Price'], LS_DATE: ['Sale_Date'], PRIOR_PRICE: ['Prior_Sale_Price'], PRIOR_DATE: ['Prior_Sale_Date'],
       USE_CODE: ['State_Use'], USE_DESC: ['State_Use_Description', 'State_Use_Desc'],
@@ -992,6 +992,8 @@ const REGIONS = {
     },
     // Connecticut taxes 70% of the town's appraisal, so the full appraisal is the comparable figure to show.
     derive: (o) => {
+      // The parcel map's own address (Location) is blank in some towns (Hartford); the assessor's copy (Location_1) has it.
+      if (!String(o.SITE_ADDR ?? '').trim() && String(o.SITE_ADDR2 ?? '').trim()) o.SITE_ADDR = o.SITE_ADDR2;
       const a = num(o.ASSESSED);
       if (a > 0) o.TOTAL_VAL = Math.round(a / CT_RATIO / 100) * 100;
       else if (num(o.LAND_VAL) || num(o.BLDG_VAL)) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
@@ -1458,14 +1460,15 @@ async function searchAddress(text) {
 async function searchIn(region, alts, town, street, near) {
   await initService(region);
   const sv = SVC[region.id];
-  const A = sv.canon.get('SITE_ADDR'), C = sv.canon.get('CITY');
+  const A = sv.canon.get('SITE_ADDR'), A2 = sv.canon.get('SITE_ADDR2'), C = sv.canon.get('CITY');
   if (!A) return null;
+  const like = (pat) => { const xs = [A, A2].filter(Boolean).map((f) => `UPPER(${f}) LIKE '${pat}'`); return xs.length > 1 ? `(${xs.join(' OR ')})` : xs[0]; };   // Connecticut: either copy
   const cityUp = (t) => String(t || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
   const inTown = (t) => (t && C ? ` AND UPPER(${C}) LIKE '${sqlq(cityUp(t))}%'` : '');
   const T = inTown(town);
   const tries = [];
-  if (street) { if (!T) return null; tries.push(`(UPPER(${A}) LIKE '% ${sqlq(street)}' OR UPPER(${A}) LIKE '% ${sqlq(street)} %')${T}`); }
-  else tries.push(alts.map((a) => `(UPPER(${A}) LIKE '${sqlq(a.addr)}%'${near ? '' : inTown(a.town)})`).join(' OR '));
+  if (street) { if (!T) return null; tries.push(`(${like(`% ${sqlq(street)}`)} OR ${like(`% ${sqlq(street)} %`)})${T}`); }
+  else tries.push(alts.map((a) => `(${like(`${sqlq(a.addr)}%`)}${near ? '' : inTown(a.town)})`).join(' OR '));
   const towns = new Set(near ? [] : (alts || []).map((a) => cityUp(a.town)).filter(Boolean)), ref = near || refPoint();
   for (const where of tries) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '10', f: 'json' });
@@ -1863,6 +1866,7 @@ function summarize(p) {
   }).filter((s) => s.d).sort((a, b) => b.d - a.d);
   const vals = unitRecs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
   let rawAddr = r0.SITE_ADDR || [r0.ADDR_NUM, r0.FULL_STR].filter(Boolean).join(' ') || r0.LOCATION || '';
+  if (lot.condo && !String(rawAddr).trim()) { const u = unitRecs.find((x) => String(x.SITE_ADDR || '').trim()); if (u) rawAddr = u.SITE_ADDR; }   // a master record without an address
   if (lot.condo) rawAddr = stripUnitNo(rawAddr);
   const addr = titleCase(rawAddr) || 'Address not listed';
   const town = titleCase(r0.CITY || '');
@@ -1876,9 +1880,11 @@ function summarize(p) {
   // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
   // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
   const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
-  const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || acresOf(p) >= 5)
+  // (A home-sized living area on a big rural lot is one mobile home on its land, not a park: Hawley's 500 ft² home on 14 acres.)
+  const oneHome = num(r0.RES_AREA) > 0 && num(r0.RES_AREA) < 3000;
+  const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))
     : region.id === 'FL' ? parseInt(dig || 'x', 10) === 28 && sites >= 3
-    : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || acresOf(p) >= 5)) : false);
+    : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))) : false);
   const use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
   const kind = park ? 'park' : lot.kind;
   const BUILDING_LABEL = { resCondo: 'Condo building', comCondo: 'Commercial condo building', mixedCondo: 'Condo building · homes and businesses' };
@@ -4239,7 +4245,9 @@ async function runHealth() {
     try { [lots, ms] = await timed(timeLimit(queryRegion(rg, lat, lon, 150), 20000)); }
     catch (e) { r3.bad(`no answer (${e.message || e})`); continue; }
     if (!lots.length) { r3.bad(`answered, but with no lots (${secs(ms)})`); continue; }
-    r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots (${secs(ms)})`);
+    const recs = lots.flatMap((p) => p.records), withAddr = recs.filter((r) => String(r.SITE_ADDR || '').trim()).length;
+    if (withAddr < recs.length / 2) r3.warn(`${lots.length} lots, but only ${withAddr} of ${recs.length} records have an address: the address may have moved to another field (${secs(ms)})`);
+    else r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots, ${withAddr} of ${recs.length} records with an address (${secs(ms)})`);
     // An address from those lots, searched for by address the way a typed search starts
     const rec = lots.flatMap((p) => p.records).find((r) => /^\d+[A-Z]?\s+[A-Z]/i.test(String(r.SITE_ADDR || '').trim()) && r.CITY);
     const r4 = row(`${rg.name}: search by address`);
