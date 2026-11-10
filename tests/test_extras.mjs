@@ -71,12 +71,12 @@ check(/\d+ ft [NSEW]{1,2}\b/.test(card) && !/\d+ m [NSEW]{1,2}\b/.test(card), 't
 // 3. Price per square foot
 const pf = await page.evaluate(() => {
   const ago = (y) => new Date(Date.now() - y * 3.156e10), P = window.__hp.perSqft;
-  const base = (o) => ({ r0: { RES_AREA: 2000, TOTAL_VAL: 600000 }, sales: [{ p: 500000, d: ago(3) }], region: { id: 'MA' }, condo: false, park: false, ...o });
+  const base = (o) => ({ r0: { RES_AREA: 2000, TOTAL_VAL: 600000 }, sales: [{ p: 500000, d: ago(3) }], region: { id: 'MA' }, condo: false, park: false, isHome: true, ...o });
   return [P(base()), P(base({ sales: [{ p: 300000, d: ago(15) }] })), P(base({ region: { id: 'NJ' }, sales: [{ p: 300000, d: ago(15) }] })), P(base({ condo: true })),
-    P(base({ multiSale: true })), P(base({ sales: [{ p: 1, d: ago(1) }] })), P(base({ r0: { RES_AREA: 0, TOTAL_VAL: 600000 } }))].map((x) => (x ? `${x.kind}:${Math.round(x.v)}` : null));
+    P(base({ multiSale: true })), P(base({ sales: [{ p: 1, d: ago(1) }] })), P(base({ r0: { RES_AREA: 0, TOTAL_VAL: 600000 } })), P(base({ isHome: false }))].map((x) => (x ? `${x.kind}:${Math.round(x.v)}` : null));
 });
-check(JSON.stringify(pf) === JSON.stringify(['sale:250', 'value:300', null, null, 'value:300', 'value:300', null]),
-  'per ft²: a recent sale; else the value; none in New Jersey from value, for condos, or without a living area: ' + JSON.stringify(pf));
+check(JSON.stringify(pf) === JSON.stringify(['sale:250', 'value:300', null, null, 'value:300', 'value:300', null, null]),
+  'per ft²: a recent sale; else the value; none in New Jersey from value, for condos, without a living area, or for a business: ' + JSON.stringify(pf));
 check(/(Sale|Value) per ft²\s*\$\d{2,4}\b/i.test(card), 'the card shows price per ft²: ' + (card.match(/(Sale|Value) per ft²\s*\$\d+/i) || ['none'])[0].replace(/\s+/g, ' '));
 await page.click('#saveBtn'); await sleep(400);
 await page.evaluate(() => document.querySelector('.grab').click()); await sleep(300);

@@ -169,6 +169,16 @@
   .grid .k { font-size: 10.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .2px; font-weight: 600; white-space: nowrap; }
   .grid .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .note { font-size: 12px; color: var(--mute); line-height: 1.45; margin: 10px 0 8px; }
+  .copyrec { display: block; margin: 4px 0 14px; padding: 6px 0; border: 0; background: none; color: var(--mute); font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .copytext { width: 100%; font: 11px/1.35 ui-monospace, Menlo, monospace; margin: 4px 0 14px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #fff; }
+  #health { position: fixed; inset: 0; overflow: auto; background: var(--paper); color: var(--ink); padding: max(20px, env(safe-area-inset-top)) 20px 40px; z-index: 60; }
+  #health h2 { font-family: Fraunces, Georgia, serif; font-size: 26px; margin: 8px 0 6px; }
+  #health .hs { color: var(--mute); font-size: 14px; line-height: 1.45; }
+  #health ol { list-style: none; padding: 0; margin: 14px 0; }
+  #health li { padding: 10px 12px 10px 14px; border-left: 4px solid var(--line); margin: 6px 0; font-size: 14px; line-height: 1.45; background: rgba(0,0,0,.025); border-radius: 0 8px 8px 0; }
+  #health li b { display: block; font-weight: 600; }
+  #health li.ok { border-left-color: #2f7d4f; } #health li.warn { border-left-color: #b7791f; } #health li.bad { border-left-color: #b4432c; }
+  #health a { color: inherit; }
   .units-h { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; margin: 16px 0 4px; }
   .units { margin: 0 0 4px; border-top: 1px solid var(--line); }
   .units .unit { display: flex; width: 100%; justify-content: flex-start; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line);
@@ -539,6 +549,9 @@ const moneyFull = (v) => { const n = num(v); return n ? '$' + Math.round(n).toLo
 function parseSaleDate(v) {
   if (v == null || v === '') return null;
   if (typeof v === 'number' && v > 1e11) { const u = new Date(v); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); } // epoch ms, UTC
+  // "8/18/2020": Connecticut's layer has sent its sale dates as month/day/year text since 2025
+  const mdy = /^\s*(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\b/.exec(String(v));
+  if (mdy) { const y = +mdy[3], m = +mdy[1], d = +mdy[2]; return y > 1700 && y <= THIS_YEAR + 1 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? new Date(y, m - 1, d) : null; }
   const s = String(v).replace(/\D/g, '');
   if (s.length >= 8) {
     const y = +s.slice(0, 4), m = +s.slice(4, 6), d = +s.slice(6, 8);
@@ -563,6 +576,8 @@ const USE_CODES = {
   '130': 'Vacant land', '131': 'Vacant land', '132': 'Vacant land',
   '900': 'Federal property', '901': 'State property', '902': 'County property', '903': 'Town or city property',
   '904': 'School or college', '905': 'Charitable organization', '906': 'Religious organization', '908': 'Housing authority',
+  '108': 'Condo parking space', '390': 'Vacant commercial land', '391': 'Vacant commercial land', '392': 'Vacant commercial land',
+  '440': 'Vacant industrial land', '441': 'Vacant industrial land', '442': 'Vacant industrial land', '995': 'Condo master record',
 };
 const USE_FIRST = { '0': 'Mixed use', '1': 'Residential', '2': 'Open space', '3': 'Commercial', '4': 'Industrial',
   '6': 'Forest land', '7': 'Farm land', '8': 'Recreation land', '9': 'Tax-exempt property' };
@@ -585,7 +600,7 @@ function maUseLabel(code) {
 // Connecticut towns each keep their own use codes, but the state layer carries each code's description.
 const CT_USES = [
   [/MOBILE|MOBIL\b|\bM\.?H\.?\b|TRAILER/, (d) => (/PARK|\bPK\b|COURT|\bCT\b/.test(d) ? 'Mobile home park' : 'Mobile home')],
-  [/CONDO/, () => 'Condo'], [/SINGLE|ONE FAM|1 FAM|\bSFR?\b|SGL/, () => 'Single-family home'],
+  [/CONDO/, (d) => ({ comCondo: 'Commercial condo', condoMaster: 'Condo common record' })[ctKind(d)] || 'Condo'], [/SINGLE|ONE FAM|1 FAM|\bSFR?\b|SGL/, () => 'Single-family home'],
   [/TWO FAM|2 FAM|\bTWO\b|DUPLEX/, () => 'Two-family'], [/THREE FAM|3 FAM|\bTHREE\b/, () => 'Three-family'],
   [/APART|\bAPT/, () => 'Apartments'], [/VAC/, () => 'Vacant land'], [/EXEMPT/, () => 'Tax-exempt property'],
 ];
@@ -593,7 +608,7 @@ function ctUseLabel(code, r) {
   const d = String((r && r.USE_DESC) || '').toUpperCase().replace(/[_]+/g, ' ').trim();
   if (!d) return null;
   for (const [re, label] of CT_USES) if (re.test(d)) return label(d);
-  return titleCase(d).replace(/\bRes\b/, 'Residential').replace(/\bComm\b/, 'Commercial').replace(/\bInd\b/, 'Industrial');
+  return titleCase(d.replace(/\s*\bMDL-?\S*.*$/, '')).replace(/\bRes\b/, 'Residential').replace(/\bComm\b/, 'Commercial').replace(/\bInd\b/, 'Industrial');
 }
 // New Jersey property classes (the state's MOD-IV codes). Class 2 is homes of up to four families.
 const NJ_CLASSES = { '1': 'Vacant land', '3A': 'Farm', '3B': 'Farmland', '4A': 'Commercial', '4B': 'Industrial', '4C': 'Apartments',
@@ -608,6 +623,130 @@ function njUseLabel(code, r) {
   }
   return NJ_CLASSES[c] || null;
 }
+/* Property types. Each record is classified from its state's own use codes, then the lot from its records, and the card
+   follows the type: a store isn't a home, a condo's master record isn't a unit, a scrap of land filed on the same lot isn't
+   either. Kinds: single, multi (2–4 families), apartments, resCondo, comCondo, condoMaster, mobile, mixedRes (mostly a
+   home), mixed (mostly a business), otherRes (rooming houses, care homes), commercial, industrial, vacant, farmForest,
+   exempt, institutional, accessory, other, unknown. Unknown is never treated as a home. */
+const RESIDENTIAL_KINDS = new Set(['single', 'multi', 'apartments', 'resCondo', 'mobile', 'mixedRes', 'otherRes']);
+const HOME_KINDS = new Set(['single', 'multi', 'resCondo', 'mobile', 'mixedRes']);       // what a family buys to live in
+const HOUSE_KINDS = new Set(['single', 'multi', 'mobile', 'mixedRes']);                  // comparable as "houses nearby"
+const UNIT_TAIL_RE = /\s(UNIT|APT|STE|SUITE)\s*[\w-]+\s*$|#\s*[\w-]+\s*$/i;
+// "333 WASHINGTON ST 408", "400 N FLAGLER DR PH-D2": Boston and Florida write the unit right after the street, with no word for it.
+function hasUnitNo(addr) {
+  const a = String(addr || '').toUpperCase().trim();
+  if (UNIT_TAIL_RE.test(a)) return true;
+  const w = a.split(/\s+/);
+  return w.length >= 3 && STREET_END.has(w[w.length - 2].replace(/\.$/, '')) && !STREET_END.has(w[w.length - 1]) && /\d/.test(w[w.length - 1]);
+}
+function stripUnitNo(addr) {
+  let a = String(addr || '').trim().replace(/\s+(UNIT|APT|STE|SUITE|#)\s*[\w-]*$/i, '').replace(/\s*#\s*[\w-]+$/, '');
+  if (hasUnitNo(a)) a = a.replace(/\s+\S+$/, '');
+  return a;
+}
+function useKind(r, rid) {
+  if (!r) return 'unknown';
+  const code = String(r.USE_CODE ?? '').trim();
+  if (rid === 'FL') {
+    const n = parseInt(code.replace(/\D/g, '') || 'x', 10); if (!Number.isFinite(n)) return 'unknown';
+    const R = { 0: 'vacant', 1: 'single', 2: 'mobile', 3: 'apartments', 4: 'resCondo', 5: 'resCondo', 6: 'otherRes', 7: 'otherRes', 8: 'multi', 9: 'condoMaster', 10: 'vacant', 40: 'vacant' };
+    if (n in R) return R[n];
+    return n < 40 ? 'commercial' : n < 50 ? 'industrial' : n < 70 ? 'farmForest' : n < 80 ? 'institutional' : n < 90 ? 'exempt' : 'other';
+  }
+  if (rid === 'NJ') {
+    const c = code.toUpperCase(), condo = /^C/i.test(String(r.QCODE || '').trim()) || /CONDO/i.test(String(r.BLDG_DESC || ''));
+    if (/COMMON ELEM|\bC\/E\b/i.test(`${r.BLDG_DESC || ''} ${r.LAND_DESC || ''}`) && !(num(r.TOTAL_VAL) > 1000)) return 'condoMaster';   // a condo's common element (often class 15F)
+    if (c === '1') return 'vacant';
+    if (c === '2') { const d = num(r.UNITS); return condo ? 'resCondo' : d >= 2 && d <= 4 ? 'multi' : 'single'; }
+    if (c === '3A' || c === '3B') return 'farmForest';
+    if (c === '4A') return condo ? 'comCondo' : 'commercial';
+    if (c === '4B') return condo ? 'comCondo' : 'industrial';
+    if (c === '4C') return 'apartments';
+    if (/^(5A|5B|6A|6B)$/.test(c)) return 'other';
+    if (/^15/.test(c)) return 'exempt';
+    return 'unknown';
+  }
+  if (rid === 'CT') return ctKind(String(r.USE_DESC || '').toUpperCase().replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim());
+  // Massachusetts (MassGIS / Department of Revenue classes): the first three digits; towns may add a fourth character.
+  const d = code.replace(/\D/g, ''), c3 = d.slice(0, 3), style = String(r.STYLE || '').toUpperCase();
+  if (c3.length < 3) return 'unknown';
+  if (c3 === '995') return 'condoMaster';
+  switch (c3[0]) {
+    case '0': return c3[1] === '1' ? 'mixedRes' : 'mixed';           // 013 = home with a business, 031 = business with a home
+    case '1': return { 101: 'single', 102: 'resCondo', 103: 'mobile', 104: 'multi', 105: 'multi', 106: 'accessory', 108: 'accessory', 109: 'multi',
+      111: 'apartments', 112: 'apartments', 130: 'vacant', 131: 'vacant', 132: 'vacant' }[c3] || (c3[1] === '3' ? 'vacant' : 'otherRes');
+    case '2': return 'vacant';                                        // open space
+    case '3': return /CONDO/.test(style) ? 'comCondo' : c3[1] === '9' ? 'vacant' : 'commercial';      // 39x: vacant commercial land
+    case '4': return /CONDO/.test(style) ? 'comCondo' : c3[1] === '4' ? 'vacant' : 'industrial';        // 44x: vacant industrial land
+    case '5': return 'other';                                         // personal property accounts
+    case '6': case '7': case '8': return 'farmForest';               // forest, farm and recreation land (Chapter 61, 61A, 61B)
+    case '9': return 'exempt';
+    default: return 'unknown';
+  }
+}
+// Connecticut towns each keep their own codes; the state layer carries each code's description, which is what's read here.
+// Many towns' descriptions end with the assessing system's model ("RTL CONDO  MDL-06"): 00 is land only, 01 a home, 06 a condo,
+// 94 a commercial building. Read from the real descriptions in tests/fixtures/real-CT.json.
+function ctKind(d) {
+  if (!d) return 'unknown';
+  const model = (/\bMDL-?(\d\d)\b/.exec(d) || [])[1];
+  d = d.replace(/\s*\bMDL-?\S*.*$/, '').trim();
+  if (/UTIL|RAIL|\bRR\b|TELE|CELL|TOWER|PIPE|\bWATER CO/.test(d)) return 'other';
+  if (/EXEMPT|EXMPT|^EX\b|\bEC\b|CHURCH|RELIG|CHARIT|MUNIC|TOWN OWN|CITY OWN|^TOWN\b|^CITY\b|^ST-|\bSTATE\b|FEDERAL|US GOV|GOVT|CEMET|SCHOO|COLLEGE|UNIV|HOSP|LIBR|EDUC|PUBLIC|NON ?-?PROFIT|HOUSING AUTH|\bPILOT\b/.test(d)) return 'exempt';
+  if (/CONDO|\bCND\b|\bCOND\b/.test(d) || model === '06') {
+    if (/MASTER|\bMAIN\b|ASSOC|COMMON|C\/E/.test(d)) return 'condoMaster';
+    if (/COMM|\bCOM\b|\bCM\b|\bRTL\b|RETAIL|\bOFF\b|OFFICE|\bIND|\bBUS|PROF|MED|STORE|GARAGE|BOAT|MARINA|SLIP|PARK/.test(d)) return 'comCondo';
+    return 'resCondo';
+  }
+  if (/MOBILE|MOBIL\b|\bM\.?H\.?\b|TRAILER/.test(d)) return 'mobile';
+  if (/VAC|UNDEV|EXCESS|BUILDABLE|DEVEL|\bLAND\b|\bLD\b/.test(d) || model === '00') return 'vacant';
+  if (/FARM|FOREST|AGRI|\b490\b|ORCHARD|\bCROP|TILL|USE ASSESS/.test(d)) return 'farmForest';
+  if (/MIX|RES\/COMM?|COMM?\/RES|RETAIL\/RES|APART\/COMM?|APT\/COMM?|COMM? ?& ?APART|COMM? ?& ?APT|STORE ?& ?APT|RES ?& ?COM/.test(d)) return /^(RES|APART|APT)/.test(d) ? 'mixedRes' : 'mixed';
+  if (/APART|\bAPTS?\b|^APT/.test(d)) return /FOUR|\b4 ?-? ?UNIT|\b[234] ?-? ?FAM/.test(d) ? 'multi' : 'apartments';
+  if (/\bTWO\b|THREE|FOUR|\b[234] ?-? ?FAM|2-4|DUPLEX|MULTI|MFAM|IN-LAW|\b[234] ?UNIT/.test(d)) return 'multi';
+  if (/BOARD|BORDING|ROOMING|LODGING|DORM|GROUP HOME|ELDERLY|CONGREGATE/.test(d)) return 'otherRes';
+  if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES|RESID|DWELL|HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
+  if (/\bIND|MANUF|WAREH|FACTORY|\bMILL\b|STORAGE/.test(d)) return 'industrial';
+  if (/COMM|\bCOM\b|RETAIL|OFFICE|STORE|SHOP|CONVENIEN|DEPART|DEALER|BARBER|BEAUTY|DINER|LUNCH|REST|BANK|HOTEL|MOTEL|\bINN\b|GAS|SERVICE|AUTO|GARAGE|MALL|PLAZA|THEAT|CLUB|FRAT|DAY ?CARE|NURSING|MED|DENT|FUNERAL|MORTU|PARKING|PARK LOT|NURSERY|GARDEN|MARINA|\bBUS/.test(d)) return 'commercial';
+  return model === '01' ? 'single' : model === '94' ? 'commercial' : 'unknown';
+}
+const KIND_LABEL = { single: 'Single-family home', multi: 'Multi-family home', apartments: 'Apartments', resCondo: 'Condo', comCondo: 'Commercial condo',
+  condoMaster: 'Condo common record', mobile: 'Mobile home', mixedRes: 'Home with a business', mixed: 'Mixed use', otherRes: 'Residential',
+  commercial: 'Commercial', industrial: 'Industrial', vacant: 'Vacant land', farmForest: 'Farm or forest land', exempt: 'Tax-exempt property',
+  institutional: 'Institutional', accessory: 'Accessory building', other: 'Other property' };
+const hasBuilding = (r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.BLDG_VAL) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600;
+// The lot from its records: condo units (and which kind of building), the master record, the main record, and the rest.
+function classifyLot(recs, rid) {
+  const kinds = recs.map((r) => useKind(r, rid));
+  const addrOf = (r) => String(r.SITE_ADDR || r.LOCATION || '');
+  const masters = new Set(kinds.map((k, i) => (k === 'condoMaster' ? i : -1)).filter((i) => i >= 0));
+  // Stores or offices with unit numbers sharing a lot with a master record or with each other: a commercial condo building.
+  const BIZ = new Set(['commercial', 'industrial', 'mixed']);
+  const bizUnits = kinds.map((k, i) => (BIZ.has(k) && hasUnitNo(addrOf(recs[i])) ? i : -1)).filter((i) => i >= 0);
+  if (masters.size || bizUnits.length >= 2) for (const i of bizUnits) kinds[i] = 'comCondo';
+  // Beside a master record, every record with a building is a unit: a shop as a commercial unit, a home as a condo, and a unit an
+  // exempt owner holds (a charity's office) as whichever kind most of the others are. Parking spaces and land aren't units.
+  if (masters.size) {
+    kinds.forEach((k, i) => { if (!hasBuilding(recs[i]) || masters.has(i)) return;
+      if (BIZ.has(k)) kinds[i] = 'comCondo'; else if (k === 'single' || k === 'multi' || k === 'mixedRes' || k === 'otherRes') kinds[i] = 'resCondo'; });
+    const res = kinds.filter((k) => k === 'resCondo').length, com = kinds.filter((k) => k === 'comCondo').length;
+    kinds.forEach((k, i) => { if (k === 'exempt' && hasBuilding(recs[i]) && !masters.has(i) && res + com) kinds[i] = res >= com ? 'resCondo' : 'comCondo'; });
+  }
+  let units = kinds.map((k, i) => (k === 'resCondo' || k === 'comCondo' ? i : -1)).filter((i) => i >= 0);
+  // A record with no value next to the units is the building's main record, whatever it's coded as.
+  if (units.length >= 2) kinds.forEach((k, i) => { if (!units.includes(i) && !(num(recs[i].TOTAL_VAL) > 0) && k !== 'vacant' && k !== 'exempt') masters.add(i); });
+  const condo = units.length >= 2;
+  const unitKinds = new Set(units.map((i) => kinds[i]));
+  const building = !condo ? null : unitKinds.size > 1 ? 'mixedCondo' : unitKinds.has('comCondo') ? 'comCondo' : 'resCondo';
+  // The main record: on a condo lot the master (it names the whole building), else the one with the biggest building, then value.
+  const score = (i) => (hasBuilding(recs[i]) ? 1e12 : 0) + (num(recs[i].RES_AREA) || num(recs[i].BLD_AREA) || 0) * 1e3 + (num(recs[i].TOTAL_VAL) || 0) / 1e3;
+  const pool = recs.map((_, i) => i).filter((i) => !masters.has(i));
+  const best = (idx) => idx.slice().sort((a, b) => score(b) - score(a))[0];
+  const main = condo ? ([...masters][0] ?? best(units)) : best(pool.length ? pool : recs.map((_, i) => i));
+  const others = recs.map((_, i) => i).filter((i) => i !== main && !masters.has(i) && !(condo && units.includes(i)));
+  return { kinds, units: condo ? units : [], masters: [...masters], main, others, condo, building, kind: condo ? building + 'Building' : kinds[main] };
+}
+
 // MOD-IV deed dates are YYMMDD.
 function njDate(v) {
   if (typeof v === 'number' && Math.abs(v) > 1e9) return ymdUTC(v);
@@ -816,7 +955,7 @@ const REGIONS = {
     fields: {
       PROP_ID: ['PARCEL_ID', 'PARCELNO', 'PARCELID'], SITE_ADDR: ['PHY_ADDR1', 'PHYADDR1'], CITY: ['PHY_CITY', 'PHYCITY'], ZIP: ['PHY_ZIPCD', 'PHY_ZIP', 'PHYZIP'],
       FY: ['ASMNT_YR'], TOTAL_VAL: ['JV'], LAND_VAL: ['LND_VAL', 'LNDVAL'], LS_PRICE: ['SALE_PRC1', 'SALEPRC1'], SALE_YR: ['SALE_YR1', 'SALEYR1'],
-      SALE_MO: ['SALE_MO1', 'SALEMO1'], MULTI_SALE: ['MULTI_PAR_SAL1', 'MULTI_PAR_', 'MULTIPAR1'], USE_CODE: ['DOR_UC', 'DORUC'],
+      SALE_MO: ['SALE_MO1', 'SALEMO1'], MULTI_SALE: ['M_PAR_SAL1', 'MULTI_PAR_SAL1', 'MULTI_PAR_', 'MULTIPAR1'], USE_CODE: ['DOR_UC', 'DORUC'],
       YEAR_BUILT: ['ACT_YR_BLT', 'ACTYRBLT'], EFF_YEAR: ['EFF_YR_BLT', 'EFFYRBLT'], RES_AREA: ['TOT_LVG_AREA', 'TOT_LVG_AR', 'TOTLVGAREA'],
       UNITS: ['NO_RES_UNTS', 'NO_RES_UNT', 'NORESUNTS'], BLDGS: ['NO_BULDNG', 'NOBULDNG'],
       COUNTY: ['CO_NO', 'CONO'], TV_NSD: ['TV_NSD', 'TVNSD'], TV_SD: ['TV_SD', 'TVSD'],
@@ -849,7 +988,7 @@ const REGIONS = {
       USE_CODE: ['State_Use'], USE_DESC: ['State_Use_Description', 'State_Use_Desc'],
       YEAR_BUILT: ['AYB', 'Year_Built', 'Actual_Year_Built'], EFF_YEAR: ['EYB', 'Effective_Year_Built'],
       RES_AREA: ['Living_Area'], NUM_ROOMS: ['Total_Rooms'], BEDS: ['Number_of_Bedroom', 'Number_of_Bedrooms'],
-      BATHS: ['Number_of_Baths'], HALF_BATHS: ['Number_of_Half_Baths'], UNITS: ['Occupancy'], COLL_YR: ['Collection_Year'], QUALIFIED: ['Qualified'],
+      BATHS: ['Number_of_Baths'], HALF_BATHS: ['Number_of_Half_Baths'], UNITS: ['Occupancy'], COLL_YR: ['CAMA_Collection_Year', 'Collection_Year'],
     },
     // Connecticut taxes 70% of the town's appraisal, so the full appraisal is the comparable figure to show.
     derive: (o) => {
@@ -1054,8 +1193,8 @@ function buildParcels(features, rid = 'MA') {
     if (pt && pt !== 'FEE' && pt !== 'TAX') continue; // skip roads, rail and water
     const key = rec.LOC_ID || `${rid}:${shapeHash(g.rings)}`;
     let p = byKey.get(key);
-    if (!p) { p = { key, region: rid, ringsLL: g.rings, records: [] }; byKey.set(key, p); }
-    p.records.push(rec);
+    if (!p) { p = { key, region: rid, ringsLL: g.rings, records: [], raw: [] }; byKey.set(key, p); }
+    p.records.push(rec); p.raw.push(ft.attributes || {});
   }
   return [...byKey.values()].map((p) => {
     const recs = p.records;
@@ -1710,21 +1849,24 @@ function findCandidates(lat, lon, heading) {
    ========================================================================= */
 function summarize(p) {
   const recs = p.records;
-  const r0 = recs.slice().sort((a, b) => (num(b.RES_AREA) || num(b.BLD_AREA) || 0) - (num(a.RES_AREA) || num(a.BLD_AREA) || 0))[0];
-  const years = recs.map((r) => num(r.YEAR_BUILT)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
+  const region = REGIONS[p.region] || REGIONS.MA;
+  const lot = classifyLot(recs, region.id);
+  const r0 = recs[lot.main];
+  // The records that describe the building: the condo units (the master and land records aren't units), or the main record.
+  const unitRecs = lot.condo ? lot.units.map((i) => recs[i]) : [r0];
+  const bldgRecs = [...new Set([r0, ...unitRecs, ...lot.masters.map((i) => recs[i])])];
+  const years = bldgRecs.map((r) => num(r.YEAR_BUILT)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
   const year = years.length ? Math.min(...years) : null;
-  const sales = recs.flatMap((r) => {             // Connecticut also lists the sale before the latest one
+  const sales = unitRecs.flatMap((r) => {             // Connecticut also lists the sale before the latest one
     const a = { d: parseSaleDate(r.LS_DATE), p: num(r.LS_PRICE) }, b = { d: parseSaleDate(r.PRIOR_DATE), p: num(r.PRIOR_PRICE), prior: true };
     return b.d && (!a.d || b.d < a.d) ? [a, b] : [a];
   }).filter((s) => s.d).sort((a, b) => b.d - a.d);
-  const vals = recs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
+  const vals = unitRecs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
   let rawAddr = r0.SITE_ADDR || [r0.ADDR_NUM, r0.FULL_STR].filter(Boolean).join(' ') || r0.LOCATION || '';
-  if (recs.length > 1) rawAddr = String(rawAddr).replace(/\s+(UNIT|APT|STE|SUITE|#)\s*[\w-]*$/i, '').replace(/\s*#\s*[\w-]+$/, '');
+  if (lot.condo) rawAddr = stripUnitNo(rawAddr);
   const addr = titleCase(rawAddr) || 'Address not listed';
   const town = titleCase(r0.CITY || '');
-  const units = recs.length > 1 ? recs.length : (num(r0.UNITS) || 1);
-  const region = REGIONS[p.region] || REGIONS.MA;
-  const eff = recs.map((r) => num(r.EFF_YEAR)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
+  const eff = bldgRecs.map((r) => num(r.EFF_YEAR)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
   const unitsListed = num(r0.UNITS) || 1;
   // Florida: some counties publish only the condo's common-area lot (no value, no units) and keep unit records elsewhere.
   // Connecticut can do the same where a town's units didn't link to the lot.
@@ -1737,13 +1879,23 @@ function summarize(p) {
   const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || acresOf(p) >= 5)
     : region.id === 'FL' ? parseInt(dig || 'x', 10) === 28 && sites >= 3
     : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || acresOf(p) >= 5)) : false);
-  return { r0, recs, year, sales, vals, addr, town, units: recs.length > 1 ? recs.length : unitsListed, condo: recs.length > 1,
-    use: park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0), park, sites: park && sites >= 3 ? sites : null,
+  const use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
+  const kind = park ? 'park' : lot.kind;
+  const BUILDING_LABEL = { resCondo: 'Condo building', comCondo: 'Commercial condo building', mixedCondo: 'Condo building · homes and businesses' };
+  return { r0, recs, year, sales, vals, addr, town, units: lot.condo ? unitRecs.length : unitsListed, condo: lot.condo,
+    use, park, sites: park && sites >= 3 ? sites : null,
     fy: num(r0.FY), region, commonOnly,
+    kind, building: lot.building, kinds: lot.kinds, unitRecs, unitKinds: lot.condo ? lot.units.map((i) => lot.kinds[i]) : [lot.kinds[lot.main]], taxRecs: unitRecs,
+    others: lot.others.map((i) => ({ r: recs[i], kind: lot.kinds[i] })),
+    // Homes get the buyer's tools; residential lots say "living area"; houses are compared with the houses around them.
+    isHome: lot.condo ? lot.building !== 'comCondo' : park || commonOnly || HOME_KINDS.has(kind),
+    residential: lot.condo ? lot.building !== 'comCondo' : park || commonOnly || RESIDENTIAL_KINDS.has(kind),
+    houseLike: !lot.condo && !park && !commonOnly && HOUSE_KINDS.has(kind),
+    typeLabel: park ? 'Mobile home park' : lot.condo ? BUILDING_LABEL[lot.building] : kind === 'comCondo' ? 'Commercial condo' : use || KIND_LABEL[kind] || 'Use not listed',
     approxYear: !year && eff.length ? Math.max(...eff) : null,
     updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null,
-    multiSale: recs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))),
-    unqualified: recs.length === 1 && /^\s*(U|N|NO|UNQ)/i.test(String(r0.QUALIFIED ?? '')) };     // a sale the town flagged as not a typical market sale
+    multiSale: unitRecs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))),
+    unqualified: !lot.condo && /^\s*(U|N|NO|UNQ)/i.test(String(r0.QUALIFIED ?? '')) };     // a sale the town flagged as not a typical market sale
 }
 
 function acresOf(p) {
@@ -1765,9 +1917,9 @@ function parkNote(s) {
 function badgesFor(L) {
   if (L.badges) return L.badges;
   const s = summarize(L.p), out = [];
-  if (!s.park && !s.condo && !s.commonOnly) {
+  if (s.houseLike) {                     // houses only, ranked among houses: a plaza isn't "the priciest house nearby"
     const near = S.local.filter((o) => o.p.built && Math.hypot(o.c[0] - L.c[0], o.c[1] - L.c[1]) < 400)
-      .map((o) => ({ o, s: summarize(o.p) })).filter((x) => !x.s.park && !x.s.condo && !x.s.commonOnly);
+      .map((o) => ({ o, s: summarize(o.p) })).filter((x) => x.s.houseLike);
     const rank = (vals, v, older) => 1 + vals.filter((x) => (older ? x < v : x > v)).length;
     const top = (n) => Math.min(10, Math.max(3, Math.round(n * 0.05)));
     const add = (vals, v, older, best, nth) => {
@@ -1843,59 +1995,77 @@ function renderCard(cand, total, idx) {
   }
 
   const cells = [];
-  const living = s.condo || s.park ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
-  if (living) cells.push(['Living area', `${Math.round(living).toLocaleString('en-US')} ft²`]);
+  const home = s.residential && !s.condo && !s.park;      // rooms, bedrooms and living area belong to homes
+  const area = areaOf(r, s.residential);
+  if (area && !s.condo && !s.park) cells.push([home ? 'Living area' : 'Floor area', `${Math.round(area).toLocaleString('en-US')} ft²`]);
   const pf = perSqft(s);
   if (pf) cells.push([pf.kind === 'sale' ? 'Sale per ft²' : 'Value per ft²', moneyFull(pf.v)]);
-  if (!s.condo && !s.park && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
-  if (!s.condo && !s.park && num(r.BEDS)) cells.push(['Bedrooms', num(r.BEDS)]);
-  if (!s.condo && !s.park && num(r.BATHS)) cells.push(['Baths', bathText(r)]);
+  if (home && num(r.NUM_ROOMS)) cells.push(['Rooms', num(r.NUM_ROOMS)]);
+  if (home && num(r.BEDS)) cells.push(['Bedrooms', num(r.BEDS)]);
+  if (home && num(r.BATHS)) cells.push(['Baths', bathText(r)]);
   if (num(r.STORIES) && !s.park) cells.push(['Stories', num(r.STORIES)]);
   cells.push(['Lot', lotText(L)]);
   if (s.park && s.sites) cells.push(['Home sites', s.sites]);
-  else if (s.units > 1 && !s.park) cells.push(['Units', s.units]);
+  else if (s.units > 1 && !s.park && (s.condo || home)) cells.push(['Units', s.units]);
   if (num(r.LAND_VAL) && !s.condo) cells.push(['Land value', money(r.LAND_VAL)]);
   while (cells.length % 3) cells.push(['', '']);
   const grid = `<div class="grid">${cells.map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>`;
 
-  const unitList = s.condo ? unitListHtml(s) : '';
+  const unitList = (s.condo ? unitListHtml(s) : '') + othersHtml(s);
 
   const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${feet(cand.cdist)} ${compass8(cand.bearing)}` : '';
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
     <div class="addrrow"><div class="addr">${esc(s.addr)}</div>${saveBtnHtml(L.p.key)}</div>
-    <div class="town">${esc([s.town, s.condo ? `Condo building` : s.use].filter(Boolean).join(' · '))}</div>
+    <div class="town">${esc([s.town, s.typeLabel].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
     ${taxBoxHtml(s)}
     ${floodBoxHtml(L)}
     ${grid}
     ${unitList}
-    ${buyBoxHtml(L)}
-    <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
+    ${s.isHome ? buyBoxHtml(L) : ''}
+    <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
+    ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
   wireBuy(L, s);
   const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, s);
-  const ul = $('#cardBody .units');
-  if (ul) ul.addEventListener('click', (e) => {
+  const cr = $('#copyRec'); if (cr) cr.onclick = () => copyRecords(L);
+  document.querySelectorAll('#cardBody .units').forEach((ul) => ul.addEventListener('click', (e) => {
     if (e.target.closest('.all-btn')) { ul.classList.add('all'); return; }
     const b = e.target.closest('.unit'); if (!b) return;
     const d = $('#ud' + b.dataset.u); if (!d) return;
     const open = d.classList.toggle('hidden') === false;
     b.classList.toggle('open', open);
-  });
+  }));
   $('#prevC').disabled = idx <= 0;
   $('#nextC').disabled = idx >= total - 1;
   $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
   $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
 }
 
+// The lot's records exactly as the state's service sent them (only the fields the app asks for, so no owner names), with its
+// outline once: pasted into a bug report, they become a test case (tests/capture/add-lot.mjs).
+function lotRecordsJson(L) {
+  const p = L.p, [lat, lon] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
+  return JSON.stringify({ housepoint: 'lot', state: p.region, key: p.key, captured: new Date().toISOString().slice(0, 10), lat: +lat.toFixed(6), lon: +lon.toFixed(6),
+    rings: p.ringsLL, records: p.raw || [] });
+}
+async function copyRecords(L) {
+  const text = lotRecordsJson(L);
+  try { await navigator.clipboard.writeText(text); toast('Copied this lot’s records. Paste them into your bug report.', 4000); return; }
+  catch (e) { /* no clipboard here: show it to copy by hand */ }
+  const b = $('#copyRec'); if (!b) return;
+  b.insertAdjacentHTML('afterend', `<textarea class="copytext" readonly rows="4">${esc(text)}</textarea>`);
+  const ta = b.nextElementSibling; ta.focus(); ta.select(); b.remove();
+}
+
 // Price per square foot of living area: from the last market sale if it's under ten years old, otherwise from the town's value
 // (not in New Jersey, where towns assess at a fraction of market value). Not for condos (the card covers the whole building).
 function perSqft(s) {
-  const r = s.r0, living = s.condo || s.park || s.commonOnly ? null : (num(r.RES_AREA) || num(r.BLD_AREA));
+  const r = s.r0, living = s.condo || s.park || s.commonOnly || !s.isHome ? null : areaOf(r, true);
   if (!living || living < 300) return null;
   const sale = !s.multiSale && !s.unqualified && s.sales[0] && s.sales[0].p >= 10000 && Date.now() - s.sales[0].d < 3.156e11 ? s.sales[0] : null;
   if (sale) return { v: sale.p / living, kind: 'sale' };
@@ -1908,9 +2078,9 @@ function houseLink(cand) {
   if (DEMO || !proj) return null;
   let [x, y] = L.c;
   if (!pointInRings(x, y, L.rings)) {            // an L-shaped lot's middle can be outside it: use the inside point nearest the middle
-    const xs = L.rings.flat().map((p) => p[0]), ys = L.rings.flat().map((p) => p[1]), pts = [];
+    const bb = lotBBox(L), pts = [];        // (a loop, not Math.min(...points): some outlines have hundreds of thousands of points)
     for (let i = 1; i < 8; i++) for (let j = 1; j < 8; j++) {
-      const px = Math.min(...xs) + (Math.max(...xs) - Math.min(...xs)) * i / 8, py = Math.min(...ys) + (Math.max(...ys) - Math.min(...ys)) * j / 8;
+      const px = bb.minx + (bb.maxx - bb.minx) * i / 8, py = bb.miny + (bb.maxy - bb.miny) * j / 8;
       if (pointInRings(px, py, L.rings)) pts.push([px, py]);
     }
     if (pts.length) [x, y] = pts.sort((a, b) => Math.hypot(a[0] - L.c[0], a[1] - L.c[1]) - Math.hypot(b[0] - L.c[0], b[1] - L.c[1]))[0];
@@ -1933,26 +2103,41 @@ function shareText(cand) {
   return bits.join('\n') + '\n\nFound with Housepoint' + (link ? `\n${link}` : '');
 }
 
-// Condo units: sorted by unit number, each with its own details when tapped.
+// Square feet: a home's living area, or a business's floor area (the whole building where the town lists it).
+const areaOf = (r, residential) => (residential ? num(r.RES_AREA) || num(r.BLD_AREA) : num(r.BLD_AREA) || num(r.RES_AREA)) || null;
+// One record's details row for the unit and "also on this lot" lists.
+function recRowHtml(s, u, kind, i, label, more) {
+  const sd = parseSaleDate(u.LS_DATE), sp = num(u.LS_PRICE), res = RESIDENTIAL_KINDS.has(kind);
+  const sale = sd ? (sp >= 10000 ? `${moneyFull(sp)} · ${fmtMonth(sd)}` : `Changed hands ${fmtMonth(sd)}`) : 'No recorded sale';
+  const t = estimateTax({ region: s.region, r0: u, recs: [u], taxRecs: [u], commonOnly: false });
+  const area = areaOf(u, res), yb = num(u.YEAR_BUILT);
+  const cell = (k, v) => v ? `<div>${esc(k)}<b>${esc(v)}</b></div>` : '';
+  const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
+    cell(res ? 'Living area' : 'Floor area', area ? `${Math.round(area).toLocaleString('en-US')} ft²` : ''),
+    res ? cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : '') : '', res ? cell('Bedrooms', num(u.BEDS) ? String(num(u.BEDS)) : '') : '',
+    res ? cell('Baths', num(u.BATHS) ? bathText(u) : '') : '',
+    cell('Built', yb > 1600 ? String(yb) : ''), t && t.actual ? cell('Property tax', t.lo > 0 ? `${moneyFull(t.lo)}/yr` : '') : cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
+  return `<button class="unit${more ? ' more' : ''}" data-u="${i}"><span>${esc(label)}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></button><div class="udet hidden" id="ud${i}">${det}</div>`;
+}
+// Condo units: sorted by unit number, each with its own details when tapped. Only the units: not the master record or land.
 function unitName(u) { return titleCase(u.SITE_ADDR || u.LOCATION || '') || 'Unit'; }
 function unitListHtml(s) {
-  const units = s.recs.slice().sort((a, b) => unitName(a).localeCompare(unitName(b), undefined, { numeric: true }));
+  const units = s.unitRecs.map((u, i) => ({ u, k: s.unitKinds[i] })).sort((a, b) => unitName(a.u).localeCompare(unitName(b.u), undefined, { numeric: true }));
   const SHOW = 12;
-  const rows = units.map((u, i) => {
-    const sd = parseSaleDate(u.LS_DATE), sp = num(u.LS_PRICE);
-    const sale = sd ? (sp >= 10000 ? `${moneyFull(sp)} · ${fmtMonth(sd)}` : `Changed hands ${fmtMonth(sd)}`) : 'No recorded sale';
-    const t = estimateTax({ region: s.region, r0: u, recs: [u], commonOnly: false });
-    const area = num(u.RES_AREA) || num(u.BLD_AREA), yb = num(u.YEAR_BUILT);
-    const cell = (k, v) => v ? `<div>${esc(k)}<b>${esc(v)}</b></div>` : '';
-    const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
-      cell('Living area', area ? `${Math.round(area).toLocaleString('en-US')} ft²` : ''), cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : ''),
-      cell('Bedrooms', num(u.BEDS) ? String(num(u.BEDS)) : ''), cell('Baths', num(u.BATHS) ? bathText(u) : ''),
-      cell('Built', yb > 1600 ? String(yb) : ''), t && t.actual ? cell('Property tax', t.lo > 0 ? `${moneyFull(t.lo)}/yr` : '') : cell('Est. property tax', t && !t.exempt && t.lo > 0 ? `≈ ${moneyFull(round10(t.lo))}/yr` : '')].join('');
-    const more = i >= SHOW ? ' more' : '';
-    return `<button class="unit${more}" data-u="${i}"><span>${esc(unitName(u))}</span><span>${esc(money(u.TOTAL_VAL) || '—')}</span></button><div class="udet hidden" id="ud${i}">${det}</div>`;
-  }).join('');
+  const rows = units.map(({ u, k }, i) => recRowHtml(s, u, k === 'comCondo' ? 'commercial' : 'resCondo', i, unitName(u), i >= SHOW)).join('');
   const all = units.length > SHOW ? `<button class="all-btn">Show all ${units.length} units</button>` : '';
   return `<div class="units-h">${units.length} units · tap one for its details</div><div class="units">${rows}${all}</div>`;
+}
+// Other records filed on the same lot (a strip of land, a garage, a second building): listed, not counted as units.
+function othersHtml(s) {
+  if (!s.others.length) return '';
+  const base = s.condo ? s.unitRecs.length : 0;
+  const rows = s.others.map(({ r, kind }, j) => {
+    const what = s.region.useLabel(r.USE_CODE, r) || 'Other record';
+    return recRowHtml(s, r, kind, base + j, `${unitName(r) || 'No address'} · ${what}`, j >= 12);
+  }).join('');
+  const all = s.others.length > 12 ? `<button class="all-btn">Show all ${s.others.length}</button>` : '';
+  return `<div class="units-h">Also on this lot · tap for details</div><div class="units">${rows}${all}</div>`;
 }
 
 /* =========================================================================
@@ -1998,11 +2183,15 @@ function maTown(r0) {
 function estimateTax(s) {
   const r0 = s.r0, digits = String(r0.USE_CODE || '').replace(/\D/g, '');
   if (s.commonOnly) return null;
+  // The records taxed: the condo units, or the main record (not the master record or a strip of land beside it).
+  const recs = (s.taxRecs || s.recs).filter(Boolean), kinds = recs.map((r) => useKind(r, s.region.id));
+  if (kinds.length && kinds.every((k) => k === 'exempt')) return { exempt: true };
   if (s.region.id === 'MA') {
-    if (/^9/.test(digits)) return { exempt: true };
-    if (!/^1/.test(digits)) return null;                              // businesses are taxed at a different rate
+    // The residential rate is for residential records (codes 1xx); businesses are taxed at a different rate.
+    const res = recs.filter((r) => /^1/.test(String(r.USE_CODE || '').replace(/\D/g, '')));
+    if (!res.length) return null;
     const town = maTown(r0); if (!town) return null;
-    const t = s.recs.map((r) => num(r.TOTAL_VAL)).filter((v) => v > 0).map((v) => v * town.r / 1000);
+    const t = res.map((r) => num(r.TOTAL_VAL)).filter((v) => v > 0).map((v) => v * town.r / 1000);
     if (!t.length) return null;
     const notes = [`${town.n}’s FY${MA_TAX_FY} residential rate is <b>$${town.r.toFixed(2)}</b> per $1,000 of assessed value.`];
     if (s.park) notes.unshift('The park owner’s tax on the whole park. Homes in the park pay a monthly fee through the park instead.');
@@ -2014,14 +2203,15 @@ function estimateTax(s) {
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
   if (s.region.id === 'FL') {
-    const n = parseInt(digits || 'x', 10);
-    if (!(n >= 0 && n <= 9)) return null;                             // residential use codes only
-    const co = num(r0.COUNTY), c = co >= 11 && co <= 77 ? FL_COUNTIES[co - 11] : null;
+    const resCode = (r) => { const n = parseInt(String(r.USE_CODE || '').replace(/\D/g, '') || 'x', 10); return n >= 0 && n <= 9; };
+    const res = recs.filter(resCode);
+    if (!res.length) return null;                                     // residential use codes only
+    const co = num(r0.COUNTY) || num(res[0].COUNTY), c = co >= 11 && co <= 77 ? FL_COUNTIES[co - 11] : null;
     if (!c) return null;
     const m = c.r, rest = Math.max(0, m - FL_SCHOOL_MILLS);
     const tax = (nsd, sd) => (nsd * rest + sd * Math.min(m, FL_SCHOOL_MILLS)) / 1000;
-    const hasTV = s.recs.some((r) => num(r.TV_NSD) != null);
-    const t = s.recs.map((r) => {
+    const hasTV = res.some((r) => num(r.TV_NSD) != null);
+    const t = res.map((r) => {
       const jv = num(r.TOTAL_VAL);
       if (!hasTV) return jv > 0 ? jv * m / 1000 : null;
       const nsd = num(r.TV_NSD); if (nsd == null) return null;
@@ -2045,9 +2235,9 @@ function estimateTax(s) {
     if (/EXEMPT|CHURCH|RELIGIOUS|CHARIT|MUNICIPAL|TOWN OWNED|CITY OWNED|STATE OWNED|STATE OF CONN|FEDERAL|CEMETERY/i.test(String(r0.USE_DESC || ''))) return { exempt: true };
     const town = ctTown(r0); if (!town) return null;
     const assessed = (r) => num(r.ASSESSED) || (num(r.TOTAL_VAL) ? num(r.TOTAL_VAL) * CT_RATIO : null);
-    const t = s.recs.map(assessed).filter((v) => v > 0).map((v) => v * town.r / 1000);
+    const t = recs.map(assessed).filter((v) => v > 0).map((v) => v * town.r / 1000);
     if (!t.length) return null;
-    const one = s.recs.length === 1 ? assessed(r0) : null;
+    const one = recs.length === 1 ? assessed(recs[0]) : null;
     const notes = [`${town.n}’s FY${CT_TAX_FY} mill rate is <b>${town.r.toFixed(2)}</b>: $${town.r.toFixed(2)} per $1,000 of assessed value. `
       + (one ? `Connecticut assesses at 70% of the appraisal, so ${moneyFull(one)} here.` : 'Connecticut assesses at 70% of the appraisal.')];
     if (s.park) notes.unshift('The park owner’s tax on the whole park. Each home in the park gets its own tax bill too.');
@@ -2058,7 +2248,7 @@ function estimateTax(s) {
   }
   if (s.region.id === 'NJ') {        // New Jersey publishes the real bill, so there's nothing to estimate
     if (/^15/.test(String(r0.USE_CODE || '').trim())) return { exempt: true };
-    const t = s.recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
+    const t = recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
     if (!t.length) return null;
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true,
       notes: ['The actual tax billed last year, from the state’s MOD-IV tax list. A sale, reassessment or new exemption since then can change it.'] };
@@ -2762,7 +2952,7 @@ function parseMoney(v) {
 }
 // Not for parks, common areas, or commercial, public and exempt property.
 const NOT_A_HOME = /commercial|industrial|federal|state property|county property|town or city|school|college|charit|religious|church|cemetery|railroad|public|government|institutional|tax-exempt|open space|recreation|forest|accessory|parking|housing authority/i;
-function calcApplies(s) { const t = estimateTax(s); return !s.park && !s.commonOnly && !(t && t.exempt) && !NOT_A_HOME.test(s.use || ''); }
+function calcApplies(s) { const t = estimateTax(s); return !!s.isHome && !s.park && !s.commonOnly && !(t && t.exempt) && !NOT_A_HOME.test(s.use || ''); }
 function calcHtml(L, s) {
   const c = calcFor(L.p.key, s);
   const chip = (attr, v, cur, label) => `<button data-${attr}="${v}" class="${+v === +cur ? 'on' : ''}" aria-pressed="${+v === +cur}">${label}</button>`;
@@ -2834,12 +3024,12 @@ function floodShort(env) {
 function snapshot(L, s) {
   const [lat, lon] = L.proj.inv(L.c[0], L.c[1]), r = s.r0, sale = s.sales.find((q) => q.p >= 10000), t = estimateTax(s), c = calcFor(L.p.key, s);
   return { key: L.p.key, addr: s.addr, town: s.town, rid: s.region.id, lat, lon, ts: Date.now(), year: s.year,
-    use: s.condo ? `Condo building · ${s.units} units` : s.park ? 'Mobile home park' : s.use,
+    use: s.condo ? `${s.typeLabel} · ${s.units} units` : s.typeLabel,
     value: s.condo || s.commonOnly ? null : num(r.TOTAL_VAL), range: s.condo && s.vals.length ? [Math.min(...s.vals), Math.max(...s.vals)] : null, valueWord: s.region.valueWord || 'Assessed',
     sale: sale ? { p: sale.p, d: sale.d.toISOString().slice(0, 10) } : null,
     tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual }) : null,
     calc: calcApplies(s) ? { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } : null,
-    living: s.condo || s.park ? null : num(r.RES_AREA) || num(r.BLD_AREA) || null, ppsf: perSqft(s), beds: num(r.BEDS) || null, baths: num(r.BATHS) ? bathText(r) : null,
+    living: s.condo || s.park || !s.residential ? null : areaOf(r, true), ppsf: perSqft(s), beds: s.residential && num(r.BEDS) || null, baths: s.residential && num(r.BATHS) ? bathText(r) : null,
     lot: Math.round(lotSqft(L)), flood: null, school: null, grocery: null, ...(BUY_FACTS.get(L.p.key) || {}) };
 }
 function toggleSave(L, s) {
@@ -3298,9 +3488,15 @@ function arScan(ox, oy, heading, half) {
   });
 }
 
+// One word for a tag when there's no year: what the place is.
+function shortKind(s) {
+  return { single: 'House', multi: 'House', mobile: 'Home', mixedRes: 'House', resCondo: 'Condo', apartments: 'Apartments', otherRes: 'Residence',
+    commercial: 'Business', comCondo: 'Business', mixed: 'Business', industrial: 'Industrial', vacant: 'Land', farmForest: 'Land',
+    exempt: 'Public', institutional: 'Institution', accessory: 'Outbuilding' }[s.kind] || 'Property';
+}
 function arChipHtml(L) {
   const s = summarize(L.p), m = lotMetrics(L);
-  const top = s.park ? 'Park' : s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? 'Condos' : 'House';
+  const top = s.park ? 'Park' : s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? (s.building === 'comCondo' ? 'Units' : 'Condos') : shortKind(s);
   const sub = s.park ? (s.sites ? `${s.sites} sites` : 'Mobile homes') : (s.condo || s.commonOnly) ? `${s.units} units` : (money(s.r0.TOTAL_VAL) || '');
   const dot = ageColor(m.year, L.p.region);
   return `<span class="y">${dot ? `<i style="background:${dot}"></i>` : ''}${esc(top)}</span>${sub ? `<span class="m">${esc(sub)}</span>` : ''}`;
@@ -3793,7 +3989,7 @@ async function makeShareImage(cand) {
   g.fillStyle = '#1d1a17'; g.font = `700 76px ${SERIF}`;
   for (const line of wrapLines(g, s.addr, W - PAD * 2).slice(0, 2)) { y += 82; g.fillText(line, PAD, y); }
   g.fillStyle = '#6f665b'; g.font = `500 34px ${SANS}`; y += 52;
-  g.fillText([s.town, s.condo ? `Condo building · ${s.units} units` : s.use].filter(Boolean).join(' · '), PAD, y);
+  g.fillText([s.town, s.condo ? `${s.typeLabel} · ${s.units} units` : s.typeLabel].filter(Boolean).join(' · '), PAD, y);
 
   // chips
   const chips = [];
@@ -3862,8 +4058,8 @@ function renderNear() {
   const dated = near.filter((x) => x.s.year);
   const items = [];
   const oldest = best(dated, (x) => -x.s.year);
-  if (oldest) items.push({ x: oldest, stat: String(oldest.s.year), hot: true, title: 'Oldest house around here', sub: olderThan(oldest.s.year) });
-  const singles = near.filter((x) => !x.s.condo && num(x.s.r0.TOTAL_VAL));
+  if (oldest) items.push({ x: oldest, stat: String(oldest.s.year), hot: true, title: oldest.s.houseLike ? 'Oldest house around here' : 'Oldest building around here', sub: olderThan(oldest.s.year) });
+  const singles = near.filter((x) => x.s.houseLike && num(x.s.r0.TOTAL_VAL));
   const top = best(singles, (x) => num(x.s.r0.TOTAL_VAL));
   if (top) items.push({ x: top, stat: money(top.s.r0.TOTAL_VAL), title: 'Highest assessed value', sub: top.s.year ? `Built ${top.s.year}` : '' });
   const sold = near.map((x) => ({ x, sale: x.s.sales.find((q) => q.p >= 10000) })).filter((q) => q.sale);
@@ -3971,7 +4167,9 @@ const ABOUT = `
   estimates. Tax amounts (except New Jersey’s, which are last year’s actual bills) are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
   pointing at depends on your phone’s GPS and compass; if it picks the wrong one, tap “Not it.”</p>
   <h3>Fonts</h3>
-  <p>Inter and Fraunces, under the SIL Open Font License.</p>`;
+  <p>Inter and Fraunces, under the SIL Open Font License.</p>
+  <h3>Something not loading?</h3>
+  <p><a href="?health=1">Check the data services</a>: tries each state’s property records and the address lookups, and says which answer, how fast, and whether one has moved.</p>`;
 function openAbout() { $('#aboutBody').innerHTML = ABOUT; show($('#about')); $('#aboutBody').scrollTop = 0; }
 $('#openAbout').onclick = (e) => { e.preventDefault(); openAbout(); };
 $('#aboutClose').onclick = () => show($('#about'), false);
@@ -4005,11 +4203,74 @@ const SHARED = (() => {
 })();
 if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.key }, 'Opening the shared house…');
 
+/* =========================================================================
+   Service check (?health=1): each state's property records and the address lookups, tried the way the app uses them. For
+   when something stops loading: the states move their services now and then (MassGIS did in 2026), drop fields, or stop
+   answering a kind of search in time. Nothing is saved or sent anywhere else.
+   ========================================================================= */
+const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'] };
+async function runHealth() {
+  document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
+    <p class="hs">Each check runs the way the app does. Green answered, amber answered with a problem, red didn’t answer.</p><ol id="hRows"></ol>
+    <p class="hs" id="hDone">Checking…</p><p><a href="./">Back to Housepoint</a></p></div>`);
+  const rows = $('#hRows'), counts = { ok: 0, warn: 0, bad: 0 };
+  const row = (label) => {
+    const li = document.createElement('li'); li.className = 'wait'; li.innerHTML = `<b>${esc(label)}</b> <span>checking…</span>`; rows.appendChild(li);
+    const set = (cls, msg) => { li.className = cls; li.querySelector('span').textContent = `${{ ok: 'OK', warn: 'Problem', bad: 'Not answering' }[cls]}: ${msg}`; counts[cls]++; };
+    return { ok: (m) => set('ok', m), warn: (m) => set('warn', m), bad: (m) => set('bad', m) };
+  };
+  const timed = async (p) => { const t0 = performance.now(); const v = await p; return [v, Math.round(performance.now() - t0)]; };
+  const secs = (ms) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+  for (const id of ['MA', 'CT', 'NJ', 'FL']) {
+    const rg = REGIONS[id], [lat, lon, spot] = HEALTH_SPOTS[id];
+    const r1 = row(`${rg.name}: property records`);
+    let ms;
+    try { [, ms] = await timed(timeLimit(initService(rg), 30000)); }
+    catch (e) { r1.bad(`no answer (${e.message || e})`); continue; }
+    const sv = SVC[id], base = (u) => String(u || '').replace(/\/+$/, '').replace(/\/\d+$/, '');
+    const moved = base(sv.layerUrl) !== base((rg.services || [])[0]);
+    if (moved) r1.warn(`found by searching, at ${sv.layerUrl.replace(/^https:\/\//, '').slice(0, 90)}: the address the app tries first has moved, so update it (${secs(ms)})`);
+    else r1.ok(`answering (${secs(ms)})`);
+    const need = Object.keys(rg.fields), missing = need.filter((k) => !sv.canon.has(k));
+    const r2 = row(`${rg.name}: fields`);
+    if (missing.length) r2.warn(`${need.length - missing.length} of ${need.length} found; missing ${missing.join(', ')}`); else r2.ok(`all ${need.length} found`);
+    const r3 = row(`${rg.name}: lots around ${spot}`);
+    let lots = [];
+    try { [lots, ms] = await timed(timeLimit(queryRegion(rg, lat, lon, 150), 20000)); }
+    catch (e) { r3.bad(`no answer (${e.message || e})`); continue; }
+    if (!lots.length) { r3.bad(`answered, but with no lots (${secs(ms)})`); continue; }
+    r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots (${secs(ms)})`);
+    // An address from those lots, searched for by address the way a typed search starts
+    const rec = lots.flatMap((p) => p.records).find((r) => /^\d+[A-Z]?\s+[A-Z]/i.test(String(r.SITE_ADDR || '').trim()) && r.CITY);
+    const r4 = row(`${rg.name}: search by address`);
+    if (!rec) { r4.warn('no address on those lots to try'); continue; }
+    const addr = String(rec.SITE_ADDR).trim().toUpperCase().replace(/\s+/g, ' ');
+    try {
+      const [hit, t] = await timed(timeLimit(searchIn(rg, [{ addr, town: String(rec.CITY) }]), 15000));
+      if (!hit) r4.warn(`answered in ${secs(t)} but didn’t find ${titleCase(addr)}`);
+      else r4[t > SEARCH_LOT_MS ? 'warn' : 'ok'](t > SEARCH_LOT_MS ? `${secs(t)}: too slow for a typed search, so the app finds addresses by position instead` : `found ${titleCase(addr)} (${secs(t)})`);
+    } catch (e) { r4.warn(`no answer in 15 s: the app finds addresses by position instead`); }
+  }
+  const g1 = row('Census address lookup');
+  try { const [r, t] = await timed(censusSearch('1 Ashburton Pl, Boston', 'MA')); g1[r ? 'ok' : 'warn'](r ? `found 1 Ashburton Pl, Boston (${secs(t)})` : 'answered, found nothing'); }
+  catch (e) { g1.bad(`no answer (${e.message || e})`); }
+  const g2 = row('Census town lookup');
+  try { const [r, t] = await timed(townPlace(['DEDHAM'], [REGIONS.MA])); g2[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
+  catch (e) { g2.bad(`no answer (${e.message || e})`); }
+  const g3 = row('Geoapify search');
+  if (!KEYS.geoapify) g3.warn('no key set');
+  else try { const [r, t] = await timed(geoapifySearch(parseQuery('Dedham, MA'))); g3[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
+  catch (e) { g3.bad(`no answer (${e.message || e})`); }
+  $('#hDone').textContent = `Done: ${counts.ok} fine, ${counts.warn} with a problem, ${counts.bad} not answering.`;
+  return counts;
+}
+if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); }
+
 // test hooks
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

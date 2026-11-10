@@ -25,11 +25,13 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey or Flori
 - **Map:** color every lot by age, value or last sale year, with a legend.
 - **Monthly cost:** in "Thinking of buying?", a mortgage calculator that starts from the card's own numbers (price, estimated tax, the state's average insurance) and Freddie Mac's latest 30-year rate. Type the asking price or your own rate; down payment and loan length are remembered.
 - **Nearby:** walk or drive times to the closest grocery, pharmacy, park, train and more, a map with ¼, ½ and 1 mile rings (USGS base map), and filters for groceries, dining, parks, transit and health.
+- **Property types:** each record is read from its state's use codes (homes, condos, apartments, stores, offices, land, exempt property), so a store gets floor area instead of living area, a condo's master record and a strip of land on the same lot aren't counted as units, and the home-buyer tools appear only for homes.
 - **Save & compare:** star a house on its card; the Saved tab lines starred houses up side by side (value, last sale, tax, monthly cost, size, flood zone, nearest school and grocery). Saved houses stay on the phone.
 
 ## Try it
 - Open the live link in Safari or Chrome on your phone, tap **Start pointing**, and allow camera, location and motion.
 - Add `?demo=1` to the URL to explore a made-up neighborhood without going outside.
+- Add `?health=1` to check the data services: each state's property records and the address lookups, how fast they answer, and whether one has moved.
 - Add `?debug=1` to see the compass, GPS and camera view readings. On an iPhone the first line also shows the compass accuracy (`acc ±N°`); the app warns when it's worse than ±30°.
 - If the floating tags are all shifted to one side of the houses, that's compass error: `?decl=` sets the compass correction (about −14 in Massachusetts, −13 in Connecticut, −12 in New Jersey, −7 in Florida). If tags are spread too far apart or bunched together, `?fov=` sets how wide the camera view is, in degrees (about 34 on an iPhone held upright).
 
@@ -40,4 +42,4 @@ It's a single file (`index.html`), no build step.
 
     cd tests && npm install && npm test
 
-They also run on GitHub after every push (`.github/workflows/tests.yml`).
+They also run on GitHub after every push (`.github/workflows/tests.yml`). One of them checks the cards of a few hundred real lots from all four states (`tests/fixtures/`, captured on GitHub by `.github/workflows/capture.yml`); see `tests/README.md`.
