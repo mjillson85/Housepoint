@@ -13,6 +13,8 @@ const local = [...html.matchAll(/(?:href|src)="([^"#:]+\.(?:png|webmanifest|html
 check(local.length >= 8 && local.every(exists), `all ${local.length} local files the page uses exist (${local.filter((f) => !exists(f)).join(', ') || 'none missing'})`);
 const man = JSON.parse(fs.readFileSync(path.join(HP_ROOT, 'manifest.webmanifest'), 'utf8'));
 check(man.name === 'Housepoint' && man.display === 'standalone' && man.icons.length >= 2 && man.icons.every((i) => exists(i.src)), 'install manifest is valid and its icons exist');
+check(man.icons.every((i) => ['any', 'maskable'].includes(i.purpose)) && man.icons.some((i) => i.purpose === 'maskable'), 'icons list "any" and "maskable" separately');
+check(/apple-mobile-web-app-status-bar-style" content="black-translucent"/.test(html) && /viewport-fit=cover/.test(html) && /env\(safe-area-inset-top/.test(html), 'home-screen app runs full-screen under the status bar, and the layout keeps clear of it');
 const png = (f) => { const b = fs.readFileSync(path.join(HP_ROOT, f)); return [b.readUInt32BE(16), b.readUInt32BE(20)].join('x'); };
 check(png('icons/icon-180.png') === '180x180' && png('icons/icon-192.png') === '192x192' && png('icons/icon-512.png') === '512x512' && png('icons/preview.png') === '1200x630', 'icons and the link preview image are the sizes they claim');
 check(/<meta name="description" content="[^"]{60,}">/.test(html) && /og:image" content="https:\/\/mjillson85\.github\.io\/Housepoint\/icons\/preview\.png"/.test(html) && /rel="apple-touch-icon" href="icons\/icon-180\.png"/.test(html), 'description, link preview and home-screen icon tags are present');

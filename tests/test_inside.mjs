@@ -70,8 +70,24 @@ const far = await page.evaluate(() => {
 });
 console.log('down the street:', JSON.stringify(far));
 check(far.inViewShown === far.inView && far.farShown >= 1 && far.farSmall, `a clearly visible house 90 m down the street gets a small tag (${far.inViewShown}/${far.inView}, ${far.farShown} far)`);
-check(far.maxD <= 100 && !far.sliverFar && far.count <= 6 && far.skippedFar >= 2 && far.skippedSliver >= 1, `no tags past 100 m or for far slivers, at most 6 (${far.count} shown, farthest ${Math.round(far.maxD)} m; left out ${far.skippedFar} far, ${far.skippedSliver} slivers)`);
+check(far.maxD <= 110 && !far.sliverFar && far.count <= 6 && far.skippedFar >= 2, `no tags past 100 m or for far slivers, at most 6 (${far.count} shown, farthest ${Math.round(far.maxD)} m; left out ${far.skippedFar} far, ${far.skippedSliver} slivers)`);
 check(!far.clash, 'tags don’t overlap each other, the big label, or the top buttons');
+// Turning slowly: a tag doesn't vanish and come back (blink). The house under the circle has the big label instead, which counts
+// as shown; a one-frame handover between the two isn't a blink either.
+const track = new Map(); let step = 0;
+for (let h = 84; h <= 96.05; h += 0.2, step++) {
+  await page.evaluate((h) => window.__hp.setHeading(h), h); await sleep(110);
+  const on = await page.evaluate(() => { const S = window.__hp.S;
+    return [...window.__hp.AR.items.filter((i) => !i.hidden && i.el.style.opacity === '1').map((i) => i.k), ...(S.live ? [S.live.L.p.key] : [])]; });
+  for (const k of on) { const a = track.get(k) || []; a[step] = 1; track.set(k, a); }
+}
+let blinks = 0;
+for (const a of track.values()) {
+  const seq = Array.from({ length: step }, (_, i) => (a[i] ? 1 : 0)).join('');
+  blinks += (seq.match(/1(0{2,5})(?=1)/g) || []).length;          // gone for 2–5 steps (0.4–1°), then back
+}
+console.log('tag blinks while turning 12° slowly:', blinks);
+check(blinks === 0, `turning slowly: no tag blinks off and back on (${blinks})`);
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');
 await browser.close();

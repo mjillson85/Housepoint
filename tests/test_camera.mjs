@@ -41,6 +41,7 @@ async function newPage(url) {
   page.on('request', (req) => (req.url().startsWith(ORIGIN) ? req.continue() : req.abort()));
   await page.setGeolocation({ latitude: 42.0, longitude: -71.0, accuracy: 5 });
   await page.goto(ORIGIN + url);
+  await page.evaluate((g) => { window.__hp.CAM.graceMs = g; }, page.grace ?? 0);   // most checks: the map stops the camera at once
   return page;
 }
 const state = (page) => page.evaluate(() => {
@@ -104,9 +105,14 @@ await p2.click('#goPoint'); await sleep(500);
 s = await state(p2);
 const toastTxt = await p2.$eval('#toast', (el) => el.textContent);
 check(s.calls === 1 && s.fakeShown && !s.camShown && /Camera is off/.test(toastTxt), 'camera refused: fake background and toast ' + JSON.stringify(s));
+await p2.evaluate(() => { window.__hidden = true; document.dispatchEvent(new Event('visibilitychange')); window.__hidden = false; document.dispatchEvent(new Event('visibilitychange')); });
+await sleep(400);
+s = await state(p2);
+check(s.calls === 1 && s.fakeShown, 'after a refusal, coming back to the app doesn’t ask again on its own ' + JSON.stringify(s));
 await p2.click('#toMap'); await sleep(200); await p2.click('#mapToPoint'); await sleep(400);
 s = await state(p2);
-check(s.calls === 1 && s.fakeShown, 'after a refusal, returning to point mode doesn’t ask again ' + JSON.stringify(s));
+const toast2 = await p2.$eval('#toast', (el) => el.textContent); console.log('toast after second refusal:', toast2);
+check(s.calls === 2 && s.fakeShown && /Camera is off/.test(toast2), 'after a refusal, tapping back to pointing asks again (refused again: plain background) ' + JSON.stringify(s));
 await p2.click('#toMap'); await sleep(200);
 await p2.evaluate(() => { window.__camDeny = false; });
 check(!p2.errors.length, 'no page errors (refused) ' + p2.errors.join('; '));
@@ -139,6 +145,39 @@ check(s.calls === 1 && s.live, 'real mode: pointing turns the camera on');
 await p4.click('#toMap'); await sleep(300);
 s = await state(p4);
 check(!s.hasSrc && s.streams[0] === 'ended', 'real mode: map stops the camera');
+
+// The map keeps a running camera for a short grace period (an iPhone may ask for permission again once it has been off
+// for about a minute), paused; back to pointing in time reuses it, otherwise it stops. Leaving the app stops it at once.
+{
+  const pg = await newPage('/?demo=1');
+  await pg.evaluate(() => { window.__hp.CAM.graceMs = 1500; });
+  await pg.click('#goPoint'); await sleep(500);
+  await pg.click('#toMap'); await sleep(300);
+  let t = await state(pg);
+  const paused = await pg.evaluate(() => document.querySelector('#cam').paused);
+  check(t.live && paused && !t.camShown, 'map: the camera is paused and hidden, not stopped yet ' + JSON.stringify(t));
+  await pg.click('#mapToPoint'); await sleep(400);
+  t = await state(pg);
+  check(t.calls === 1 && t.live && t.camShown, 'back to pointing within the grace period: the same camera, no new request ' + JSON.stringify(t));
+  await pg.click('#toMap'); await sleep(2000);
+  t = await state(pg);
+  check(!t.hasSrc && t.streams.every((x) => x === 'ended'), 'after the grace period on the map: stopped ' + JSON.stringify(t));
+  await pg.click('#mapToPoint'); await sleep(400);
+  await pg.click('#toMap'); await sleep(200);
+  await pg.evaluate(() => { window.__hidden = true; document.dispatchEvent(new Event('visibilitychange')); });
+  await sleep(200);
+  t = await state(pg);
+  check(!t.hasSrc && t.streams.every((x) => x === 'ended'), 'leaving the app during the grace period stops it at once ' + JSON.stringify(t));
+  await pg.evaluate(() => { window.__hidden = false; document.dispatchEvent(new Event('visibilitychange')); });
+  // The phone ends the camera while you're pointing (a call): a fresh one is asked for.
+  await pg.click('#mapToPoint'); await sleep(400);
+  const before = (await state(pg)).calls;
+  await pg.evaluate(() => { const tr = document.querySelector('#cam').srcObject.getVideoTracks()[0]; tr.stop(); tr.dispatchEvent(new Event('ended')); });
+  await sleep(400);
+  t = await state(pg);
+  check(t.calls === before + 1 && t.live && t.camShown, 'camera ended by the phone while pointing: a fresh one ' + JSON.stringify(t));
+  check(!pg.errors.length, 'no page errors (grace) ' + pg.errors.join('; '));
+}
 
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASSED');
 await browser.close(); srv.close();
