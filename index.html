@@ -1399,15 +1399,16 @@ async function searchAddress(text) {
   //    reading of what was typed goes in one request; the corrected town spelling only counts if nothing matches as typed.
   //    It runs alongside the address lookup below, not before it: Massachusetts and Florida don't index their records by
   //    address, so there it can't answer in time. A state that runs out of time isn't asked by address again this visit.
-  const quick = order.filter((r) => !svcFor(r.id).addrSlow);
+  const quick = order.filter((r) => (r.id === 'MA' ? !MA_STATE_HEALTH.down : !svcFor(r.id).addrSlow));
+  const lotSearch = (r, as) => (r.id === 'MA' ? maStateSearch(as) : searchIn(r, as));
   let lotP = null;
   if (q.num) {
     const nums = [q.num, q.numFull].filter(Boolean);
     const alts = (reads) => { const seen = new Set();
       return reads.flatMap((r) => nums.flatMap((n) => addrForms(n, r.street).map((addr) => ({ addr, town: r.town }))))
         .filter((a) => { const k = `${a.addr}|${a.town}`; return seen.has(k) ? false : seen.add(k); }); };
-    const ask = (as) => quick.map((r) => timeLimit(searchIn(r, as), SEARCH_LOT_MS).catch((e) => {
-      if (/^no answer/.test(e.message)) svcFor(r.id).addrSlow = true;
+    const ask = (as) => quick.map((r) => timeLimit(lotSearch(r, as), SEARCH_LOT_MS).catch((e) => {
+      if (/^no answer/.test(e.message)) { if (r.id === 'MA') MA_STATE_HEALTH.down = true; else svcFor(r.id).addrSlow = true; }
       console.warn('search failed', r.id, e); return null; }));
     const typed = ask(alts(q.readings));
     const fixed = q.townFix ? ask(alts([{ street: q.readings[0].street, town: q.townFix }])) : [];
@@ -1496,10 +1497,50 @@ async function searchIn(region, alts, town, street, near) {
   }
   return null;
 }
+// Massachusetts' own copy of the assessors' records, on the state's server, is indexed by town: an address in a known town is
+// found in a fraction of a second (the statewide layer the map draws from can't search by address in time). The lot's outline
+// comes from the same server by its lot id, which is also the app's key for the lot.
+const MA_STATE = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer';
+const MA_STATE_ASSESS = MA_STATE + '/4', MA_STATE_LOTS = MA_STATE + '/1';
+const MA_STATE_HEALTH = { down: false };          // stops asking this visit after it fails to answer
+function maTownId(name) {
+  const i = MA_BY_NAME.get(String(name || '').toUpperCase().replace(/^(TOWN|CITY) OF /, '').replace(/[^A-Z]/g, ''));
+  return i == null ? null : i + 1;
+}
+// alts: [{ addr: '6 MOSESSO DR', town }] for a house number, or street: 'MOSESSO DR' with town for a whole street.
+async function maStateSearch(alts, street, town) {
+  const byTown = new Map();
+  if (street) { const id = maTownId(town); if (id) byTown.set(id, [`% ${street}`, `% ${street} %`]); }
+  else for (const a of alts || []) { const id = maTownId(a.town); if (!id) continue; if (!byTown.has(id)) byTown.set(id, []); byTown.get(id).push(`${a.addr}%`); }
+  if (!byTown.size) return null;                                  // no town in the list (a village, or none typed): the geocoder finds it
+  const where = [...byTown].map(([id, pats]) => `(TOWN_ID = ${id} AND (${[...new Set(pats)].map((x) => `UPPER(SITE_ADDR) LIKE '${sqlq(x)}'`).join(' OR ')}))`).join(' OR ');
+  const j = await getJSON(`${MA_STATE_ASSESS}/query?` + new URLSearchParams({ where, outFields: 'LOC_ID,SITE_ADDR,TOWN_ID', returnGeometry: 'false', resultRecordCount: street ? '40' : '20', f: 'json' }), {}, SEARCH_LOT_MS);
+  // Best match first: the address exactly, then with a unit after it, then anything that starts the same ("12 ELM STONE RD")
+  const want = new Set((alts || []).map((a) => a.addr));
+  const rank = (r) => { const x = String(r.SITE_ADDR || '').toUpperCase().replace(/\s+/g, ' ').trim();
+    return street ? 0 : want.has(x) ? 0 : [...want].some((w) => x.startsWith(w + ' ') || x.startsWith(w + '#')) ? 1 : 2; };
+  const rows = (j.features || []).map((f) => f.attributes).filter((r) => r.LOC_ID).sort((a, b) => rank(a) - rank(b));
+  const ids = [...new Set(rows.map((r) => r.LOC_ID))].slice(0, street ? 25 : 5);
+  if (!ids.length) return null;
+  const g = await getJSON(`${MA_STATE_LOTS}/query?` + new URLSearchParams({ where: `LOC_ID IN (${ids.map((x) => `'${sqlq(x)}'`).join(',')})`, outFields: 'LOC_ID,POLY_TYPE',
+    returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', f: 'json' }), {}, SEARCH_LOT_MS);
+  const lots = (g.features || []).filter((f) => f.geometry && f.geometry.rings && f.geometry.rings.length && f.attributes && f.attributes.LOC_ID);
+  if (!lots.length) return null;
+  const first = lots[0].geometry.rings[0][0], proj = makeProj(first[1], first[0]);
+  const at = lots.map((f) => ({ id: f.attributes.LOC_ID, c: centroid(f.geometry.rings.map((r) => r.map(([lo, la]) => proj.fwd(la, lo)))) }));
+  let pick;
+  if (street) {        // the lot nearest the middle of the street's lots, so the map lands on the street
+    const mx = at.reduce((n, x) => n + x.c[0], 0) / at.length, my = at.reduce((n, x) => n + x.c[1], 0) / at.length;
+    pick = at.slice().sort((a, b) => Math.hypot(a.c[0] - mx, a.c[1] - my) - Math.hypot(b.c[0] - mx, b.c[1] - my))[0];
+  } else pick = at.find((x) => x.id === ids[0]) || at[0];
+  const [lat, lon] = proj.inv(pick.c[0], pick.c[1]);
+  return { lat, lon, key: pick.id };
+}
+
 // A street without a house number: find lots on it in the town typed.
 async function streetSearch(q, order) {
   const st = abbrStreet(q.street);
-  const asks = order.map((r) => timeLimit(searchIn(r, null, q.town, st), SEARCH_GEO_MS).catch(() => null));
+  const asks = order.map((r) => timeLimit(r.id === 'MA' ? maStateSearch(null, st, q.town) : searchIn(r, null, q.town, st), SEARCH_GEO_MS).catch(() => null));
   for (const a of asks) { const hit = await a; if (hit) return { kind: 'street', lat: hit.lat, lon: hit.lon, name: `${titleCase(st)}, ${q.town}` }; }
   throw new Error('nothing found');
 }
@@ -1619,6 +1660,11 @@ async function lotNear(lat, lon, texts) {
     for (const rd of q.readings) if (rd.street) for (const n of [q.num, q.numFull].filter(Boolean)) for (const addr of addrForms(n, rd.street)) if (!seen.has(addr)) { seen.add(addr); alts.push({ addr }); }
   }
   if (!alts.length) return null;
+  if (region.id === 'MA' && !MA_STATE_HEALTH.down) {             // by town on the state's server: quick, and a house a long way down the street still counts
+    const towns = [...new Set(texts.map((t) => (parseQuery(t || '') || {}).town).filter(Boolean))];
+    const hit = towns.length && await timeLimit(maStateSearch(towns.flatMap((town) => alts.map((a) => ({ addr: a.addr, town })))), SEARCH_LOT_MS).catch(() => null);
+    if (hit && distM(lat, lon, hit.lat, hit.lon) < 3000) return hit;
+  }
   return timeLimit(searchIn(region, alts, null, null, { lat, lon, m: NEAR_LOT_M }), NEAR_LOT_MS).catch((e) => { console.warn('nearby lot search failed', e); return null; });
 }
 
@@ -4257,7 +4303,8 @@ async function runHealth() {
     if (!rec) { r4.warn('no address on those lots to try'); continue; }
     const addr = String(rec.SITE_ADDR).trim().toUpperCase().replace(/\s+/g, ' ');
     try {
-      const [hit, t] = await timed(timeLimit(searchIn(rg, [{ addr, town: String(rec.CITY) }]), 15000));
+      // Massachusetts searches its records on the state's own server (indexed by town); the others search the layer itself
+      const [hit, t] = await timed(timeLimit(id === 'MA' ? maStateSearch([{ addr, town: String(rec.CITY) }]) : searchIn(rg, [{ addr, town: String(rec.CITY) }]), 15000));
       if (!hit) r4.warn(`answered in ${secs(t)} but didn’t find ${titleCase(addr)}`);
       else r4[t > SEARCH_LOT_MS ? 'warn' : 'ok'](t > SEARCH_LOT_MS ? `${secs(t)}: too slow for a typed search, so the app finds addresses by position instead` : `found ${titleCase(addr)} (${secs(t)})`);
     } catch (e) { r4.warn(`no answer in 15 s: the app finds addresses by position instead`); }
@@ -4281,7 +4328,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>
