@@ -479,7 +479,8 @@
 /* =========================================================================
    Config
    ========================================================================= */
-const PRIMARY_SERVICE = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+// MassGIS moved its statewide parcels here in 2026 (the old L3_TAXPAR_POLY_ASSESS_gdb address now answers "Invalid URL").
+const PRIMARY_SERVICE = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 const MASSGIS_ORG = 'hGdibHYSPO59RG1h';
 const DECLINATION = -14.2;      // magnetic declination for Massachusetts (degrees, west is negative)
 const QUERY_RADIUS = 220;       // meters of parcels to load around you
@@ -792,7 +793,7 @@ const REGIONS = {
     bbox: [-73.55, 41.18, -69.85, 42.89],                       // west, south, east, north
     declination: (lat, lon) => -14.2 - 0.35 * (lon + 71),     // ~ -13.4 in the Berkshires, ~ -14.6 on the Cape
     services: [SERVICE_OVERRIDE || PRIMARY_SERVICE],
-    discover: `orgid:${MASSGIS_ORG} AND type:"Feature Service" AND (title:L3 OR title:parcels OR title:TAXPAR)`,
+    discover: `orgid:${MASSGIS_ORG} AND type:"Feature Service" AND (title:"Property Tax Parcels" OR title:L3 OR title:parcels OR title:TAXPAR)`,
     detect: ['YEAR_BUILT', 'TOTAL_VAL'],
     fields: Object.fromEntries(['LOC_ID','PROP_ID','MAP_PAR_ID','POLY_TYPE','SITE_ADDR','ADDR_NUM','FULL_STR','LOCATION','CITY','ZIP','TOWN_ID',
       'FY','TOTAL_VAL','BLDG_VAL','LAND_VAL','OTHER_VAL','LOT_SIZE','LOT_UNITS','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','BLD_AREA',
@@ -1109,6 +1110,9 @@ const STATE_TAIL = new RegExp(`(?:^|\\s)(${[...STATE_BY_WORD.keys()].filter((k) 
 const SEARCH_LOT_MS = 4500;      // exact-lot lookup in the state parcel services
 const SEARCH_GEO_MS = 5000;      // then the address and town lookups; together a search answers in about 10 seconds at worst
 const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first hasn't answered by then
+const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
+const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
+const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
 const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL' };
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
@@ -1252,17 +1256,23 @@ async function searchAddress(text) {
   const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
   // 1. The exact lot, from the state parcel services: all likely states at once, the most likely one's answer first. Every
   //    reading of what was typed goes in one request; the corrected town spelling only counts if nothing matches as typed.
+  //    It runs alongside the address lookup below, not before it: Massachusetts and Florida don't index their records by
+  //    address, so there it can't answer in time. A state that runs out of time isn't asked by address again this visit.
+  const quick = order.filter((r) => !svcFor(r.id).addrSlow);
+  let lotP = null;
   if (q.num) {
     const nums = [q.num, q.numFull].filter(Boolean);
     const alts = (reads) => { const seen = new Set();
       return reads.flatMap((r) => nums.flatMap((n) => addrForms(n, r.street).map((addr) => ({ addr, town: r.town }))))
         .filter((a) => { const k = `${a.addr}|${a.town}`; return seen.has(k) ? false : seen.add(k); }); };
-    const ask = (as) => order.map((r) => timeLimit(searchIn(r, as), SEARCH_LOT_MS).catch((e) => { console.warn('search failed', r.id, e); return null; }));
+    const ask = (as) => quick.map((r) => timeLimit(searchIn(r, as), SEARCH_LOT_MS).catch((e) => {
+      if (/^no answer/.test(e.message)) svcFor(r.id).addrSlow = true;
+      console.warn('search failed', r.id, e); return null; }));
     const typed = ask(alts(q.readings));
     const fixed = q.townFix ? ask(alts([{ street: q.readings[0].street, town: q.townFix }])) : [];
-    for (const a of [...typed, ...fixed]) { const hit = await a; if (hit) return { kind: 'lot', ...hit }; }
+    lotP = (async () => { for (const a of [...typed, ...fixed]) { const hit = await a; if (hit) return { kind: 'lot', ...hit }; } return null; })();
   }
-  // 2. Not found: look the address (or street) up, and the town alongside it in case the address can't be found.
+  // 2. Look the address (or street) up, and the town alongside it in case the address can't be found.
   const townNames = [...new Set([q.town, ...q.readings.map((r) => r.town)].filter(Boolean))];
   const townP = townNames.length ? timeLimit(townPlace(townNames, order, q.townFix), SEARCH_GEO_MS).catch((e) => { console.warn('town search failed', e); return null; }) : null;
   // A house number: the Census first (it places the number along the street; Geoapify often knows only the street), with
@@ -1286,17 +1296,27 @@ async function searchAddress(text) {
   const geoapify = ['Geoapify', (sig) => geoapifySearch(q, sig)];
   const tries = [];
   if (q.num) { tries.push(census); if (KEYS.geoapify) tries.push(geoapify); }
-  else { if (KEYS.geoapify) tries.push(geoapify); if (q.street && q.town) tries.push(['Parcels', () => streetSearch(q, order)]); }
-  if (tries.length) {
-    const r = await timeLimit(hedge(tries, SEARCH_GAP_MS), SEARCH_GEO_MS).catch((e) => { console.warn('address search failed', e); return null; });
-    if (r) return r;
+  else { if (KEYS.geoapify) tries.push(geoapify); if (q.street && q.town && quick.length) tries.push(['Parcels', () => streetSearch(q, quick)]); }
+  const geoP = tries.length ? timeLimit(hedge(tries, SEARCH_GAP_MS), SEARCH_GEO_MS).catch((e) => { console.warn('address search failed', e); return null; }) : Promise.resolve(null);
+  if (lotP) {
+    // Whichever answers first. A lot is the answer. An address is shown at once, and the lot lookup, still going, can find
+    // the house there if it isn't among the lots around the point. A street or a town only: wait for the lot lookup.
+    const [which, v] = await Promise.race([lotP.then((x) => ['lot', x]), geoP.then((x) => ['geo', x])]);
+    if (which === 'lot' && v) return v;
+    if (which === 'geo' && v && v.kind === 'address') return { ...v, lot: lotP };
+    const hit = await lotP;
+    if (hit) return hit;
   }
+  const r = await geoP;
+  if (r) return r;
   const t = townP && await townP;
   return t ? { ...t, missed: !!(q.num || q.street) } : null;
 }
 // alts: ways to read what was typed, each { addr, town }. With a town, the same address in another town isn't a match.
 // Several rows: the one in the town exactly as typed first ("Palm Beach", not Palm Beach Gardens), then the nearest one.
-async function searchIn(region, alts, town, street) {
+// near ({ lat, lon, m }): only lots within m meters of that point, whatever town they're in, nearest first. A small circle
+// keeps it quick even in a state that can't search by address quickly.
+async function searchIn(region, alts, town, street, near) {
   await initService(region);
   const sv = SVC[region.id];
   const A = sv.canon.get('SITE_ADDR'), C = sv.canon.get('CITY');
@@ -1306,11 +1326,13 @@ async function searchIn(region, alts, town, street) {
   const T = inTown(town);
   const tries = [];
   if (street) { if (!T) return null; tries.push(`(UPPER(${A}) LIKE '% ${sqlq(street)}' OR UPPER(${A}) LIKE '% ${sqlq(street)} %')${T}`); }
-  else tries.push(alts.map((a) => `(UPPER(${A}) LIKE '${sqlq(a.addr)}%'${inTown(a.town)})`).join(' OR '));
-  const towns = new Set((alts || []).map((a) => cityUp(a.town)).filter(Boolean)), ref = refPoint();
+  else tries.push(alts.map((a) => `(UPPER(${A}) LIKE '${sqlq(a.addr)}%'${near ? '' : inTown(a.town)})`).join(' OR '));
+  const towns = new Set(near ? [] : (alts || []).map((a) => cityUp(a.town)).filter(Boolean)), ref = near || refPoint();
   for (const where of tries) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '10', f: 'json' });
-    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, SEARCH_LOT_MS);
+    if (near) for (const [k, v] of Object.entries({ geometry: `${near.lon.toFixed(6)},${near.lat.toFixed(6)}`, geometryType: 'esriGeometryPoint', inSR: '4326',
+      spatialRel: 'esriSpatialRelIntersects', distance: String(near.m), units: 'esriSRUnit_Meter' })) params.set(k, v);
+    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, near ? NEAR_LOT_MS : SEARCH_LOT_MS);
     const ps = buildParcels(j.features || [], region.id);
     if (ps.length) {
       const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
@@ -1441,7 +1463,19 @@ function lotForAddress(lat, lon, addrText) {
   const re = new RegExp(`^${reEsc(q.num)}\\b.*\\b${reEsc(word)}\\b`);
   const has = (l) => l.p.records.some((r) => re.test(cleanUp(String(r.SITE_ADDR || ''))));
   const [x, y] = S.proj.fwd(lat, lon), d = (l) => Math.hypot(l.c[0] - x, l.c[1] - y);
-  return S.local.filter((l) => has(l) && d(l) < 80).sort((a, b) => d(a) - d(b))[0] || null;
+  return S.local.filter((l) => has(l) && d(l) < ADDR_MATCH_M).sort((a, b) => d(a) - d(b))[0] || null;
+}
+// Not among the lots around the geocoded point (the Census can be a few hundred meters off on a long street): ask the
+// state for that address in a circle around the point. texts: what was typed and what the geocoder matched.
+async function lotNear(lat, lon, texts) {
+  const region = !DEMO && regionFor(lat, lon); if (!region) return null;
+  const seen = new Set(), alts = [];
+  for (const t of texts) {
+    const q = parseQuery(t || ''); if (!q || !q.num) continue;
+    for (const rd of q.readings) if (rd.street) for (const n of [q.num, q.numFull].filter(Boolean)) for (const addr of addrForms(n, rd.street)) if (!seen.has(addr)) { seen.add(addr); alts.push({ addr }); }
+  }
+  if (!alts.length) return null;
+  return timeLimit(searchIn(region, alts, null, null, { lat, lon, m: NEAR_LOT_M }), NEAR_LOT_MS).catch((e) => { console.warn('nearby lot search failed', e); return null; });
 }
 
 /* =========================================================================
@@ -3623,7 +3657,13 @@ $('#search').addEventListener('submit', async (e) => {
       S.map.R = 70; closeSheet(); await go(r.lat, r.lon);
       if (stale()) return;
       const L = lotForAddress(r.lat, r.lon, r.name) || lotForAddress(r.lat, r.lon, text);
-      if (L) selectLot(L); else help(`Here’s ${r.name}. Tap the house to see its story.`);
+      if (L) { selectLot(L); return; }
+      // Not among the lots around the point: the state lookup may still be going, or the state's records near the point have it.
+      help(`Finding ${r.name}…`);
+      const hit = (r.lot && await r.lot) || (!stale() && await lotNear(r.lat, r.lon, [text, r.name]));
+      if (stale()) return;
+      if (hit) { await go(hit.lat, hit.lon, hit.key); if (stale() || S.map.selectedKey) return; }
+      help(`Here’s ${r.name}. Tap the house to see its story.`);
       return;
     }
     // A street or a whole town: show the area, pick nothing, and say what to do next.
@@ -3969,7 +4009,7 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

@@ -91,7 +91,7 @@ const newPage = async (errors, w = 390, h = 844) => {
 
 /* C. Massachusetts with fake services: roofs beat lawns, MassGIS photos, FY note */
 {
-  const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+  const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
   const BLD = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0';
   const FIELDS = ['OBJECTID', 'LOC_ID', 'POLY_TYPE', 'SITE_ADDR', 'CITY', 'TOWN_ID', 'FY', 'TOTAL_VAL', 'LS_DATE', 'LS_PRICE', 'USE_CODE', 'YEAR_BUILT', 'RES_AREA', 'UNITS'];
   const lat0 = 42.3, lon0 = -71.2, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;

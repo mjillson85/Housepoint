@@ -9,7 +9,7 @@ const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'te
 const ORIGIN = 'http://localhost:8773';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const CT_SVC = 'https://services3.arcgis.com/3FL1kr7L4LvwA2Kb/arcgis/rest/services/Connecticut_CAMA_and_Parcel_Layer/FeatureServer/0';
-const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 // The real layer's field names (2023 layer schema plus the newer zip / acres fields).
 const CT_FIELDS = ['OBJECTID', 'Town_Name', 'Link', 'Owner', 'Co_Owner', 'Location', 'Property_Zip', 'Mailing_Address', 'Mailing_City', 'Mailing_State', 'Mailing_Zip',
   'Assessed_Total', 'Assessed_Land', 'Assessed_Building', 'Pre_Year_Assessed_Total', 'Appraised_Land', 'Appraised_Building', 'Appraised_Outbuilding',

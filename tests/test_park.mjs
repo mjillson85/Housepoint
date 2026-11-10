@@ -8,7 +8,7 @@ const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8771);
 const ORIGIN = 'http://localhost:8771';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 const FIELDS = ['OBJECTID', 'LOC_ID', 'POLY_TYPE', 'SITE_ADDR', 'CITY', 'TOWN_ID', 'FY', 'TOTAL_VAL', 'LAND_VAL', 'LS_DATE', 'LS_PRICE', 'USE_CODE', 'YEAR_BUILT', 'RES_AREA', 'STYLE', 'STORIES', 'NUM_ROOMS', 'UNITS'];
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 const lat0 = 42.12, lon0 = -71.3, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;

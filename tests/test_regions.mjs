@@ -8,7 +8,7 @@ const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'te
 const ORIGIN = 'http://localhost:8765';
 
 const FL_SVC = 'https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer';
-const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 const FL_FIELDS = ['OBJECTID','CO_NO','PARCEL_ID','MULTI_PAR_SAL1','ASMNT_YR','DOR_UC','JV','LND_VAL','SALE_PRC1','SALE_YR1','SALE_MO1','ACT_YR_BLT','EFF_YR_BLT','TOT_LVG_AREA','NO_RES_UNTS','NO_BULDNG','PHY_ADDR1','PHY_CITY','PHY_ZIPCD','OWN_NAME','OWN_ADDR1','OWN_CITY'];
 const MA_FIELDS = ['OBJECTID','LOC_ID','POLY_TYPE','SITE_ADDR','CITY','FY','TOTAL_VAL','LAND_VAL','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','RES_AREA','STYLE','STORIES','NUM_ROOMS','UNITS','OWNER1','OWN_ADDR'];
 const seen = { flQueryBodies: [], maQueryBodies: [], itemLookups: 0 };

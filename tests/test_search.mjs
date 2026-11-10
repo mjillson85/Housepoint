@@ -11,7 +11,7 @@ const ORIGIN = 'http://localhost:8783';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 
-const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer';
+const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 const CT_SVC = 'https://services3.arcgis.com/3FL1kr7L4LvwA2Kb/arcgis/rest/services/Connecticut_CAMA_and_Parcel_Layer/FeatureServer/0';
 const NJ_SVC = 'https://services2.arcgis.com/XVOqAjTOJ5P6ngMu/arcgis/rest/services/Parcels_Composite_NJ_WM/FeatureServer/0';
 const FL_SVC = 'https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer';
@@ -31,13 +31,20 @@ for (let j = 0; j < 6; j++) {
   LOTS.push({ geometry: { rings: [ring(x0, 6, x0 + 20, 36)] }, attributes: { OBJECTID: 1 + j, LOC_ID: `E${10 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${10 + 2 * j} ELM ST`, CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 400000 + j, YEAR_BUILT: 1950 + j, RES_AREA: 1500, UNITS: 1, USE_CODE: '1010' } });
   LOTS.push({ geometry: { rings: [ring(x0, -36, x0 + 20, -6)] }, attributes: { OBJECTID: 20 + j, LOC_ID: `O${36 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${36 + 2 * j} OAK ST`, CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 500000 + j, YEAR_BUILT: 1960 + j, RES_AREA: 1700, UNITS: 1, USE_CODE: '1010' } });
 }
+// Mosesso Dr, east of the rest: the Census puts its points out at (20, 0), which is about 145 m from number 6 and 320 m from
+// number 8, as it can on a long street.
+LOTS.push({ geometry: { rings: [ring(140, 50, 160, 80)] }, attributes: { OBJECTID: 40, LOC_ID: 'M6', POLY_TYPE: 'FEE', SITE_ADDR: '6 MOSESSO DR', CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 600000, YEAR_BUILT: 1990, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
+LOTS.push({ geometry: { rings: [ring(330, -10, 350, 20)] }, attributes: { OBJECTID: 41, LOC_ID: 'M8', POLY_TYPE: 'FEE', SITE_ADDR: '8 MOSESSO DR', CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 610000, YEAR_BUILT: 1991, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
+const MOS = ll(20, 0);
 const OAK40 = ll(-10, -2);          // the Census point for 40 Oak St: out on the street in front of the lot, as geocoders do
 const ELM14 = ll(-10, 20);          // inside 14 Elm St
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 await browser.defaultBrowserContext().overridePermissions(ORIGIN, ['geolocation']);
-const seen = { census: [], geo: [], tiger: [], where: [], other: [] };
-const hang = { ma: false, census: false, geo: false };
+const seen = { census: [], geo: [], tiger: [], where: [], near: [], other: [] };
+// ma: the Massachusetts service never answers a search. maAddr: it never answers one by address alone (the real one doesn't
+// index addresses), but a search in a circle around a point is fine.
+const hang = { ma: false, maAddr: false, census: false, geo: false };
 const NJ_LOT = (addr, town, lat, lon) => ({ attributes: { OBJECTID: 900, PROP_LOC: addr, MUN_NAME: town, PROP_CLASS: '2', NET_VALUE: 300000 },
   geometry: { rings: [[[lon - 0.0001, lat - 0.0001], [lon + 0.0001, lat - 0.0001], [lon + 0.0001, lat + 0.0001], [lon - 0.0001, lat + 0.0001], [lon - 0.0001, lat - 0.0001]]] } });
 const MA_LOT = (addr, town, lat, lon) => ({ attributes: { OBJECTID: 901, LOC_ID: 'CLINTON12', POLY_TYPE: 'FEE', SITE_ADDR: addr, CITY: town, FY: 2026, TOTAL_VAL: 1 },
@@ -59,9 +66,15 @@ async function newPage(url) {
     if (u.startsWith(MA_SVC + '?f=json')) return json({ layers: [{ id: 0, geometryType: 'esriGeometryPolygon' }] });
     if (u.startsWith(MA_SVC + '/0?f=json')) return json({ objectIdField: 'OBJECTID', maxRecordCount: 2000, fields: MA_FIELDS.map((name) => ({ name })) });
     if (u.startsWith(MA_SVC + '/0/query')) {
+      if (q.get('where') && q.get('geometry')) {                     // an address in a circle around a point
+        const w = q.get('where'); seen.near.push({ w, g: q.get('geometry'), d: q.get('distance'), units: q.get('units') });
+        if (hang.ma) return;
+        if (/LIKE '8 MOSESSO DR%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '8 MOSESSO DR') });
+        return json({ features: [] });
+      }
       if (q.get('where')) {
         const w = q.get('where'); seen.where.push(w);
-        if (hang.ma) return;                                         // never answers
+        if (hang.ma || hang.maAddr) return;                          // never answers
         if (/LIKE '12 ELM ST%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '12 ELM ST') });
         if (/LIKE '36 OAK ST%' AND UPPER\(CITY\) LIKE 'HOLBROOK%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '36 OAK ST') });
         if (/LIKE '12 MAIN ST%' AND UPPER\(CITY\) LIKE 'CLINTON%'/.test(w)) return json({ features: [MA_LOT('12 MAIN ST', 'CLINTON', 42.418, -71.683)] });   // the typo guess's lot
@@ -89,6 +102,7 @@ async function newPage(url) {
       if (hang.census) return;
       if (q.get('format') !== 'jsonp' || q.get('benchmark') !== 'Public_AR_Current') return script(cb, { errors: ['bad request'] });
       if (/40 Oak/i.test(a) && !/Holbrok\b/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '40 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: OAK40.lon, y: OAK40.lat } }] } });
+      if (/^[68] Mosesso Dr/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: `${a[0]} MOSESSO DR, HOLBROOK, MA, 02343`, coordinates: { x: MOS.lon, y: MOS.lat } }] } });
       if (/14 Elm/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '14 ELM ST, HOLBROOK, MA, 02343', coordinates: { x: ELM14.lon, y: ELM14.lat } }] } });
       if (/100 Warren St, Roxbury, MA$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '100 WARREN ST, ROXBURY, MA, 02119', coordinates: { x: -71.0832, y: 42.3266 } }] } });
       if (/12 Oak St/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '12 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: ll(-30, 3).lon, y: ll(-30, 3).lat } }] } });   // in front of 12 ELM ST
@@ -146,7 +160,7 @@ async function search(page, text, wait = 15000) {
   let h = '';
   while (Date.now() - t0 < wait) {
     h = await help(page);
-    if (h && !/^(Searching…|Loading properties…)$/.test(h)) break;
+    if (h && !/^(Searching…|Loading properties…|Finding .*…)$/.test(h)) break;
     await sleep(100);
   }
   await sleep(300);
@@ -200,7 +214,7 @@ reset();
 let r = await search(page, '12 Elm Street, Holbrook, MA');
 console.log('lot:', JSON.stringify(r), '| where:', seen.where.join(' || '));
 check(r.selected === 'E12' && r.open && /12 Elm St/i.test(r.card), 'a parcel hit selects that lot');
-check(seen.where.length && seen.where.every((w) => /HOLBROOK/.test(w)) && !seen.census.length, 'typed state only: Massachusetts asked, with the town; no geocoder needed');
+check(seen.where.length && seen.where.every((w) => /HOLBROOK/.test(w)), 'typed state only: Massachusetts asked, with the town');
 
 // 2. Parcel miss -> Census geocoder -> the lot at that point (house number nearby wins over the street it landed on)
 reset();
@@ -274,16 +288,19 @@ reset(); hang.ma = true; hang.census = true;
 r = await search(page, '99 Nowhere Rd, Holbrook', 20000);
 console.log('slow:', JSON.stringify({ help: r.help, ms: r.ms }));
 check(r.ms < 11000 && /^Couldn’t find that address, so here’s Holbrook, MA\. Tap a house\.$/.test(r.help), `parcel service and Census both hang: town shown after ${r.ms} ms`);
+check(await page.evaluate(() => !!window.__hp.SVC.MA.addrSlow), 'a state that ran out of time is marked as slow to search by address');
 hang.ma = false;
 r = await search(page, '99 Nowhere Rd', 20000);
 check(r.ms < 11000 && /^No match/.test(r.help), `Census hangs, no town typed: no match after ${r.ms} ms`);
 hang.census = false;
+const unslow = () => page.evaluate(() => { for (const v of Object.values(window.__hp.SVC)) delete v.addrSlow; });
+await unslow();
 
 // 8b. The lot lookup reads the text more than one way
 reset();
 r = await search(page, '36 oak street holbrook');
 console.log('no comma:', seen.where.slice(0, 1).join(''));
-check(r.selected === 'O36' && !seen.census.length && seen.where.some((w) => /LIKE '36 OAK ST%' AND UPPER\(CITY\) LIKE 'HOLBROOK%'/.test(w) && /LIKE '36 OAK STREET HOLBROOK%'/.test(w)), 'no comma: lot found, asking both ways in one request');
+check(r.selected === 'O36' && seen.where.some((w) => /LIKE '36 OAK ST%' AND UPPER\(CITY\) LIKE 'HOLBROOK%'/.test(w) && /LIKE '36 OAK STREET HOLBROOK%'/.test(w)), 'no comma: lot found, asking both ways in one request');
 reset();
 r = await search(page, '36 Oak St, Holbrok');
 check(r.selected === 'O36' && seen.where.some((w) => /'HOLBROK%'/.test(w) && !/'HOLBROOK%'/.test(w)) && seen.where.some((w) => /'HOLBROOK%'/.test(w) && !/'HOLBROK%'/.test(w)),
@@ -321,7 +338,7 @@ check(seen.where.some((w) => /'12 ELM ST%'/.test(w) && /'12-14 ELM ST%'/.test(w)
 reset();
 await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
 r = await search(page, '12 Main St, Clifton');
-check(near(r.center, { lat: 40.863, lon: -74.1576 }, 100) && !seen.census.length, `the town as typed wins: 12 Main St in Clifton, NJ, not Clinton, MA (${JSON.stringify(r.center)})`);
+check(near(r.center, { lat: 40.863, lon: -74.1576 }, 100), `the town as typed wins: 12 Main St in Clifton, NJ, not Clinton, MA (${JSON.stringify(r.center)})`);
 // Roxbury is a Connecticut town and a Boston neighborhood: with the map in Boston, the Census is asked for both, Boston wins
 reset();
 await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.33, lon: -71.08 }; });
@@ -352,6 +369,28 @@ r = await search(page, '77 Elm St, Nowhere', 20000);
 await sleep(2500);
 check(!page.errors.length, 'a late answer after giving up causes no error ' + page.errors.join('; '));
 hang.census = false;
+
+// 8d. A state that can't search by address in time (Massachusetts and Florida don't index addresses): the Census answers
+//     meanwhile, and the house is found around its point, even a few hundred meters off
+reset(); hang.maAddr = true;
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
+r = await search(page, '6 Mosesso Drive, Holbrook');
+console.log('mosesso 6:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| census:', seen.census.join(' || '));
+check(r.selected === 'M6' && r.open && /6 Mosesso Dr/i.test(r.card) && r.ms < 4000, `the state is still searching: the Census point finds the house 145 m away (${r.ms} ms)`);
+await sleep(4500);
+check(await page.evaluate(() => !!window.__hp.SVC.MA.addrSlow), 'then the state runs out of time and is marked as slow');
+reset();
+r = await search(page, '8 Mosesso Dr, Holbrook', 20000);
+console.log('mosesso 8:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| near:', JSON.stringify(seen.near));
+check(!seen.where.some((w) => /SITE_ADDR\) LIKE '8 MOSESSO/.test(w)) && seen.where.some((w) => /MOSESSO/.test(w)), 'a state marked slow isn’t asked by address again (the others still are)');
+const nq = seen.near[0] || { g: '0,0' }, [nlon, nlat] = nq.g.split(',').map(Number);
+check(seen.near.length === 1 && nq.d === '400' && nq.units === 'esriSRUnit_Meter' && near({ lat: nlat, lon: nlon }, MOS, 5) && /'8 MOSESSO DR%'/.test(nq.w) && !/CITY/.test(nq.w),
+  'the house isn’t among the lots around the point: the state is asked for it within 400 m of the point, any town');
+check(r.selected === 'M8' && r.open && /8 Mosesso Dr/i.test(r.card), 'and that finds the house 320 m away');
+reset();
+r = await search(page, '12 Oak St, Holbrook');
+check(!r.selected && seen.near.length === 1 && /^Here’s 12 Oak St, Holbrook\. Tap the house to see its story\.$/.test(r.help), 'nothing there either: “tap the house”, as before');
+hang.maAddr = false; await unslow();
 
 // 9. With a Geoapify key: it leads for towns and streets; for a house number the Census leads and Geoapify backs it up
 await page.evaluate(() => { window.__hp.KEYS.geoapify = 'TESTKEY'; window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
@@ -396,14 +435,14 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
   check(m0 === 'map' && near(c.map, H, 100) && near(c.data, H, 400), `on the map, a new GPS fix leaves the searched place’s lots alone (${JSON.stringify(c)})`);
   // A slow search doesn't yank the map back after you've gone somewhere else
   await gp.evaluate(() => { if (document.querySelector('#sheet').classList.contains('open')) document.querySelector('.grab').click(); }); await sleep(400);
-  reset(); hang.ma = true;
+  reset(); hang.ma = true; hang.census = true;          // both slow: the Census no longer waits for the state
   await gp.evaluate(() => { document.querySelector('#q').value = '40 Oak St, Holbrook'; document.querySelector('#search').requestSubmit(); });
   await sleep(400);
   await gp.evaluate(() => window.__hp.centerMap(41.95, -71.3));   // what a sample spot or "Near me" does
   await sleep(7500);
   const m = await gp.evaluate(() => ({ c: window.__hp.S.map.center, open: document.querySelector('#sheet').classList.contains('open') }));
   check(near(m.c, { lat: 41.95, lon: -71.3 }, 50) && !m.open, `a slow search doesn’t move the map after you went elsewhere (${JSON.stringify(m.c)})`);
-  hang.ma = false;
+  hang.ma = false; hang.census = false;
   check(!gp.errors.length, 'no page errors (GPS on the map) ' + gp.errors.join('; '));
   await gp.close();
 }
