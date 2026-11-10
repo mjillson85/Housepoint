@@ -1462,7 +1462,9 @@ async function searchIn(region, alts, town, street, near) {
   const sv = SVC[region.id];
   const A = sv.canon.get('SITE_ADDR'), A2 = sv.canon.get('SITE_ADDR2'), C = sv.canon.get('CITY');
   if (!A) return null;
-  const like = (pat) => { const xs = [A, A2].filter(Boolean).map((f) => `UPPER(${f}) LIKE '${pat}'`); return xs.length > 1 ? `(${xs.join(' OR ')})` : xs[0]; };   // Connecticut: either copy
+  // Connecticut keeps a second copy of the address (Location_1), filled where the first is blank. It isn't indexed, so it's only
+  // searched in a small circle around a point; a statewide search on it never finishes.
+  const like = (pat) => { const xs = (near ? [A, A2] : [A]).filter(Boolean).map((f) => `UPPER(${f}) LIKE '${pat}'`); return xs.length > 1 ? `(${xs.join(' OR ')})` : xs[0]; };
   const cityUp = (t) => String(t || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
   const inTown = (t) => (t && C ? ` AND UPPER(${C}) LIKE '${sqlq(cityUp(t))}%'` : '');
   const T = inTown(town);
@@ -1885,7 +1887,8 @@ function summarize(p) {
   const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))
     : region.id === 'FL' ? parseInt(dig || 'x', 10) === 28 && sites >= 3
     : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))) : false);
-  const use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
+  let use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
+  if (lot.kinds[lot.main] === 'vacant' && /^(Commercial|Industrial)$/.test(use || '')) use = `Vacant ${use.toLowerCase()} land`;   // 3939: land, not a store
   const kind = park ? 'park' : lot.kind;
   const BUILDING_LABEL = { resCondo: 'Condo building', comCondo: 'Commercial condo building', mixedCondo: 'Condo building · homes and businesses' };
   return { r0, recs, year, sales, vals, addr, town, units: lot.condo ? unitRecs.length : unitsListed, condo: lot.condo,
