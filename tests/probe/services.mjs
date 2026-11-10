@@ -46,4 +46,32 @@ for (const [name, lat, lon] of [['Dedham Square', 42.2493, -71.1752], ['Holbrook
   }, lat, lon);
   for (const [k, v] of Object.entries(r)) log(`  ${k}: ${JSON.stringify(v).slice(0, 400)}`);
 }
+// 3. The school query, taken apart: which part does the service refuse?
+const variants = await page.evaluate(async () => {
+  const layer = 'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer/1';
+  const meta = await (await fetch(layer + '?f=json')).json();
+  const names = (meta.fields || []).map((f) => f.name);
+  const want = ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT', 'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'];
+  const up = new Map(names.map((n) => [n.toUpperCase(), n])), have = want.map((n) => up.get(n)).filter(Boolean);
+  const base = { geometry: '-71.1752,42.2493', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json' };
+  const tries = {
+    app: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400', distance: '6500', units: 'esriSRUnit_Meter' },
+    noRecordCount: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', distance: '6500', units: 'esriSRUnit_Meter' },
+    noOutSR: { ...base, outFields: have.join(','), returnGeometry: 'true', resultRecordCount: '400', distance: '6500', units: 'esriSRUnit_Meter' },
+    star: { ...base, outFields: '*', returnGeometry: 'false', distance: '6500', units: 'esriSRUnit_Meter' },
+    smallDistance: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400', distance: '2000', units: 'esriSRUnit_Meter' },
+    envelope: { geometry: '-71.25,42.19,-71.10,42.30', geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' },
+    where: { where: "LSTATE = 'MA'", outFields: 'SCH_NAME', returnGeometry: 'false', resultRecordCount: '3', f: 'json' },
+  };
+  const out = { fields: names.join(','), maxRecordCount: meta.maxRecordCount, capabilities: meta.capabilities, adv: meta.advancedQueryCapabilities, missing: want.filter((n) => !up.has(n)) };
+  for (const [k, q] of Object.entries(tries)) {
+    const t0 = performance.now();
+    try { const j = await (await fetch(layer + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(q).toString() })).json();
+      out[k] = { ms: Math.round(performance.now() - t0), n: j.features ? j.features.length : null, err: j.error ? JSON.stringify(j.error).slice(0, 300) : null }; }
+    catch (e) { out[k] = { ms: Math.round(performance.now() - t0), fetchError: String(e) }; }
+  }
+  return out;
+});
+log('== the school query, taken apart');
+for (const [k, v] of Object.entries(variants)) log(`  ${k}: ${JSON.stringify(v).slice(0, 900)}`);
 await browser.close(); srv.close();
