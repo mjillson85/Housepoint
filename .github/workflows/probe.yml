@@ -1,4 +1,5 @@
-# Tries the services behind "Thinking of buying?" from a browser on GitHub and logs the answers (tests/probe/services.mjs).
+# Tries the services behind "Thinking of buying?" (tests/probe/services.mjs) and other states' parcel services
+# (tests/probe/states.mjs) from a browser on GitHub, and logs the answers.
 # Runs when the probe changes, or by hand from the Actions tab. Nothing is saved or committed.
 name: probe services
 on:
@@ -9,7 +10,7 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,3 +24,9 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/services.mjs
+      - name: Probe other states' parcel services
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/states.mjs
