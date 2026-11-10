@@ -11,7 +11,8 @@ Set `CHROME=/path/to/chrome` if Chrome isn't at `/usr/bin/google-chrome`. Run on
 
 | File | What it covers |
 |---|---|
-| test_inside | Aiming: the house under the circle wins over the lot you're standing on; floating tags for distant houses |
+| test_inside | Aiming: the house under the circle wins over the lot you're standing on; tags only on houses near and wide enough on screen; no blinking |
+| test_aim | Aiming with a real phone's error (GPS σ 5 m, compass σ 10°) from spots along the demo street: how often the house you meant comes first and within three "Not it" taps, by distance; the label holds steady while the compass jitters |
 | test_point, test_tags, test_label | Point mode, floating tags, the live label |
 | test_features, test_fixes | Card, map, flood zone, share, earlier bug fixes |
 | test_more | Monthly cost calculator, save & compare, nearby map |

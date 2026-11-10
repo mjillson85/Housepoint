@@ -59,7 +59,7 @@ await page.evaluate(() => { window.__wake.delay = 0; });
 const f = await page.evaluate(() => [3, 9, 30.5, 127, 160, 200, 400].map((m) => window.__hp.feet(m)));
 check(JSON.stringify(f) === JSON.stringify(['10 ft', '30 ft', '100 ft', '420 ft', '520 ft', '0.1 mi', '0.2 mi']), 'distances in feet, then miles: ' + f.join(', '));
 await page.click('#mapToPoint'); await sleep(500);
-await page.evaluate(() => { window.__hp.S.beta = 90; window.__hp.setHeading(90); }); await sleep(900);
+await page.evaluate(() => { window.__hp.S.beta = 90; window.__hp.setHeading(0); }); await sleep(900);   // at the house across the lawn
 const live = await page.$eval('#liveLabel', (el) => el.innerText);
 const gps = await page.$eval('#gpsTxt', (el) => el.textContent);
 check(/\d+ ft away/.test(live) && !/\d m away/.test(live), 'the label says how far in feet: ' + live.replace(/\n/g, ' | '));

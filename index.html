@@ -121,6 +121,7 @@
   #liveLabel .a { font-family: var(--serif); font-weight: 700; font-size: 17px; line-height: 1.2; }
   #liveLabel .b { font-size: 12.5px; color: var(--mute); margin-top: 2px; }
   #liveLabel.dim { opacity: 0; pointer-events: none; }
+  #liveLabel.idle { opacity: .72; pointer-events: none; } #liveLabel.idle .c { display: none; }   /* nothing clear in the aim: say so, quietly */
   #liveLabel .c { font-size: 12px; font-weight: 600; color: var(--brick); margin-top: 4px; }
   #hint { position: fixed; left: 50%; top: calc(44% + 60px); transform: translateX(-50%); z-index: 6; pointer-events: none; font-size: 13.5px;
     color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); text-align: center; width: 86vw; }
@@ -494,11 +495,14 @@ const PRIMARY_SERVICE = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/re
 const MASSGIS_ORG = 'hGdibHYSPO59RG1h';
 const DECLINATION = -14.2;      // magnetic declination for Massachusetts (degrees, west is negative)
 const QUERY_RADIUS = 220;       // meters of parcels to load around you
-const MAX_RANGE = 170;          // farthest house we'll target, meters
+// Farthest house picked, meters. Past this a typical phone (GPS ±5 m, compass ±10°) puts the aim line a house or more off, so a
+// pick would be a guess (Fable's review, November 2026: right about 6 times in 10 at 60 m, 4 in 10 at 100 m).
+const MAX_RANGE = 80;
 const MIN_RANGE = 2;
-const INSIDE_YIELD_M = 60;      // no roof outline for the lot you're on: a house squarely in the circle within this many meters wins anyway
-const INSIDE_FIRST_M = 12;      // standing on a lot and pointing across >= this many meters of it? then it's probably the one you mean
-const CONE = [[-11, .4], [-5.5, .8], [0, 1], [5.5, .8], [11, .4]]; // ray offsets (deg) and weights
+const INSIDE_YIELD_M = 60;      // on a lot with no roof outline on file: a house within this far along the aim is the one you mean
+const INSIDE_FIRST_M = 12;      // on a lot with no roof outline on file, aiming across >= this much of it: probably this lot
+const LIVE_MIN_P = 0.12, LIVE_SWITCH = 0.12;   // the live label: least chance worth showing, and how much more likely a rival must be to take over
+const SHED_M2 = 25;             // roofs smaller than this (sheds, small garages) don't block the view or count as the house
 
 
 // Aerial photos. Massachusetts: MassGIS's own spring 2025 photos (15 cm per pixel, taken before the leaves come in), served as
@@ -511,6 +515,7 @@ const NAIP = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/
 const IMG_CREDIT = { MA: 'Imagery: MassGIS 2025', NAIP: 'Imagery: USGS NAIP' };
 
 const qs = new URLSearchParams(location.search);
+let AIM_WIDTH_POW = qs.has('aimpow') ? parseFloat(qs.get('aimpow')) : 0.25;  // how much a house's on-screen width is discounted (see findCandidates; 0.25 measured best in tests/test_aim.mjs)
 const DEMO = qs.has('demo');
 const DEBUG = qs.has('debug');
 const DECL_OVERRIDE = qs.has('decl') ? parseFloat(qs.get('decl')) : NaN;   // e.g. ?decl=0 if a phone already reports true north
@@ -1740,7 +1745,7 @@ function setData(parcels, lat, lon) {
 async function ensureData(lat, lon, force = false) {
   if (!force && S.center && S.proj) {
     const [x, y] = S.proj.fwd(lat, lon);
-    if (Math.hypot(x, y) < QUERY_RADIUS - MAX_RANGE + 40) return;
+    if (Math.hypot(x, y) < QUERY_RADIUS - MAX_RANGE - 20) return;      // still the whole aim range (and a margin) of lots ahead
   }
   // A load already running is reused, unless this one must happen (the map moved somewhere else): then it waits its turn.
   while (S.loading) { if (!force) return S.loading; await S.loading.catch(() => {}); }
@@ -1834,65 +1839,115 @@ function setBuildings(list) {
   for (const L of S.local) L.badges = null;
   if (S.mode === 'map') drawMap();
 }
-// Everything a ray reaches, nearest first, one entry per lot: [t, lot, building or null].
-function rayHits(ox, oy, dx, dy, exclude, maxT = MAX_RANGE) {
-  const hits = [];
-  for (const b of S.bldgs) {
-    if (!b.L.p.built || exclude.has(b.L) || rayBoxT(ox, oy, dx, dy, b.bb, maxT) < 0) continue;
-    const t = rayEntry(ox, oy, dx, dy, b.rings, maxT);
-    if (t !== null && t >= MIN_RANGE) hits.push([t, b.L, b]);
-  }
-  for (const L of S.local) {
-    if (!L.p.built || L.hasBldg || exclude.has(L) || (L.bb && rayBoxT(ox, oy, dx, dy, L.bb, maxT) < 0)) continue;
-    const t = rayEntry(ox, oy, dx, dy, L.rings, maxT);
-    if (t !== null && t >= MIN_RANGE) hits.push([t, L, null]);
-  }
-  hits.sort((a, b) => a[0] - b[0]);
-  const seen = new Set();
-  return hits.filter((h) => !seen.has(h[1]) && seen.add(h[1]));
-}
-
 /* =========================================================================
-   Targeting: which lot is the phone pointing at?
+   Targeting: which house is the phone pointing at?
+   Your position and heading are both a little off: GPS by about its reported accuracy, the compass by its own (iPhones say how
+   much; elsewhere about 10°). So the line you're aiming along could be any of a spread of lines. Rays are cast across that
+   spread, from spots around your position and at angles around your heading, each weighted by how likely it is (a bell curve).
+   Each house scores the weight of the rays that reach it first; its share of all the rays is the chance it's the one you mean.
+   The lot you're standing on competes the same way: from the spots on it, a ray that reaches its own roof means that house.
    ========================================================================= */
-function findCandidates(lat, lon, heading) {
+function aimSigma() {             // one standard deviation of position (m) and heading (degrees)
+  const ca = S.compassAcc;
+  return { sp: clamp((S.acc == null ? 10 : S.acc) * 0.7, 2, 20), sc: ca == null ? 10 : ca < 0 ? 30 : clamp(ca, 4, 30) };
+}
+const AIM_ALONG = [[-1, .25], [0, .5], [1, .25]];                                  // spots in front of and behind you (in σ)
+const AIM_ACROSS = [[-1.6, .278], [-.8, .726], [0, 1], [.8, .726], [1.6, .278]];   // spots to each side (in σ)
+const AIM_ANGLES = Array.from({ length: 11 }, (_, i) => { const k = (i - 5) * .5; return [k, Math.exp(-k * k / 2)]; });   // −2.5σ…+2.5σ
+const boxDist = (b, x, y) => Math.hypot(Math.max(b.minx - x, 0, x - b.maxx), Math.max(b.miny - y, 0, y - b.maxy));
+const inBox = (b, x, y) => x >= b.minx && x <= b.maxx && y >= b.miny && y <= b.maxy;
+// Distance from a point to a shape's edge (0 inside it).
+function ringsDist(x, y, rings) {
+  if (pointInRings(x, y, rings)) return 0;
+  let best = Infinity;
+  for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [ax, ay] = r[j], [bx, by] = r[i], vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
+    const t = l2 ? clamp(((x - ax) * vx + (y - ay) * vy) / l2, 0, 1) : 0;
+    best = Math.min(best, Math.hypot(ax + t * vx - x, ay + t * vy - y));
+  }
+  return best;
+}
+// The house on a lot: its biggest roof, or the lot itself with no outline on file. One distance for the whole app: to its edge.
+function houseShape(L) {
+  let roof = null;
+  for (const b of S.bldgs) if (b.L === L && (!roof || b.area > roof.area)) roof = b;
+  return roof && roof.area >= SHED_M2 ? { rings: roof.rings, c: roof.c } : { rings: L.rings, c: L.c };
+}
+function houseAt(L, ox, oy) {
+  const h = houseShape(L);
+  return { dist: ringsDist(ox, oy, h.rings), bearing: norm(Math.atan2(h.c[0] - ox, h.c[1] - oy) * 180 / Math.PI) };
+}
+// The lot a spot is on (the smallest, where lots overlap, as condo complexes do).
+function lotHere(x, y) {
+  let best = null, bestA = Infinity;
+  for (const L of S.local) { if (!L.p.built || !L.bb || !inBox(L.bb, x, y) || !pointInRings(x, y, L.rings)) continue; const a = lotSqft(L); if (a < bestA) { bestA = a; best = L; } }
+  return best;
+}
+// The first house a ray from (sx, sy) reaches. Roofs you're standing under don't count (indoors, or GPS a few meters off).
+function aimFirstHit(sx, sy, dx, dy, roofs, bare, under, here, range) {
+  let bt = range, best = null;
+  for (const b of roofs) {
+    if (under.has(b)) continue;
+    const tb = rayBoxT(sx, sy, dx, dy, b.bb, bt); if (tb < 0) continue;
+    const t = rayEntry(sx, sy, dx, dy, b.rings, bt); if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = b.L; }
+  }
+  for (const L of bare) {                                       // lots with no roof outline on file
+    if (L === here) continue;
+    const tb = rayBoxT(sx, sy, dx, dy, L.bb, bt); if (tb < 0) continue;
+    const t = rayEntry(sx, sy, dx, dy, L.rings, bt); if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; }
+  }
+  // On a lot with no outline on file: aiming a good way across it, with no house close beyond, means this lot.
+  if (here && !here.hasBldg) {
+    const exitT = rayEntry(sx, sy, dx, dy, here.rings, range);
+    if ((exitT === null ? range : exitT) >= INSIDE_FIRST_M && (!best || bt > INSIDE_YIELD_M)) return here;
+  }
+  return best;
+}
+// The houses you might be pointing at, most likely first: { L, p (0–1), dist (m, to the house's edge), bearing, onLot (0–1),
+// inside (you're probably standing on it) }.
+function findCandidates(lat, lon, heading, sig = aimSigma(), range = MAX_RANGE) {
   if (!S.proj) return [];
   const [ox, oy] = S.proj.fwd(lat, lon);
-  // Lots you're standing on (condo complexes are one big lot; GPS error can also drop you in the front yard you're aiming at).
-  const inside = S.local.filter((L) => L.p.built && pointInRings(ox, oy, L.rings));
-  const insideSet = new Set(inside);
-  const scores = new Map();
-  for (const [off, w] of CONE) {
-    const h = rad(heading + off), dx = Math.sin(h), dy = Math.cos(h);
-    const hits = rayHits(ox, oy, dx, dy, insideSet);
-    hits.slice(0, 2).forEach(([t, L], i) => {
-      const s = scores.get(L.p.key) || { L, score: 0, dist: Infinity, center: false };
-      s.score += w * (i === 0 ? 1 : .22);
-      s.dist = Math.min(s.dist, t);
-      if (off === 0 && i === 0) s.center = true;
-      scores.set(L.p.key, s);
-    });
-  }
-  const list = [...scores.values()].sort((a, b) => (b.center - a.center) || (b.score - a.score) || (a.dist - b.dist));
-  // If you're pointing across a good stretch of the lot you're on, that lot is most likely the one you mean.
-  // Otherwise keep it as a fallback you can reach with "Not it".
-  const h0 = rad(heading), dx0 = Math.sin(h0), dy0 = Math.cos(h0);
-  for (const L of inside) {
-    const exitT = rayEntry(ox, oy, dx0, dy0, L.rings, MAX_RANGE);
-    const across = exitT === null ? MAX_RANGE : exitT;
-    // Is the circle on one of this lot's own roofs? (Aiming past your own house means you want the one beyond it.)
-    let roofT = null;
-    for (const b of S.bldgs) {
-      if (b.L !== L || rayBoxT(ox, oy, dx0, dy0, b.bb, across) < 0) continue;
-      const t = rayEntry(ox, oy, dx0, dy0, b.rings, across); if (t !== null && (roofT === null || t < roofT)) roofT = t;
+  const reach = range + 3 * sig.sp + 5;
+  const roofs = S.bldgs.filter((b) => b.L.p.built && b.area >= SHED_M2 && boxDist(b.bb, ox, oy) < reach);
+  const bare = S.local.filter((L) => L.p.built && !L.hasBldg && L.bb && boxDist(L.bb, ox, oy) < reach);
+  const ux = Math.sin(rad(heading)), uy = Math.cos(rad(heading)), px = uy, py = -ux;
+  const score = new Map(), onLot = new Map();
+  let total = 0, oTotal = 0;
+  for (const [va, wa] of AIM_ALONG) for (const [ua, wu] of AIM_ACROSS) {
+    const sx = ox + (ux * va + px * ua) * sig.sp, sy = oy + (uy * va + py * ua) * sig.sp, wo = wa * wu;
+    const here = lotHere(sx, sy);
+    oTotal += wo; if (here) onLot.set(here, (onLot.get(here) || 0) + wo);
+    const under = new Set(roofs.filter((b) => inBox(b.bb, sx, sy) && pointInRings(sx, sy, b.rings)));
+    for (const [ka, wk] of AIM_ANGLES) {
+      const w = wo * wk, h = rad(heading + ka * sig.sc); total += w;
+      const L = aimFirstHit(sx, sy, Math.sin(h), Math.cos(h), roofs, bare, under, here, range);
+      if (L) score.set(L, (score.get(L) || 0) + w);
     }
-    const other = list[0];
-    const aimingHere = roofT !== null
-      || (!L.hasBldg && across >= INSIDE_FIRST_M && !(other && other.center && other.dist <= INSIDE_YIELD_M));   // no outline on file: fall back to the old rule unless a house sits squarely in the circle
-    const s = { L, score: 1, dist: roofT == null ? 0 : roofT, center: true, inside: true, across };
-    if (aimingHere) list.unshift(s); else list.splice(Math.min(2, list.length), 0, s);   // keep it within the first few "Not it" taps
   }
-  return list.map((s) => ({ ...s, bearing: norm(Math.atan2(s.L.c[0] - ox, s.L.c[1] - oy) * 180 / Math.PI), cdist: Math.hypot(s.L.c[0] - ox, s.L.c[1] - oy) }));
+  // People aim at a house, near or far, not at a random spot on the screen; a near house filling half the view would otherwise
+  // soak up most of the spread just by being big. So each house's share is divided by how wide it looks (to a power, AIM_WIDTH_POW),
+  // then the shares are scaled back to the same total.
+  if (AIM_WIDTH_POW > 0 && score.size > 1) {
+    const width = new Map(), half = 3 * sig.sc + 15;
+    for (let a = -half; a <= half; a += 1) {
+      const h = rad(heading + a), here = lotHere(ox, oy), under = new Set(roofs.filter((b) => inBox(b.bb, ox, oy) && pointInRings(ox, oy, b.rings)));
+      const L = aimFirstHit(ox, oy, Math.sin(h), Math.cos(h), roofs, bare, under, here, range);
+      if (L) width.set(L, (width.get(L) || 0) + 1);
+    }
+    const sum0 = [...score.values()].reduce((n, w) => n + w, 0);
+    // (between half and twice the aim error: a house wider than that is a fair target wherever the aim lands on it)
+    for (const [L, w] of score) score.set(L, w / Math.pow(clamp(width.get(L) || 1, sig.sc / 2, 2 * sig.sc), AIM_WIDTH_POW));
+    const sum1 = [...score.values()].reduce((n, w) => n + w, 0);
+    for (const [L, w] of score) score.set(L, w * sum0 / sum1);
+  }
+  const mk = (L, w) => ({ L, p: w / total, ...houseAt(L, ox, oy), onLot: (onLot.get(L) || 0) / oTotal });
+  const list = [...score].map(([L, w]) => mk(L, w)).sort((a, b) => b.p - a.p || a.dist - b.dist);
+  // The lot you're most likely on stays reachable with "Not it", even when you're aiming away from it
+  const [hereL] = [...onLot].sort((a, b) => b[1] - a[1])[0] || [];
+  if (hereL && !list.some((c) => c.L === hereL)) list.push(mk(hereL, 0));
+  for (const c of list) c.inside = c.onLot >= 0.6;
+  return list;
 }
 
 /* =========================================================================
@@ -2068,7 +2123,7 @@ function renderCard(cand, total, idx) {
 
   const unitList = (s.condo ? unitListHtml(s) : '') + othersHtml(s);
 
-  const where = cand.inside ? 'You’re on this property' : isFinite(cand.cdist) ? `${feet(cand.cdist)} ${compass8(cand.bearing)}` : '';
+  const where = cand.inside ? 'You’re on this property' : S.mode === 'point' && isFinite(cand.dist) ? `About ${feet(cand.dist)} ${compass8(cand.bearing)}` : '';
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
@@ -2486,7 +2541,7 @@ function nearMemo(kind, lat, lon, m, fn) {
 }
 const distM = (la1, lo1, la2, lo2) => { const a = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2; return 12742000 * Math.asin(Math.sqrt(a)); };
 // Short distances in feet (to the nearest 10, or 5 for small ones), longer ones in miles: "420 ft", "0.3 mi".
-const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toFixed(1)} mi` : `${Math.max(5, Math.round(f / (f < 100 ? 5 : 10)) * (f < 100 ? 5 : 10))} ft`; };
+const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toFixed(1)} mi` : `${Math.max(10, Math.round(f / 10) * 10)} ft`; };   // to 10 ft: GPS is good to about 15 ft at best
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/' };
@@ -3397,24 +3452,38 @@ function tick(ts) {
       `gps ${S.pos ? S.pos.lat.toFixed(5) + ', ' + S.pos.lon.toFixed(5) : '—'}  ±${S.acc == null ? '—' : Math.round(S.acc)} m`,
       `lots loaded ${S.local.length}${S.failAt ? '  (last load failed)' : ''}`,
       `view ${viewFovDeg().toFixed(0)}° wide${Number.isFinite(FOV_OVERRIDE) ? ' (set by ?fov)' : ''}  video ${$('#cam').videoWidth || '—'}×${$('#cam').videoHeight || '—'}  tags ${AR.items.filter((i) => !i.hidden).length}`,
-      `target ${top ? summarize(top.L.p).addr + (top.inside ? ' [on lot, ' + Math.round(top.across) + ' m across]' : ' @ ' + Math.round(top.dist) + ' m') : '—'}`,
+      `aim ±${aimSigma().sc.toFixed(0)}° ±${aimSigma().sp.toFixed(0)} m  target ${top ? summarize(top.L.p).addr + ` ${Math.round(top.p * 100)}%` + (top.inside ? ' [on lot]' : ` @ ${Math.round(top.dist)} m`) : '—'}`,
     ].join('\n');
   }
   if (S.locked) return;
   const label = $('#liveLabel');
   if (S.pos && S.heading != null && S.local.length) {
-    const c = findCandidates(S.pos.lat, S.pos.lon, S.heading)[0];
+    const list = findCandidates(S.pos.lat, S.pos.lon, S.heading);
+    let c = list[0] && list[0].p >= LIVE_MIN_P ? list[0] : null;          // a sliver of a house at the edge of the spread isn't an answer
+    // Keep the house shown unless another is clearly more likely, so the label doesn't flick between neighbors as the aim wobbles
+    const prev = S.live && list.find((x) => x.L === S.live.L);
+    if (c && prev && prev.L !== c.L && prev.p >= LIVE_MIN_P && c.p < prev.p + LIVE_SWITCH) c = prev;
+    const alt = c && list.find((x) => x.L !== c.L);
+    const close = alt && c.p < 0.6 && alt.p >= 0.25 && alt.p >= c.p * 0.6;   // a toss-up between two: say so
     if (c) {
       const s = summarize(c.L.p);
       $('#liveA').textContent = s.addr;
+      label.classList.remove('idle');
+      if (close) { $('#liveB').textContent = `or ${summarize(alt.L.p).addr} · tap to choose`; label.classList.remove('dim'); S.live = c; S.liveAlt = alt; return; }
+      S.liveAlt = null;
       const val = s.park ? (s.sites ? `Mobile home park · ${s.sites} sites` : 'Mobile home park') : s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
       $('#liveB').textContent = c.inside
         ? [val, s.year && !s.park ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
-        : [s.year && !s.park ? `Built ${s.year}` : null, val, `${feet(c.dist)} away`].filter(Boolean).join(' · ');
+        : [s.year && !s.park ? `Built ${s.year}` : null, val, `about ${feet(c.dist)} away`].filter(Boolean).join(' · ');
       label.classList.remove('dim'); S.live = c; return;
     }
   }
-  label.classList.add('dim'); S.live = null;
+  S.live = null; S.liveAlt = null;
+  if (S.pos && S.heading != null && S.local.length && !S.loading) {
+    $('#liveA').textContent = 'Aim at a house'; $('#liveB').textContent = `Nothing clear that way within ${feet(MAX_RANGE)}`;
+    label.classList.remove('dim'); label.classList.add('idle'); return;
+  }
+  label.classList.remove('idle'); label.classList.add('dim');
 }
 
 $('#liveLabel').onclick = () => $('#shutter').click();
@@ -3429,10 +3498,12 @@ $('#shutter').onclick = async () => {
   else if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${feet(S.acc)}), so this might not be the house you mean.`, 3400);
   $('#scan').classList.add('on');
   try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
-  const cands = findCandidates(S.pos.lat, S.pos.lon, S.heading).slice(0, 6);
+  let cands = findCandidates(S.pos.lat, S.pos.lon, S.heading);
+  if (S.live) cands = [cands.find((c) => c.L === S.live.L) || S.live, ...cands.filter((c) => c.L !== S.live.L)];   // the house the label shows comes first
+  cands = cands.slice(0, 6);
   setTimeout(() => {
     $('#scan').classList.remove('on');
-    if (!cands.length) { toast('No house found that way. Aim at a house within about 150 m.'); return; }
+    if (!cands.length) { toast(`No house found that way. Aim at a house within about ${feet(MAX_RANGE)}.`); return; }
     if (navigator.vibrate) navigator.vibrate(18);
     openSheet(cands, 0);
   }, 380);
@@ -3444,7 +3515,7 @@ function drawRadar() {
   if (!S.pos || !S.proj) { if (drawRadar.key) { svg.innerHTML = ''; drawRadar.key = null; } return; }
   const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
   const target = S.locked ? S.candidates[S.cIdx] : S.live;
-  const key = `${Math.round(ox)},${Math.round(oy)},${S.local.length},${target ? target.L.p.key : ''}`;
+  const key = `${Math.round(ox)},${Math.round(oy)},${S.local.length},${target ? target.L.p.key : ''},${Math.round(aimSigma().sc)}`;
   if (key !== drawRadar.key || drawRadar.proj !== S.proj) {
     const R = 90, scale = 100 / R;
     let paths = '';
@@ -3454,7 +3525,8 @@ function drawRadar() {
       const on = target && target.L === L;
       paths += `<path d="${d}" fill-rule="evenodd" fill="${on ? '#b4432c' : L.p.built ? 'rgba(246,241,231,.16)' : 'rgba(246,241,231,.05)'}" stroke="${on ? '#f0a48f' : 'rgba(246,241,231,.35)'}" stroke-width="${on ? 1.6 : .6}"/>`;
     }
-    const cone = `<path d="M0,0 L${(Math.sin(rad(-11)) * 100).toFixed(1)},${(-Math.cos(rad(-11)) * 100).toFixed(1)} A100,100 0 0 1 ${(Math.sin(rad(11)) * 100).toFixed(1)},${(-Math.cos(rad(11)) * 100).toFixed(1)} Z" fill="rgba(240,164,143,.18)"/>`;
+    const sw = clamp(2 * aimSigma().sc, 6, 45);                 // the cone is as wide as the aim could be off (two standard deviations)
+    const cone = `<path d="M0,0 L${(Math.sin(rad(-sw)) * 100).toFixed(1)},${(-Math.cos(rad(-sw)) * 100).toFixed(1)} A100,100 0 0 1 ${(Math.sin(rad(sw)) * 100).toFixed(1)},${(-Math.cos(rad(sw)) * 100).toFixed(1)} Z" fill="rgba(240,164,143,.18)"/>`;
     svg.innerHTML = `<g id="rg">${paths}</g>${cone}<circle r="4.5" fill="#fff" stroke="#b4432c" stroke-width="2"/>`;
     drawRadar.key = key; drawRadar.proj = S.proj;
   }
@@ -3467,11 +3539,11 @@ function drawRadar() {
    ========================================================================= */
 const FOV_OVERRIDE = qs.has('fov') ? parseFloat(qs.get('fov')) : NaN;   // side-to-side view in degrees, if the default is off for a phone
 const CAM_HALF_LONG = 33.7;    // half the view across the long side of a phone's main (1x) camera, degrees
-const AR_MAX = 6, AR_FAR = 75, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
-// Which houses get a tag. Past about 100 m a house is tiny on screen, and a compass off by 10° moves its tag ~17 m sideways,
-// often onto the neighbor's house. A far house that only peeks through a gap between nearer ones (one ray wide) isn't really
-// in view either. Aiming the circle right at a house still reaches MAX_RANGE.
-const AR_RANGE = 100, AR_SLIVER_M = 50;
+const AR_MAX = 6, AR_FAR = 40, AR_STEP = 1.25, AR_EYE = 1.5, AR_TAG = 6;   // most tags on screen, ray spacing (deg), eye height and tag height (m)
+// Which houses get a tag. A compass off by 10° moves a tag that far across the screen; a house narrower on screen than that
+// would wear its neighbor's tag. So a house gets one only if it's wider on screen than the aim could be off, and within
+// AR_RANGE (a 12 m wide house at 55 m is about 12° wide).
+const AR_RANGE = 55;
 const AR = { on: true, items: [], els: new Map(), at: 0, proj: null, f: 0, liveRect: null };
 try { AR.on = localStorage.getItem('housepoint.ar') !== '0'; } catch (e) {}
 const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
@@ -3505,10 +3577,10 @@ function rayBoxT(ox, oy, dx, dy, b, maxT) {
 
 // Sweep rays across the view; the first house lot each ray reaches is one you can see.
 function arScan(ox, oy, heading, half) {
-  const far = MAX_RANGE + 80;
+  const far = AR_RANGE + 40, reach = AR_RANGE + 15;
   const inside = new Set(S.local.filter((L) => pointInRings(ox, oy, L.rings)));
   const nearL = S.local.filter((L) => L.p.built && !L.hasBldg && !inside.has(L) && Math.hypot(L.c[0] - ox, L.c[1] - oy) < far);
-  const nearB = S.bldgs.filter((b) => b.L.p.built && !inside.has(b.L) && Math.hypot(b.c[0] - ox, b.c[1] - oy) < far);
+  const nearB = S.bldgs.filter((b) => b.L.p.built && b.area >= SHED_M2 && !inside.has(b.L) && Math.hypot(b.c[0] - ox, b.c[1] - oy) < far);
   const hits = new Map();
   // Rays at fixed compass bearings (every AR_STEP degrees), not relative to the heading: otherwise a small wobble shifts every
   // ray, and a house one or two rays wide keeps gaining and losing them, so its tag blinks.
@@ -3516,15 +3588,15 @@ function arScan(ox, oy, heading, half) {
     const h = rad(b), dx = Math.sin(h), dy = Math.cos(h);
     let best = null, bt = Infinity, bb = null;
     for (const b of nearB) {                                  // roofs first
-      const tb = rayBoxT(ox, oy, dx, dy, b.bb, MAX_RANGE);
+      const tb = rayBoxT(ox, oy, dx, dy, b.bb, reach);
       if (tb < 0 || tb >= bt) continue;                       // misses the box, or something nearer already blocks it
-      const t = rayEntry(ox, oy, dx, dy, b.rings, MAX_RANGE);
+      const t = rayEntry(ox, oy, dx, dy, b.rings, reach);
       if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = b.L; bb = b; }
     }
     for (const L of nearL) {                                  // lots with no outline on file
-      const tb = rayBoxT(ox, oy, dx, dy, L.bb, MAX_RANGE);
+      const tb = rayBoxT(ox, oy, dx, dy, L.bb, reach);
       if (tb < 0 || tb >= bt) continue;
-      const t = rayEntry(ox, oy, dx, dy, L.rings, MAX_RANGE);
+      const t = rayEntry(ox, oy, dx, dy, L.rings, reach);
       if (t !== null && t >= MIN_RANGE && t < bt) { bt = t; best = L; bb = null; }
     }
     if (!best) continue;
@@ -3533,13 +3605,14 @@ function arScan(ox, oy, heading, half) {
     if (bb && (!e.roof || bb.area > e.roof.area)) e.roof = bb;     // the biggest roof hit: the house, not the shed
     hits.set(best, e);
   }
+  // dist: to the house's edge, the app's one distance; ydist: to its middle, for how high the tag sits in the picture
   return [...hits.values()].map((e) => {
-    const cd = Math.hypot(e.L.c[0] - ox, e.L.c[1] - oy);
+    const cd = Math.hypot(e.L.c[0] - ox, e.L.c[1] - oy), dist = houseAt(e.L, ox, oy).dist;
     if (e.roof) {         // put the tag over the roof
       const v = [e.roof.c[0] - ox, e.roof.c[1] - oy];
-      return { L: e.L, n: e.n, t: e.t, cdist: cd, dist: Math.max(e.t, Math.hypot(v[0], v[1])), bearing: norm(Math.atan2(v[0], v[1]) * 180 / Math.PI) };
+      return { L: e.L, n: e.n, t: e.t, dist, ydist: Math.max(e.t, Math.hypot(v[0], v[1])), bearing: norm(Math.atan2(v[0], v[1]) * 180 / Math.PI) };
     }
-    return { L: e.L, n: e.n, t: e.t, cdist: cd, dist: clamp(cd, e.t + 3, e.t + 20), bearing: norm(Math.atan2(e.sx, e.sy) * 180 / Math.PI) };
+    return { L: e.L, n: e.n, t: e.t, dist, ydist: clamp(cd, e.t + 3, e.t + 20), bearing: norm(Math.atan2(e.sx, e.sy) * 180 / Math.PI) };
   });
 }
 
@@ -3562,8 +3635,10 @@ function arRelayout(f, half) {
   const liveKey = S.live ? S.live.L.p.key : null;          // the big label already covers the house in the circle
   // A tag already showing keeps a little slack (one ray, 10 m more) so it doesn't flicker at the limits.
   const shown = (v) => AR.els.has(v.L.p.key);
+  // Wide enough: the house covers more of the view than the aim could be off (a shown tag keeps a ray of slack, so it doesn't flicker)
+  const minRays = Math.max(3, Math.round(0.8 * aimSigma().sc / AR_STEP));
   const seen = arScan(ox, oy, S.heading, half + 12).filter((v) => v.L.p.key !== liveKey
-    && v.dist <= AR_RANGE + (shown(v) ? 10 : 0) && (v.n >= 2 || v.dist <= AR_SLIVER_M || (shown(v) && v.n >= 1)));
+    && v.dist <= AR_RANGE + (shown(v) ? 8 : 0) && v.n >= minRays - (shown(v) ? 2 : 0));
   const rank = (a, b) => (b.n - a.n) || (a.dist - b.dist);
   const inView = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) <= half).sort(rank).slice(0, AR_MAX);
   const edge = seen.filter((v) => Math.abs(angDiff(v.bearing, S.heading)) > half).sort(rank).slice(0, 4);   // just outside, so they slide in smoothly
@@ -3592,7 +3667,7 @@ function arRelayout(f, half) {
   const top0 = Math.max(70, ...['#hud', '#arPill'].map((q) => { const e = $(q); return e && e.offsetParent ? e.getBoundingClientRect().bottom + 6 : 0; }));
   const bottom0 = H - 200;                                     // clear of the compass and the shutter
   for (const v of keep) {
-    const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.dist, f, pitch, H), row = v.h + 6;
+    const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.ydist, f, pitch, H), row = v.h + 6;
     const spots = [0, 1, -1, -2, 2, -3].map((k) => k >= 0
       ? { k, cy: y0 - 6 - v.h / 2 - k * row, lead: k * row }                    // above: pointer down at the house
       : { k, cy: y0 + 6 + v.h / 2 + (-k - 1) * row, lead: 6 + (-k - 1) * row });  // below: pointer up at the house
@@ -3625,7 +3700,7 @@ function arFrame(ts) {
   for (const v of AR.items) {
     const rel = angDiff(v.bearing, S.heading);
     if (v.hidden || Math.abs(rel) > half + 1) { v.el.style.opacity = '0'; v.el.style.pointerEvents = 'none'; v.x = null; continue; }
-    const tx = W / 2 + f * Math.tan(rad(rel)), ty = arY(v.dist, f, pitch, H) - v.lift;
+    const tx = W / 2 + f * Math.tan(rad(rel)), ty = arY(v.ydist, f, pitch, H) - v.lift;
     if (v.x == null) { v.x = tx; v.y = ty; } else { v.x += (tx - v.x) * 0.5; v.y += (ty - v.y) * 0.5; }
     const left = v.x - v.w / 2, top = v.y - v.h - 6;
     const underLive = (lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top) || top < 60;
@@ -3642,7 +3717,7 @@ function arClear() {
 function arOpen(k) {
   const v = AR.items.find((i) => i.k === k); if (!v || !S.pos) return;
   const [ox, oy] = S.proj.fwd(S.pos.lat, S.pos.lon);
-  const mk = (i) => ({ L: i.L, dist: i.t, cdist: Math.hypot(i.L.c[0] - ox, i.L.c[1] - oy), bearing: norm(Math.atan2(i.L.c[0] - ox, i.L.c[1] - oy) * 180 / Math.PI) });
+  const mk = (i) => ({ L: i.L, ...houseAt(i.L, ox, oy) });
   const others = AR.items.filter((i) => i !== v && !i.hidden).sort((a, b) => Math.abs(angDiff(a.bearing, v.bearing)) - Math.abs(angDiff(b.bearing, v.bearing))).slice(0, 4);
   if (navigator.vibrate) navigator.vibrate(12);
   openSheet([v, ...others].map(mk), 0);
@@ -3842,7 +3917,7 @@ function selectLot(L) {
   const [cx, cy] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
   const near = S.local.filter((o) => o.p.built && Math.hypot(o.c[0] - L.c[0], o.c[1] - L.c[1]) < 40 && o !== L)
     .sort((a, b) => Math.hypot(a.c[0] - L.c[0], a.c[1] - L.c[1]) - Math.hypot(b.c[0] - L.c[0], b.c[1] - L.c[1])).slice(0, 4);
-  const mk = (o) => ({ L: o, dist: Math.hypot(o.c[0] - cx, o.c[1] - cy), cdist: NaN, bearing: 0 });
+  const mk = (o) => ({ L: o, dist: NaN, bearing: 0, mapDist: Math.hypot(o.c[0] - cx, o.c[1] - cy) });
   openSheet([mk(L), ...near.map(mk)], 0);
 }
 
@@ -4089,9 +4164,9 @@ let panelTab = 'near', panelItems = [];
 function refPoint() { return (S.mode === 'map' && S.map.center) ? S.map.center : S.pos; }
 function candFor(L) {
   const ref = S.pos && S.mode === 'point' ? S.pos : null;
-  if (!ref) return { L, dist: 0, cdist: NaN, bearing: 0 };
+  if (!ref) return { L, dist: NaN, bearing: 0 };
   const [ox, oy] = S.proj.fwd(ref.lat, ref.lon);
-  return { L, dist: Math.hypot(L.c[0] - ox, L.c[1] - oy), cdist: Math.hypot(L.c[0] - ox, L.c[1] - oy), bearing: norm(Math.atan2(L.c[0] - ox, L.c[1] - oy) * 180 / Math.PI) };
+  return { L, ...houseAt(L, ox, oy) };
 }
 function openFor(L) {
   if (S.mode === 'map') {

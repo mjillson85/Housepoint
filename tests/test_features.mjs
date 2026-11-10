@@ -29,11 +29,11 @@ async function newPage(errors) {
   await page.click('#goPoint'); await sleep(900);
   const fov = await page.evaluate(() => window.__hp.viewFovDeg());
   check(fov > 30 && fov < 40, `default view width on a 390x844 phone is ~34° (got ${fov.toFixed(1)}°)`);
-  await page.evaluate(() => window.__hp.setHeading(80)); await sleep(900);
+  await page.evaluate(() => window.__hp.setHeading(60)); await sleep(900);
   const tags = await page.$$eval('.arc', (els) => els.map((el) => { const r = el.getBoundingClientRect(); return { k: el.dataset.k, t: el.innerText.replace(/\n/g, ' / '), op: getComputedStyle(el).opacity, x: r.left, y: r.top, w: r.width, h: r.height }; }));
   const shown = tags.filter((t) => +t.op > 0.4);
   console.log('tags shown:', shown.map((t) => `${t.t} @${Math.round(t.x)},${Math.round(t.y)}`).join(' | '));
-  check(shown.length >= 1 && shown.length <= 6, `1–6 tags visible looking down the street, only houses really in view (got ${shown.length})`);   // at most 6, within 100 m, no slivers between nearer houses
+  check(shown.length >= 1 && shown.length <= 6, `1–6 tags visible looking across at the houses ahead, only houses really in view (got ${shown.length})`);   // at most 6, within 100 m, no slivers between nearer houses
   check(shown.every((t) => t.x + t.w / 2 >= 0 && t.x + t.w / 2 <= 390 && t.y > 100 && t.y < 700), 'tag centers sit inside the camera area');
   let overlap = 0;
   for (let i = 0; i < shown.length; i++) for (let j = i + 1; j < shown.length; j++) {
@@ -48,7 +48,7 @@ async function newPage(errors) {
   // turning moves the tags the right way (turn right -> things slide left)
   const vis = (els) => Object.fromEntries(els.filter((el) => el.style.opacity !== '0').map((el) => [el.dataset.k, el.getBoundingClientRect().left]));
   const before = await page.$$eval('.arc', vis);
-  await page.evaluate(() => window.__hp.setHeading(83)); await sleep(500);
+  await page.evaluate(() => window.__hp.setHeading(63)); await sleep(500);
   const after = await page.$$eval('.arc', vis);
   const common = Object.keys(before).filter((k) => k in after);
   check(common.length > 0 && common.every((k) => after[k] < before[k]), `turning right slides tags left (${common.length} compared)`);
