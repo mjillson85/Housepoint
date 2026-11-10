@@ -137,7 +137,10 @@ async function captureState(page, st) {
     const named = lots.filter(([, v]) => v.named), rest = lots.filter(([, v]) => !v.named);
     const firsts = [], seconds = [], seen = new Set();
     for (const x of rest) (seen.has(x[1].sig) ? seconds : (seen.add(x[1].sig), firsts)).push(x);
-    lots = [...named, ...firsts, ...seconds].slice(0, PER_STATE);
+    // Take from each spot in turn, so the cap doesn't fill up with the first downtown before the countryside gets a look
+    const turns = (list) => { const by = new Map(); for (const x of list) { const k = x[1].spot; if (!by.has(k)) by.set(k, []); by.get(k).push(x); }
+      const out = [], qs = [...by.values()]; for (let i = 0; out.length < list.length; i++) for (const q of qs) if (q[i]) out.push(q[i]); return out; };
+    lots = [...named, ...turns(firsts), ...turns(seconds)].slice(0, PER_STATE);
     // Each kept lot again, by its own outline, so a lot cut off at the edge of a spot comes back whole
     const outLots = [];
     for (const [k, v] of lots) {
