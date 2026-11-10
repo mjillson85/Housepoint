@@ -4338,6 +4338,7 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
    when something stops loading: the states move their services now and then (MassGIS did in 2026), drop fields, or stop
    answering a kind of search in time. Nothing is saved or sent anywhere else.
    ========================================================================= */
+const HEALTH_LOT = {};          // a lot found in each state's check, for the buying checks
 const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'] };
 async function runHealth() {
   document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
@@ -4369,6 +4370,7 @@ async function runHealth() {
     try { [lots, ms] = await timed(timeLimit(queryRegion(rg, lat, lon, 150), 20000)); }
     catch (e) { r3.bad(`no answer (${e.message || e})`); continue; }
     if (!lots.length) { r3.bad(`answered, but with no lots (${secs(ms)})`); continue; }
+    HEALTH_LOT[id] = lots.find((p) => p.built) || lots[0];
     const recs = lots.flatMap((p) => p.records), withAddr = recs.filter((r) => String(r.SITE_ADDR || '').trim()).length;
     if (withAddr < recs.length / 2) r3.warn(`${lots.length} lots, but only ${withAddr} of ${recs.length} records have an address: the address may have moved to another field (${secs(ms)})`);
     else r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots, ${withAddr} of ${recs.length} records with an address (${secs(ms)})`);
@@ -4394,6 +4396,24 @@ async function runHealth() {
   if (!KEYS.geoapify) g3.warn('no key set');
   else try { const [r, t] = await timed(geoapifySearch(parseQuery('Dedham, MA'))); g3[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
   catch (e) { g3.bad(`no answer (${e.message || e})`); }
+  // What "Thinking of buying?" shows, for a spot in Dedham Square
+  const [hlat, hlon] = HEALTH_SPOTS.MA, maLot = HEALTH_LOT.MA;
+  const b1 = row('Schools (U.S. Department of Education)');
+  try { const [d, t] = await timed(timeLimit(schoolsFor(hlat, hlon), 30000)); const n = d.schools.length;
+    b1[n ? 'ok' : 'bad'](n ? `${n} public schools nearby, ${d.districts.length ? d.districts.map((x) => x.name).join(', ') : 'no district found'} (${secs(t)})` : 'answered, but with no schools'); }
+  catch (e) { b1.bad(`no answer (${e.message || e})`); }
+  const b2 = row('Neighborhood (Census Bureau)');
+  try { const [d, t] = await timed(timeLimit(neighborhoodFor(hlat, hlon), 30000)); b2[d && d.here ? 'ok' : 'bad'](d && d.here ? `census tract ${d.tract.tract} (${secs(t)})` : 'answered, but with nothing'); }
+  catch (e) { b2.bad(`no answer (${e.message || e})`); }
+  const b3 = row('Safety (FBI crime data)');
+  if (!maLot) b3.warn('no Massachusetts lot to ask about');
+  else try { const [d, t] = await timed(timeLimit(safetyFor(summarize(maLot), hlat, hlon), 30000));
+    b3[d && !d.none ? 'ok' : 'warn'](d ? `${d.agency}${d.none ? ': no recent reports' : `, ${d.year}`} (${secs(t)})` : 'no police agency found'); }
+  catch (e) { b3.bad(`no answer (${e.message || e})`); }
+  const b4 = row('Nearby places');
+  try { const [d, t] = await timed(timeLimit(nearbyFor(hlat, hlon), 40000)); const n = (d.cats || []).reduce((k, c) => k + (c.hits || []).length, 0);
+    b4[n ? 'ok' : 'warn'](`${n} places from ${d.via || 'the map data'} (${secs(t)})`); }
+  catch (e) { b4.bad(`no answer (${e.message || e})`); }
   $('#hDone').textContent = `Done: ${counts.ok} fine, ${counts.warn} with a problem, ${counts.bad} not answering.`;
   return counts;
 }
@@ -4403,7 +4423,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>
