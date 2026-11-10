@@ -91,3 +91,4 @@ for (const [k, v] of Object.entries(nces)) log(`  ${k}: ${JSON.stringify(v).slic
 log('== the school query, taken apart');
 for (const [k, v] of Object.entries(variants)) log(`  ${k}: ${JSON.stringify(v).slice(0, 900)}`);
 await browser.close(); srv.close();
+// 2026-11-10
