@@ -57,7 +57,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /OWN|MAIL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name)$/i;
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name)$/i;   // TOWN_ID is fine
 
 async function main() {
   const states = process.argv.slice(2).length ? process.argv.slice(2) : ['MA', 'CT', 'NJ', 'FL'];
@@ -80,7 +80,7 @@ async function captureState(page, st) {
     const lotKey = (ft) => { const id = ft.attributes && (ft.attributes.LOC_ID || ft.attributes.loc_id); return id ? `id:${id}` : `shape:${shapeHash(ft.geometry.rings)}`; };
     const outFields = [...new Set([...sv.outFields, meta.objectIdField].filter(Boolean))].join(',');
     const ask = (geom, extra = {}) => {
-      const p = new URLSearchParams({ outFields, returnGeometry: 'true', outSR: '4326', geometryPrecision: '6', f: 'json', inSR: '4326',
+      const p = new URLSearchParams({ outFields, returnGeometry: 'true', outSR: '4326', geometryPrecision: '6', maxAllowableOffset: '0.000004', f: 'json', inSR: '4326',
         spatialRel: 'esriSpatialRelIntersects', resultRecordCount: String(sv.pageSize || 1000), ...geom, ...extra });
       if (sv.oid) p.set('orderByFields', sv.oid);
       return p;
@@ -153,7 +153,13 @@ async function captureState(page, st) {
       const total = feats.length;
       feats = feats.slice(0, MAX_RECS).map((f) => {
         const a = {}; for (const [n, val] of Object.entries(f.attributes || {})) if (!(OWNERISH.test(n) && !KEEP_NAME.test(n))) a[n] = val;
-        return { attributes: a, geometry: { rings: f.geometry.rings } };
+        // A huge outline (a river, a highway, a county forest) becomes its bounding box: it's never a house, and it keeps the files small.
+        let rings = f.geometry.rings;
+        if (rings.reduce((n, r) => n + r.length, 0) > 1500) {
+          const xs = rings.flat().map((q) => q[0]), ys = rings.flat().map((q) => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+          rings = [[[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]];
+        }
+        return { attributes: a, geometry: { rings } };
       });
       const r0 = feats[0].geometry.rings[0], lon = r0.reduce((s, p) => s + p[0], 0) / r0.length, lat = r0.reduce((s, p) => s + p[1], 0) / r0.length;
       outLots.push({ key: k, spot: v.spot, kind: signature(feats), named: !!v.named, records: total, truncated: total > feats.length, lat: +lat.toFixed(6), lon: +lon.toFixed(6), features: feats });
