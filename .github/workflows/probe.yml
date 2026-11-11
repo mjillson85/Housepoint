@@ -30,7 +30,13 @@ jobs:
       # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node),
       # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services),
       # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers), probe/me-join.mjs (Maine's assessing table).
-      - name: The national building outlines and reverse lookups (for the basic card)
+      - name: Census state lines, finely (for cutting the covered outlines)
         working-directory: tests
         continue-on-error: true
-        run: node probe/structures.mjs
+        run: node probe/outlines.mjs
+      - name: The basic card against the real services
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/live-state.mjs
