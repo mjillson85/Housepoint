@@ -96,7 +96,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
         outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: oidF, outStatisticFieldName: 'n' }]) };
       if (!(cfg.codes || []).some((f) => have.has(f))) continue;
       const codes = await get(cfg.layer + '/query', 30000, new URLSearchParams(env).toString());
-      spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || js(codes.j && codes.j.error, 200));
+      spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || JSON.stringify(codes.j && codes.j.error).slice(0, 200));
     }
     return res;
   }, cfg, BAD.source, AUTO_SKIP.source);
