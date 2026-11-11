@@ -20,31 +20,35 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {   // Tier 2 rounds are in git history (November 11, 2026). The lot-line states, Texas, Idaho, North Dakota, Alabama:
-  NV: { layer: 'https://arcgis.water.nv.gov/arcgis/rest/services/BaseLayers/County_Parcels_in_Nevada/MapServer/0', want: 'auto',
-    spots: [[39.5300, -119.8100, 'Reno'], [36.1500, -115.1700, 'Las Vegas']] },
-  HI: { layer: 'https://geodata.hawaii.gov/arcgis/rest/services/ParcelsZoning/MapServer/25', want: 'auto', spots: [[21.2850, -157.8150, 'Honolulu Kaimuki'], [20.8900, -156.4700, 'Kahului']] },
-  CA: { layer: 'https://bz1uwWPKUInZBK94.svcs5.arcgis.com/bz1uwWPKUInZBK94/arcgis/rest/services/CA_Statewide_Parcels_Public_view/FeatureServer/0', want: 'auto',
-    spots: [[37.7600, -122.4400, 'San Francisco'], [34.1000, -118.3300, 'Los Angeles'], [38.5800, -121.4900, 'Sacramento']] },
-  IN: { layer: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', want: 'auto',
-    spots: [[39.7700, -86.1500, 'Indianapolis'], [41.0800, -85.1400, 'Fort Wayne']] },
-  OH: { layer: 'https://services2.arcgis.com/MlJ0G8iWUyC7jAmu/arcgis/rest/services/OhioStatewidePacels_full_view/FeatureServer/0', want: 'auto',
-    spots: [[39.9600, -83.0000, 'Columbus'], [41.4800, -81.6900, 'Cleveland']] },
-  WV: { layer: 'https://services.wvgis.wvu.edu/arcgis/rest/services/Planning_Cadastre/WV_Parcels/MapServer/0', want: 'auto', spots: [[38.3500, -81.6300, 'Charleston'], [39.6300, -79.9600, 'Morgantown']] },
-  NH: { layer: 'https://nhgeodata.unh.edu/hosting/rest/services/Hosted/CAD_ParcelMosaic/FeatureServer/1', want: 'auto', spots: [[43.2080, -71.5380, 'Concord'], [42.9950, -71.4600, 'Manchester']] },
-  VA: { layer: 'https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', want: 'auto', spots: [[37.5400, -77.4600, 'Richmond'], [38.8800, -77.1000, 'Arlington']] },
-  DE: { layer: 'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/PlanningCadastre/DE_StateParcels/FeatureServer/0', want: 'auto', spots: [[39.7400, -75.5500, 'Wilmington'], [39.1580, -75.5240, 'Dover']] },
-  ME: { layer: 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/0', want: 'auto', spots: [[43.6600, -70.2600, 'Portland'], [44.8000, -68.7800, 'Bangor']] },
-  XX: { layer: 'https://services1.arcgis.com/XxHmL09eFqJWI0gE/arcgis/rest/services/ParcelsPublic/FeatureServer/0', want: 'auto', spots: [[41.5900, -93.6200, 'Des Moines'], [46.8100, -100.7800, 'Bismarck']] },
-  TX: { layer: 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/FeatureServer/0', want: 'auto',
-    spots: [[30.2900, -97.7400, 'Austin'], [29.7400, -95.3900, 'Houston'], [32.8000, -96.8000, 'Dallas']] },
-  TXM: { layer: 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/0', want: 'auto', spots: [[30.2900, -97.7400, 'Austin']] },
-  ID: { layer: 'https://services1.arcgis.com/CNPdEkvnGl65jCX8/arcgis/rest/services/Public_Idaho_Parcels_/FeatureServer/0', want: 'auto',
-    spots: [[43.6150, -116.2000, 'Boise'], [47.6800, -116.7800, 'Coeur d’Alene'], [43.4900, -112.0300, 'Idaho Falls']] },
-  AL: { layer: 'https://services6.arcgis.com/VUsVQlvugJlIRS3I/arcgis/rest/services/Alabama_Parcel_Data/FeatureServer/0', want: 'auto', spots: [[33.5200, -86.8000, 'Birmingham'], [32.0000, -87.3000, 'Wilcox County']] },
+const STATES = {   // Earlier rounds are in git history (November 11, 2026). Round 2: statewide Tennessee and Oregon Metro, big counties.
+  TN: { layer: 'https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0', want: 'auto', spots: [[36.16, -86.78, 'Nashville'], [35.13, -90.0, 'Memphis'], [35.96, -83.92, 'Knoxville']] },
+  OR_METRO: { layer: 'https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Taxlots_with_Right_of_Way_Public/FeatureServer/0', want: 'auto', spots: [[45.52, -122.65, 'Portland'], [45.5, -122.8, 'Beaverton']] },
+  AZ_MARICOPA: { layer: 'https://gis.maricopa.gov/arcgis/rest/services/IndividualService/Parcel/MapServer/0', want: 'auto', spots: [[33.5, -112.05, 'Phoenix'], [33.42, -111.93, 'Tempe']] },
+  TX_HARRIS: { layer: 'https://www.gis.hctx.net/arcgishcpid/rest/services/HCAD/Parcels/MapServer/0', want: 'auto', spots: [[29.74, -95.39, 'Houston']] },
+  TX_BEXAR: { layer: 'https://services.arcgis.com/g1fRTDLeMgspWrYp/arcgis/rest/services/BCAD_Parcels/FeatureServer/0', want: 'auto', spots: [[29.45, -98.49, 'San Antonio']] },
+  TX_TRAVIS: { layer: 'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/EXTERNAL_tcad_parcel/FeatureServer/0', want: 'auto', spots: [[30.29, -97.74, 'Austin']] },
+  TX_TARRANT: { layer: 'https://mapit.tarrantcounty.com/arcgis/rest/services/Dynamic/TADParcels/MapServer/0', want: 'auto', spots: [[32.73, -97.35, 'Fort Worth']] },
+  CA_ALAMEDA: { layer: 'https://services5.arcgis.com/ROBnTHSNjoZ2Wm1P/arcgis/rest/services/Parcels/FeatureServer/0', want: 'auto', spots: [[37.81, -122.25, 'Oakland']] },
+  CA_SAC: { layer: 'https://services1.arcgis.com/5NARefyPVtAeuJPU/arcgis/rest/services/Parcels/FeatureServer/0', want: 'auto', spots: [[38.58, -121.49, 'Sacramento']] },
+  CA_SBD: { layer: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0', want: 'auto', spots: [[34.11, -117.29, 'San Bernardino']] },
+  OH_FRANKLIN: { layer: 'https://gis.franklincountyohio.gov/hosting/rest/services/ParcelFeatures/Parcel_Features/MapServer/0', want: 'auto', spots: [[39.96, -83.0, 'Columbus']] },
+  OH_HAMILTON: { layer: 'https://cagisonline.hamilton-co.org/arcgis/rest/services/COUNTYWIDE/Cadastral/MapServer/0', want: 'auto', spots: [[39.14, -84.51, 'Cincinnati']] },
+  TN_NASH: { layer: 'https://services2.arcgis.com/HdTo6HJqh92wn4D8/arcgis/rest/services/Parcels_view/FeatureServer/0', want: 'auto', spots: [[36.16, -86.78, 'Nashville']] },
+  KY_LOU: { layer: 'https://gis.lojic.org/maps/rest/services/LojicSolutions/OpenDataPVA/MapServer/1', want: 'auto', spots: [[38.25, -85.73, 'Louisville']] },
+  NM_BERN: { layer: 'https://services.arcgis.com/CWv1abTnC3urn4bV/arcgis/rest/services/berncoparcels_forIDO/FeatureServer/0', want: 'auto', spots: [[35.08, -106.62, 'Albuquerque']] },
+  IN_INDY: { layer: 'https://gis.indy.gov/server/rest/services/Accela/AGIS_INDIANAPOLIS/MapServer/15', want: 'auto', spots: [[39.77, -86.15, 'Indianapolis']] },
+  GA_GWIN: { layer: 'https://services3.arcgis.com/RfpmnkSAQleRbndX/arcgis/rest/services/Property_and_Tax/FeatureServer/0', want: 'auto', spots: [[33.96, -84.0, 'Lawrenceville']] },
+  LA_NOLA: { layer: 'https://gis.nola.gov/arcgis/rest/services/LandBase/Parcels/MapServer/0', want: 'auto', spots: [[29.95, -90.07, 'New Orleans']] },
+  LA_EBR: { layer: 'https://maps.brla.gov/gis/rest/services/Cadastral/Tax_Parcel/MapServer/0', want: 'auto', spots: [[30.45, -91.15, 'Baton Rouge']] },
+  SD_SF: { layer: 'https://gis.siouxfalls.gov/arcgis/rest/services/Data/Property/MapServer/1', want: 'auto', spots: [[43.54, -96.73, 'Sioux Falls']] },
+  MI_MACOMB: { layer: 'https://services6.arcgis.com/K0qS4r8AEJxrE8em/arcgis/rest/services/Macomb_County_Parcel_Data/FeatureServer/0', want: 'auto', spots: [[42.58, -82.92, 'Mount Clemens']] },
+  HI_HNL: { layer: 'https://services.arcgis.com/tNJpAOha4mODLkXz/arcgis/rest/services/Cadastral_2020/FeatureServer/0', want: 'auto', spots: [[21.285, -157.815, 'Honolulu']] },
+  MO_STLCO: { layer: 'https://services2.arcgis.com/w657bnjzrjguNyOy/arcgis/rest/services/Pardata_JurisFeb2024/FeatureServer/0', want: 'auto', spots: [[38.63, -90.35, 'Clayton']] },
+  ME: { layer: 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/1', want: 'auto', spots: [[43.66, -70.26, 'Portland ME']] },
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
-const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;
+// (also "original" and "unmodified" copies of a record, which can hold the owner's name and mailing address: Alabama's do)
+const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid|orig|unmod|raw|json|own|mail|legal|lgl/i;
 const BAD = /(?<!t)own|mail|madd|^m(unit|city|state|zip|addr|stname)|legdec|legal|careof|grantee|grantor|grntnam|namekey|mortg|po_box|tax_name|tax_add|^address\d|citystzip|asrname|nys_name|buyer|seller|taxpayer/i;
 
 for (const [st, cfg] of Object.entries(STATES)) {
