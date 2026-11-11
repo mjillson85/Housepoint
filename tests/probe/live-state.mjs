@@ -19,14 +19,15 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin, Washington and Nebraska: in git history (November 11, 2026)
-  MN: { spots: [[44.92415, -93.31931, '4332 XERXES AVE S', 'Minneapolis Linden Hills double bungalow'], [44.92488, -93.31962, '3115 43RD ST W', 'Minneapolis stacked condos'],
-    [44.97889, -93.26972, '415 NICOLLET MALL', 'Minneapolis apartments over shops'], [44.93813, -93.14504, '1061 GOODRICH AVE', 'St Paul Summit Hill house'],
-    [44.93972, -93.14467, '1060 GRAND AVE', 'St Paul condo units'], [44.94885, -93.08974, '168 6TH ST', 'St Paul condo tower with garage stalls'],
-    [44.0234, -92.4630, null, 'Rochester'], [46.7867, -92.1005, null, 'Duluth'], [44.9239, -92.9594, null, 'Woodbury (Washington County numbers)'],
-    [47.2372, -93.5302, null, 'Grand Rapids (Itasca numbers)'], [46.3580, -94.2000, null, 'Brainerd lakes (Crow Wing numbers)'], [48.6011, -93.4108, null, 'International Falls'],
-    [44.1636, -93.9994, null, 'Mankato (a county that doesn’t share)']],
-    searches: ['4332 Xerxes Ave S, Minneapolis, MN', '1061 Goodrich Ave, St Paul, MN', '3005 W 43rd St, Minneapolis, MN', '803 N Pokegama Ave, Grand Rapids, MN', 'Duluth, MN'] },
+const STATES = {   // Wisconsin, Washington, Nebraska and Minnesota: in git history (November 11, 2026)
+  DC: { spots: [[38.88634, -76.99531, '239 8TH ST SE', 'Capitol Hill row house'], [38.90901, -77.02916, null, 'Logan Circle condo (units from the other tables)'],
+    [38.88673, -76.99577, '218 7TH ST SE', 'Eastern Market store'], [38.9070, -77.0626, null, 'Georgetown'], [38.8760, -77.0020, null, 'Navy Yard condos'],
+    [38.9650, -77.0750, null, 'Chevy Chase DC'], [38.8625, -76.9886, null, 'Anacostia']],
+    searches: ['239 8th St SE, Washington, DC', '1300 Rhode Island Ave NW, Washington, DC', 'Georgetown, DC'] },
+  MD: { spots: [[39.2780, -76.6100, null, 'Baltimore Federal Hill'], [39.2840, -76.6060, null, 'Baltimore Inner Harbor condos'], [38.9784, -76.4922, null, 'Annapolis'],
+    [38.3600, -75.0800, null, 'Ocean City condos (units as points)'], [38.9847, -77.0947, null, 'Bethesda condos'], [38.9950, -77.0300, null, 'Silver Spring'],
+    [39.4143, -77.4105, null, 'Frederick'], [38.9000, -76.9000, null, 'Prince George’s'], [39.5000, -79.3000, null, 'Garrett (rural)']],
+    searches: ['1200 Light St, Baltimore, MD', '57 Maryland Ave, Annapolis, MD', 'Silver Spring, MD'] },
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
@@ -57,5 +58,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Minnesota|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/District of Columbia|Maryland|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();
