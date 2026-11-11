@@ -673,6 +673,9 @@ function stripUnitNo(addr) {
 }
 function useKind(r, rid) {
   if (!r) return 'unknown';
+  // The newer regions say how to read their own records (kindOf); without one, the kind isn't known
+  const rgK = REGIONS[rid];
+  if (rgK && rgK.newer) return rgK.kindOf ? rgK.kindOf(r) : 'unknown';
   const code = String(r.USE_CODE ?? '').trim();
   if (rid === 'FL') {
     const n = parseInt(code.replace(/\D/g, '') || 'x', 10); if (!Number.isFinite(n)) return 'unknown';
@@ -2135,6 +2138,52 @@ function akDerive(o) {
   o.CITY = g.replace(/\s+Municipality$/i, '').replace(/^(City (and|&) Borough|Municipality|City) of\s+/i, '').replace(/\s+City (and|&) Borough$/i, '') || null;
   const has = (v) => v != null && String(v).trim() !== '';
   for (const k of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL']) if (!(num(o[k]) > 0)) o[k] = has(o[k]) && num(o[k]) === 0 && num(o.TOTAL_VAL) > 0 ? 0 : null;
+}
+
+/* ---------- Lot-line states and county layers (November 11, 2026) ---------- */
+// A straight-line compass correction fit to the World Magnetic Model around a point.
+const lin = (a, b, c, lon0, lat0) => (lat, lon) => a + b * (lon - lon0) + c * (lat - lat0);
+// The parts every newer region shares; each one gives its own outline, layer, fields and wording.
+function mkRegion(o) {
+  return Object.assign({ newer: true, discover: '', stackedUnits: true, noSales: true, deltaWord: 'value', valueWord: 'Value', valueTitle: 'Value',
+    valueLabel: 'Value', yearLabel: () => '', useLabel: (c, r) => (o.labelOf ? o.labelOf(r) : null) || null, builtByOutline: true }, o,
+  { derive: (x) => { basicDerive(x); if (o.derive) o.derive(x); } });
+}
+// Tidy what most layers send: no "0 MAIN ST", a five-digit zip, a real link, no zero values standing for missing ones.
+function basicDerive(o) {
+  let a = t2clean(o.SITE_ADDR).replace(/^0+\s+/, '').replace(/,\s*$/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) && /[A-Z]/i.test(a) ? a : null;
+  if (o.CITY != null) o.CITY = t2clean(o.CITY).replace(/,.*$/, '') || null;
+  if (o.ZIP != null) { const z = t2clean(o.ZIP); o.ZIP = /^[0-9]\d{4}/.test(z) && !/^0{5}/.test(z) ? z.slice(0, 5) : null; }
+  if (o.RECORD_URL != null) o.RECORD_URL = t2url(o.RECORD_URL);
+  for (const k of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL', 'LS_PRICE']) if (o[k] != null) { const v = num(String(o[k]).replace(/[$,]/g, '')); o[k] = v > 0 ? v : null; }
+  if (o.YEAR_BUILT != null) o.YEAR_BUILT = t2year(o.YEAR_BUILT);
+  for (const k of ['RES_AREA', 'BLD_AREA', 'UNITS', 'BEDS', 'BATHS', 'STORIES']) if (o[k] != null && !(num(o[k]) > 0)) o[k] = null;
+  if (o.COUNTY != null) o.COUNTY = t2clean(o.COUNTY) || null;
+}
+// A sale date in whatever shape a layer sends it (epoch ms, "6/27/2019", "2019-06-27", 20190627) as yyyymmdd
+function t2date(v) {
+  if (v == null || v === '') return null;
+  let d = null;
+  if (typeof v === 'number' && v > 1e10) d = new Date(v);
+  else { const s = t2clean(v), m1 = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s), m2 = /^(\d{4})-?(\d{2})-?(\d{2})/.exec(s);
+    if (m1) d = new Date(Date.UTC(+m1[3], +m1[1] - 1, +m1[2])); else if (m2) d = new Date(Date.UTC(+m2[1], +m2[2] - 1, +m2[3])); }
+  if (!d || isNaN(d) || d.getUTCFullYear() < 1901 || d > new Date()) return null;
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+// Words a county uses for a property's type, read the way Colorado's are (coKind), for layers that give words.
+const kindFromWords = (t, r) => coKind({ USE_DESC: t, SITE_ADDR: r && r.SITE_ADDR });
+// Indiana's DLGF property class: 1xx farm, 3xx industrial, 4xx commercial (401-403 apartments), 5xx residential, 6xx exempt
+function inKind(r) {
+  const n = parseInt(t2clean(r.USE_CODE), 10);
+  if (!Number.isFinite(n)) return 'unknown';
+  if (n < 200) return 'farmForest';
+  if (n < 300) return 'other';
+  if (n < 400) return n % 100 === 0 ? 'vacant' : 'industrial';
+  if (n < 500) return n % 100 === 0 ? 'vacant' : n >= 401 && n <= 403 ? 'apartments' : 'commercial';
+  if (n < 600) return n <= 502 ? 'vacant' : n <= 515 ? 'single' : n <= 531 ? 'multi' : n <= 541 ? 'mobile' : n <= 559 ? 'resCondo' : 'otherRes';
+  if (n < 700) return 'exempt';
+  return 'other';
 }
 
 // Vermont and Alaska records have no street address: the card asks Geoapify (OpenStreetMap) for the address nearest the lot.
