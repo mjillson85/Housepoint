@@ -7,18 +7,24 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8798/');
 const L = {
-  MT: ['https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1', 'PARCELID,AddressLine1,AddressLine2,CityStateZip,CountyName,TaxYear,PropType,TotalValue,TotalLandValue,TotalBuildingValue,GrazingAcres',
-    [[45.7800, -108.5300, 'Billings'], [46.8650, -113.9950, 'Missoula'], [47.5000, -111.3000, 'Great Falls']]],
-  CO: ['https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', 'parcel_id,situsAdd,sitAddCty,landUseDsc,apprValTot,salePrice,saleDate',
-    [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [39.5500, -105.0000, 'Highlands Ranch'], [40.0150, -105.2700, 'Boulder']]],
-  UT: ['https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_SaltLake_LIR/FeatureServer/0', 'PARCEL_ID,PARCEL_ADD,PARCEL_CITY,TOTAL_MKT_VALUE,PROP_CLASS,BUILT_YR',
-    [[40.7500, -111.8700, 'Salt Lake City Sugar House'], [40.6200, -111.8500, 'Cottonwood Heights']]],
-  UTC: ['https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Utah_LIR/FeatureServer/0', 'PARCEL_ID,PARCEL_ADD,PARCEL_CITY,TOTAL_MKT_VALUE,PROP_CLASS,BUILT_YR',
-    [[40.2338, -111.6585, 'Provo']]],
-  WY: ['https://services3.arcgis.com/r0iJ85SKZ4zAzz3P/arcgis/rest/services/Wyoming_Parcels_for_2026/FeatureServer/0', 'parcelnb,locationad,jurisdicti,actualvalu,assessedva',
-    [[41.1400, -104.8100, 'Cheyenne'], [43.4800, -110.7600, 'Jackson']]],
-  AK: ['https://services1.arcgis.com/7HDiw78fcUiM2BWn/arcgis/rest/services/AK_Parcels/FeatureServer/0', 'parcel_id,property_type,property_use,total_value,building_value,local_gov',
-    [[61.1900, -149.8800, 'Anchorage'], [64.8400, -147.7300, 'Fairbanks']]],
+  OR: ['https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Taxlots_with_Right_of_Way_Public/FeatureServer/3', 'SITEADDR,SITECITY,SITEZIP,LANDUSE,STATECLASS,TOTALVAL,YEARBUILT',
+    [[45.5120, -122.6400, 'Portland Sunnyside'], [45.4870, -122.8040, 'Beaverton'], [45.3700, -122.6000, 'Oregon City']]],
+  TN: ['https://services2.arcgis.com/HdTo6HJqh92wn4D8/arcgis/rest/services/Parcels_view/FeatureServer/0', 'PropAddr,PropCity,LUCode,TotlAppr,SalePrice',
+    [[36.1300, -86.8000, 'Nashville Hillsboro'], [36.1750, -86.7600, 'East Nashville']]],
+  TXT: ['https://mapit.tarrantcounty.com/arcgis/rest/services/Dynamic/TADParcels/MapServer/0', 'TAXPIN,SITUS_ADDR,CITY,YEAR_BUILT,TOTAL_VALU',
+    [[32.7300, -97.3500, 'Fort Worth Fairmount'], [32.7350, -97.1100, 'Arlington']]],
+  TXH: ['https://www.gis.hctx.net/arcgishcpid/rest/services/HCAD/Parcels/MapServer/0', 'HCAD_NUM,Situs_Address,state_class,total_market_val',
+    [[29.7400, -95.3900, 'Houston Montrose'], [29.9900, -95.5500, 'Cypress']]],
+  WV: ['https://services.wvgis.wvu.edu/arcgis/rest/services/Planning_Cadastre/WV_Parcels/MapServer/0', 'CleanParcelID,FullPhysicalAddress,COUNTY',
+    [[38.3500, -81.6300, 'Charleston'], [39.6300, -79.9550, 'Morgantown']]],
+  VA: ['https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', 'PARCELID,LOCALITY',
+    [[38.8800, -77.1000, 'Arlington'], [37.5400, -77.4400, 'Richmond'], [36.8500, -76.2900, 'Norfolk']]],
+  AZ: ['https://gis.maricopa.gov/arcgis/rest/services/IndividualService/Parcel/MapServer/1', 'APN,PropertyFullStreetAddress,PropertyCity,PropertyUseCode,FullCashValue',
+    [[33.4990, -112.0500, 'Phoenix'], [33.4200, -111.9400, 'Tempe']]],
+  MIO: ['https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1', 'PIN,SITEADDRESS,SITECITY,CLASSCODE,ASSESSEDVALUE',
+    [[42.4890, -83.1410, 'Royal Oak'], [42.5800, -83.2400, 'Bloomfield Hills']]],
+  OHH: ['https://cagisonline.hamilton-co.org/arcgis/rest/services/COUNTYWIDE/Cadastral/MapServer/0', 'PARCELID,ADDRNO,ADDRST,ADDRSF,CLASS,MKT_TOTAL_VAL',
+    [[39.1400, -84.4400, 'Cincinnati Hyde Park']]],
 };
 for (const [st, [url, fields, spots]] of Object.entries(L)) {
   for (const [lat, lon, name] of spots) {

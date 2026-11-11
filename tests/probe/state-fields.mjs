@@ -42,7 +42,7 @@ const STATES = {   // Earlier rounds are in git history (November 11, 2026). Rou
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 // (also "original" and "unmodified" copies of a record, which can hold the owner's name and mailing address: Alabama's do)
-const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid|orig|unmod|raw|json|own|mail|legal|lgl/i;
+const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid|orig|unmod|raw|json|own|mail|legal|lgl|user|editor|creat|signed|comment|addr_line/i;
 const BAD = /(?<!t)own|mail|madd|^m(unit|city|state|zip|addr|stname)|legdec|legal|careof|grantee|grantor|grntnam|namekey|mortg|po_box|tax_name|tax_add|^address\d|citystzip|asrname|nys_name|buyer|seller|taxpayer/i;
 
 for (const [st, cfg] of Object.entries(STATES)) {

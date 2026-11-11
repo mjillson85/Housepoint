@@ -34,19 +34,13 @@ jobs:
         working-directory: tests
         continue-on-error: true
         run: node probe/outlines.mjs
-      - name: Layers of the services being added
-        working-directory: tests
-        continue-on-error: true
-        run: node probe/layers.mjs
-      - name: The next states' fields and property types
+      - name: Timing the layers being added
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/state-fields.mjs
-      - name: The newest state against its real service
+        run: node probe/tier2-speed.mjs
+      - name: Maine's table join; Macomb's, Ada's and San Bernardino's records
         working-directory: tests
         continue-on-error: true
-        env:
-          CHROME: /usr/bin/google-chrome
-        run: node probe/live-state.mjs
+        run: node probe/me-join.mjs
