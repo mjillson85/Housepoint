@@ -6,12 +6,16 @@ const d = await get(`${DIR}?f=json`);
 const lir = (d.services || []).filter((s) => /LIR|Parcel/i.test(s.name)).map((s) => s.name).sort();
 console.log(`${lir.length} parcel services:`, lir.join(' '));
 const firstFields = {};
+const extents = {};
 for (const name of lir.filter((n) => /_LIR$/i.test(n))) {
   try {
     const m = await get(`${DIR}/${name}/FeatureServer/0?f=json`);
     const c = await get(`${DIR}/${name}/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json`);
     const f = (m.fields || []).map((x) => x.name).join(',');
+    const e = await get(`${DIR}/${name}/FeatureServer/0/query?where=1%3D1&returnExtentOnly=true&outSR=4326&f=json`);
+    if (e.extent) extents[name.replace(/^Parcels_|_LIR$/g, '')] = [e.extent.xmin, e.extent.ymin, e.extent.xmax, e.extent.ymax].map((v) => +v.toFixed(3));
     if (!firstFields[f]) { firstFields[f] = name; console.log(`${name}: ${c.count} records, max ${m.maxRecordCount}, fields ${f}`); }
     else console.log(`${name}: ${c.count} records, same fields as ${firstFields[f]}; extent ${JSON.stringify(m.extent && [m.extent.xmin, m.extent.ymin, m.extent.xmax, m.extent.ymax].map((v) => Math.round(v)))} sr ${m.extent && m.extent.spatialReference && m.extent.spatialReference.latestWkid}`);
   } catch (e) { console.log(name, 'failed', e.message); }
 }
+console.log('extents (west, south, east, north):', JSON.stringify(extents));
