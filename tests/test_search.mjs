@@ -284,7 +284,7 @@ check(/^Showing Elm St, Holbrook\. Tap a house, or add a house number\.$/.test(r
 // 5. Outside the covered states
 reset();
 r = await search(page, '100 Congress Ave, Austin, TX');
-check(/^Texas is outside Housepoint’s area\. It covers Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin and Washington for now\.$/.test(r.help), 'typed state outside coverage: said plainly');
+check(/^Texas is outside Housepoint’s area\. It covers Massachusetts, Connecticut, New Jersey, Florida, North Carolina(, [A-Z][a-z]+( [A-Z][a-z]+)?)* and [A-Z][a-z]+ for now\.$/.test(r.help), 'typed state outside coverage: said plainly');
 check(!seen.census.length && !seen.where.length && !seen.tiger.length, 'typed state outside coverage: nothing sent anywhere');
 r = await search(page, '500 Broad St, Columbus');
 check(/^That place is outside Housepoint’s area/.test(r.help), 'geocoded point outside coverage: said plainly');

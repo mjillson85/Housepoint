@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -44,6 +44,10 @@ const SPOTS = {
     ['Tacoma', 47.2529, -122.4443, 300], ['Tacoma Stadium District', 47.2660, -122.4430, 300], ['Spokane', 47.6588, -117.4260, 300],
     ['Spokane South Hill', 47.6430, -117.4100, 300], ['Vancouver', 45.6387, -122.6615, 300], ['Yakima', 46.6021, -120.5059, 300],
     ['Olympia', 47.0379, -122.9007, 300], ['Friday Harbor', 48.5343, -123.0171, 400], ['Okanogan (rural)', 48.3600, -119.5800, 1500]],
+  NE: [['Omaha Dundee', 41.2611, -95.9850, 300], ['Omaha downtown condos', 41.2565, -95.9345, 250], ['Omaha Aksarben', 41.2340, -96.0100, 300],
+    ['Lincoln near south', 40.7990, -96.6850, 300], ['Lincoln downtown', 40.8136, -96.7026, 250], ['Bellevue (Sarpy)', 41.1370, -95.8908, 300],
+    ['Grand Island', 40.9250, -98.3420, 300], ['Kearney', 40.6993, -99.0832, 300], ['North Platte', 41.1239, -100.7654, 300],
+    ['Scottsbluff', 41.8666, -103.6672, 300], ['Custer County (rural)', 41.4000, -99.6400, 1500]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
@@ -69,7 +73,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name)$/i;   // TOWN_ID is fine
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type)$/i;   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)
@@ -119,6 +123,7 @@ async function captureState(page, st) {
       : st === 'NJ' ? `${useCode(a).toUpperCase() || '?'}${/^C/i.test(qual(a)) ? 'C' : ''}`
       : st === 'WI' ? `${useCode(a) || '-'}/${field(a, 'AUX') || '-'}${field(a, 'UNIT') ? '/unit' : ''}`       // classes, exempt or forest, condo unit
       : st === 'WA' ? `${useCode(a) || '-'}/${field(a, 'USE_CODE2').split('-')[0] || '-'}`                      // land use code, by county
+      : st === 'NE' ? `${useCode(a) || '-'}/${field(a, 'STATUS') || '-'}/${field(a, 'OWN_TYPE').slice(0, 12) || '-'}/${field(a, 'COUNTY')}`   // type, status, ownership, county
       : String(parseInt(String(useCode(a)).replace(/\D/g, '') || 'x', 10));
     const signature = (feats) => { const ks = [...new Set(feats.map((f) => kindOf(f.attributes)))].sort();
       const n = feats.length; return `${ks.join('+')}|${n === 1 ? '1' : n <= 4 ? '2-4' : n <= 20 ? '5-20' : '21+'}`; };

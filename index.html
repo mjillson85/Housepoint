@@ -448,6 +448,7 @@
     <button data-lat="35.80810" data-lon="-78.64290" data-name="Five Points, Raleigh, NC">Raleigh, NC</button>
     <button data-lat="43.07900" data-lon="-89.38000" data-name="Madison isthmus, WI">Madison, WI</button>
     <button data-lat="47.66800" data-lon="-122.38500" data-name="Ballard, Seattle, WA">Seattle's Ballard</button>
+    <button data-lat="41.26110" data-lon="-95.98500" data-name="Dundee, Omaha, NE">Omaha's Dundee</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
   </div>
@@ -680,6 +681,7 @@ function useKind(r, rid) {
   if (rid === 'NC') return ncKind(r);
   if (rid === 'WI') return wiKind(r);
   if (rid === 'WA') return waKind(r);
+  if (rid === 'NE') return neKind(r);
   // Massachusetts (MassGIS / Department of Revenue classes): the first three digits; towns may add a fourth character.
   const d = code.replace(/\D/g, ''), c3 = d.slice(0, 3), style = String(r.STYLE || '').toUpperCase();
   if (c3.length < 3) return 'unknown';
@@ -917,6 +919,88 @@ function waDerive(o) {
   o.TOTAL_VAL = has(o.LAND_VAL) || has(o.BLDG_VAL) ? (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0) : null;
   o.RECORD_URL = /^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
 }
+// Nebraska: the state's property classification code, the same in every county: status (1 improved, 2 vacant, 3 a building on
+// leased land), then the parcel type (1 single family, 2 multi-family, 3 commercial, 4 industrial, 5 farmland, 6 recreational,
+// 7 mobile home, 8 and 9 minerals, 10 railroads and utilities the state values, 11 exempt, 12 Game and Parks land), then zoning,
+// location, town size and lot size. Lancaster County (Lincoln) sends no parcel type, so its zoning stands in, with the
+// ownership type (Private, Exempt, State, County, Federal) for exempt land.
+const neType = (r) => { const t = parseInt(String(r.USE_CODE ?? '').trim(), 10); return t > 0 ? t : null; };
+const neCode = (r, i) => { const c = String(r.CLASS_CODE ?? '').replace(/\D/g, ''); return c.length >= 12 ? parseInt(c.slice(i * 2, i * 2 + 2), 10) : null; };
+function neKind(r) {
+  const own = String(r.OWN_TYPE ?? '').toUpperCase(), status = parseInt(String(r.STATUS ?? '').trim(), 10) || neCode(r, 0);
+  let t = neType(r);
+  const unit = hasUnitNo(String(r.SITE_ADDR || '')), built = status === 2 ? false : hasBuilding(r) || status === 1 || status === 3;
+  if (/RAILROAD|PIPELINE|TELEPHONE|TELECOM|ELECTRIC|POWER COMPAN/.test(own) || t === 10 || t === 8 || t === 9) return 'other';
+  if (t === 11 || t === 12 || /EXEMPT|^STATE$|^COUNTY$|^FEDERAL$|GAME AND PARKS/.test(own)) return 'exempt';
+  if (r.TOTAL_VAL != null && String(r.TOTAL_VAL).trim() !== '' && num(r.TOTAL_VAL) === 0) return 'other';   // a condo's common record, a road
+  if (!t) t = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 }[neCode(r, 2)] || null;                             // zoning, where the type is missing
+  if (!t) return 'unknown';
+  if (t === 5) return 'farmForest';
+  if (!built) return 'vacant';
+  if (t === 1 || t === 6) return unit ? 'resCondo' : 'single';
+  if (t === 2) return unit ? 'resCondo' : num(r.TOTAL_VAL) >= 1.5e6 ? 'apartments' : 'multi';
+  if (t === 7) return 'mobile';
+  if (t === 3) return unit ? 'comCondo' : 'commercial';
+  if (t === 4) return 'industrial';
+  return 'unknown';
+}
+function neUseLabel(r) {
+  if (!r) return null;
+  const k = neKind(r), t = neType(r) || { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 }[neCode(r, 2)], own = String(r.OWN_TYPE ?? '').toUpperCase();
+  if (k === 'exempt') return t === 12 || /GAME AND PARKS/.test(own) ? 'Game and Parks land' : /RELIGIOUS/.test(own) ? 'Church' : /EDUCATIONAL/.test(own) ? 'School'
+    : /CHARITABLE/.test(own) ? 'Charity' : /CEMETERY/.test(own) ? 'Cemetery' : /^STATE$|STATE &/.test(own) ? 'Government property' : /^COUNTY$/.test(own) ? 'County property'
+    : /^FEDERAL$/.test(own) ? 'Federal property' : 'Tax-exempt property';
+  if (k === 'other') return t === 10 || /RAILROAD|PIPELINE|TELEPHONE|TELECOM|ELECTRIC|POWER/.test(own) ? 'Railroad or utility' : t === 8 || t === 9 ? 'Mineral rights' : 'No value on the tax roll';
+  if (k === 'farmForest') return 'Farmland';
+  if (k === 'vacant') return t === 3 || t === 4 ? 'Vacant commercial land' : 'Vacant land';
+  if (t === 6 && k === 'single') return 'Recreational property';
+  if (k === 'multi' || k === 'apartments') return 'Multi-family';
+  return KIND_LABEL[k] || null;
+}
+// Addresses: Lancaster and Sarpy add the city, state and zip ("2507 A ST  LINCOLN  NE  68502"), and Lancaster writes a condo's
+// unit as "UNIT #2420". Douglas County writes a unit after the street ("1403  FARNAM ST  102"). Sale dates: some counties send
+// a day count or nothing, not a date.
+function neDerive(o) {
+  let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim();
+  a = a.replace(/\s+NE\s+\d{5}(-\d{4})?$/i, '').replace(/\s+NE$/i, '');
+  const city = String(o.CITY ?? '').replace(/\s+/g, ' ').trim();
+  if (city) a = a.replace(new RegExp(`\\s+${reEsc(city)}$`, 'i'), '');
+  a = a.replace(/\s+UNIT\s*#\s*/i, ' UNIT ').replace(/\s*#\s*([\w-]+)$/, ' UNIT $1').replace(/^0+\s+/, '').trim();
+  o.SITE_ADDR = /^0*$/.test(a) ? null : a;
+  const d = num(o.SALE_DATE);
+  o.LS_DATE = d > 1e11 ? ymdUTC(d) : null;
+  if (o.LS_DATE && (+o.LS_DATE.slice(0, 4) < 1901 || +o.LS_DATE.slice(0, 4) > THIS_YEAR)) o.LS_DATE = null;
+  if (!o.LS_DATE) o.LS_PRICE = null;
+  delete o.SALE_DATE;
+  if (!(num(o.YEAR_BUILT) > 1600 && num(o.YEAR_BUILT) <= THIS_YEAR)) o.YEAR_BUILT = null;
+  if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
+  const c = parseInt(String(o.COUNTY ?? '').replace(/\D/g, '') || 'x', 10);
+  o.COUNTY = c > 0 && c % 2 ? NE_COUNTIES[(c - 1) / 2] || null : null;
+  o.RECORD_URL = /^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
+}
+// Douglas County (Omaha) splits a lot inside a tax-increment financing district into two records on the same outline: one
+// without an address (parcel number ending 01) and one with it (ending 03). Together they are the lot's value.
+function neMergeTwins(p) {
+  const recs = p.records, has = (r) => String(r.SITE_ADDR || '').trim() !== '', stem = (r) => String(r.PROP_ID || '').slice(0, -2);
+  for (let i = recs.length - 1; i >= 0; i--) {
+    const r = recs[i]; if (has(r) || String(r.PROP_ID || '').length < 6) continue;
+    const mates = recs.filter((x, j) => j !== i && has(x) && stem(x) === stem(r));
+    if (mates.length !== 1) continue;
+    const m = mates[0];
+    for (const f of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL']) if (r[f] != null || m[f] != null) m[f] = (num(m[f]) || 0) + (num(r[f]) || 0);
+    if (!m.LS_DATE && r.LS_DATE) { m.LS_DATE = r.LS_DATE; m.LS_PRICE = r.LS_PRICE; }
+    if (!neType(m) && neType(r)) m.USE_CODE = r.USE_CODE;
+    m.TIF = true;
+    recs.splice(i, 1); (p.rawExtra || (p.rawExtra = [])).push(...p.raw.splice(i, 1));
+  }
+}
+const NE_COUNTIES = ['Adams', 'Antelope', 'Arthur', 'Banner', 'Blaine', 'Boone', 'Box Butte', 'Boyd', 'Brown', 'Buffalo', 'Burt', 'Butler', 'Cass', 'Cedar',
+  'Chase', 'Cherry', 'Cheyenne', 'Clay', 'Colfax', 'Cuming', 'Custer', 'Dakota', 'Dawes', 'Dawson', 'Deuel', 'Dixon', 'Dodge', 'Douglas', 'Dundy', 'Fillmore',
+  'Franklin', 'Frontier', 'Furnas', 'Gage', 'Garden', 'Garfield', 'Gosper', 'Grant', 'Greeley', 'Hall', 'Hamilton', 'Harlan', 'Hayes', 'Hitchcock', 'Holt',
+  'Hooker', 'Howard', 'Jefferson', 'Johnson', 'Kearney', 'Keith', 'Keya Paha', 'Kimball', 'Knox', 'Lancaster', 'Lincoln', 'Logan', 'Loup', 'Madison',
+  'McPherson', 'Merrick', 'Morrill', 'Nance', 'Nemaha', 'Nuckolls', 'Otoe', 'Pawnee', 'Perkins', 'Phelps', 'Pierce', 'Platte', 'Polk', 'Red Willow',
+  'Richardson', 'Rock', 'Saline', 'Sarpy', 'Saunders', 'Scotts Bluff', 'Seward', 'Sheridan', 'Sherman', 'Sioux', 'Stanton', 'Thayer', 'Thomas', 'Thurston',
+  'Valley', 'Washington', 'Wayne', 'Webster', 'Wheeler', 'York'];   // FIPS order: 001 Adams … 185 York
 const KIND_LABEL = { single: 'Single-family home', multi: 'Multi-family home', apartments: 'Apartments', resCondo: 'Condo', comCondo: 'Commercial condo',
   condoMaster: 'Condo common record', mobile: 'Mobile home', mixedRes: 'Home with a business', mixed: 'Mixed use', otherRes: 'Residential',
   commercial: 'Commercial', industrial: 'Industrial', vacant: 'Vacant land', farmForest: 'Farm or forest land', exempt: 'Tax-exempt property',
@@ -1361,9 +1445,39 @@ const REGIONS = {
     commonNote: 'King County lists a condo building as one property. Each unit’s value is on the county assessor’s page.',
     useLabel: (c, r) => waUseLabel(r),
   },
+  NE: {
+    id: 'NE', name: 'Nebraska',
+    bbox: [-104.06, 40.0, -95.3, 43.01],
+    // Rough outline: the 43rd parallel and the Missouri on the South Dakota side, the Missouri down the Iowa and Missouri side
+    // (Omaha in, Council Bluffs and Sioux City out), straight lines elsewhere.
+    poly: [[-104.05, 43.0], [-98.47, 43.0], [-98.05, 42.77], [-97.6, 42.85], [-97.25, 42.86], [-96.95, 42.76], [-96.63, 42.6], [-96.47, 42.51],
+      [-96.4, 42.485], [-96.38, 42.44], [-96.35, 42.25], [-96.13, 41.97], [-96.07, 41.75], [-95.95, 41.5], [-95.92, 41.3], [-95.92, 41.2],
+      [-95.86, 41.05], [-95.84, 40.68], [-95.6, 40.35], [-95.31, 40.0], [-102.05, 40.0], [-102.05, 41.0], [-104.05, 41.0], [-104.05, 43.0]],
+    declination: (lat, lon) => 4.44 - 0.645 * (lon + 99.7) + 0.03 * (lat - 41.5),   // ~ +2.0 in Omaha, ~ +7.0 in Scottsbluff
+    // The State of Nebraska's statewide parcels (Office of the CIO): every county assessor's records in one layer, with the state's
+    // property classification code. The public copy has no owner fields.
+    services: ['https://giscat.ne.gov/enterprise/rest/services/StatewideParcelsExternal/MapServer/0'],
+    discover: 'type:"Map Service" AND title:"Statewide Parcels" AND Nebraska',
+    detect: ['TOTAL_ASSESSED_VALUE', 'CLASSIFICATION_CODE', 'SITUS_ADDRESS'],
+    fields: {
+      PROP_ID: ['Parcel_ID'], SITE_ADDR: ['Situs_Address'], CITY: ['Ph_City'], ZIP: ['Ph_Zip5'], COUNTY: ['County_ID'],
+      TOTAL_VAL: ['Total_Assessed_Value'], LAND_VAL: ['Land_Value'], BLDG_VAL: ['Improvements_Value'], CLASS_CODE: ['Classification_Code'],
+      USE_CODE: ['Property_Parcel_Type'], STATUS: ['Property_Parcel_Status'], OWN_TYPE: ['Ownership_Type'], SALE_DATE: ['Sales_Date'], LS_PRICE: ['Sales_Value'],
+      YEAR_BUILT: ['BuildingYear'], BLD_AREA: ['ImpSF'], RECORD_URL: ['Parcel_URL'],
+    },
+    derive: (o) => neDerive(o),
+    mergeTwins: (p) => neMergeTwins(p),
+    stackedUnits: true,
+    valueLabel: 'County assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
+    yearLabel: () => '',
+    source: () => 'Source: county assessors via the State of Nebraska’s statewide parcels (Office of the CIO). Assessed value is the county’s market value for taxes (75% of it for farmland), not an appraisal.',
+    shareSource: 'Nebraska county assessor records via the State of Nebraska',
+    commonNote: 'This county doesn’t map its condo units one by one on the statewide map, so unit values aren’t available here.',
+    useLabel: (c, r) => neUseLabel(r),
+  },
 };
 const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => Object.keys(r.fields)).concat(['LS_DATE', 'TOTAL_VAL', 'FY']));
-const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin and Washington';
+const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington and Nebraska';
 const BORDER_SLOP = 1500;   // meters: near a state line, load both states' records
 
 function inPoly(lon, lat, ring) {
@@ -1376,7 +1490,7 @@ function inPoly(lon, lat, ring) {
 }
 const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
-const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA'];
+const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA', 'NE'];
 function regionFor(lat, lon) {
   if (lat == null || lon == null) return null;
   for (const id of REGION_ORDER) if (inRegion(REGIONS[id], lat, lon)) return REGIONS[id];
@@ -1533,6 +1647,7 @@ function buildParcels(features, rid = 'MA') {
     p.records.push(rec); p.raw.push(ft.attributes || {});
   }
   return [...byKey.values()].map((p) => {
+    if (REGIONS[rid] && REGIONS[rid].mergeTwins) REGIONS[rid].mergeTwins(p);
     const recs = p.records;
     const built = recs.some((r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600 || (num(r.BLDG_VAL) || 0) > 0
       || (num(r.EFF_YEAR) || 0) > 1600 || (flCondoCode(r.USE_CODE) && ((num(r.BLDGS) || 0) > 0 || (num(r.UNITS) || 0) > 0)));
@@ -1589,7 +1704,7 @@ const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first h
 const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
 const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
 const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
-const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA' };
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA', 31: 'NE' };
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
 // Apartment and unit numbers aren't needed to find a lot.
@@ -1710,13 +1825,13 @@ function knownTown(name) {
 }
 
 // Which states to look in, most likely first: the one typed; otherwise the one the town is known to be in, the one the
-// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington.
+// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska.
 function searchOrder(q, kt) {
   if (q.state) return REGIONS[q.state] ? [REGIONS[q.state]] : [];
   const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
   // The town lists cover only Massachusetts and Connecticut, so with the map in New Jersey or Florida, that state still comes first.
   const townSt = kt && (!here || here.id === 'MA' || here.id === 'CT') ? (here && kt.states.includes(here.id) ? here.id : kt.states[0]) : null;
-  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC, REGIONS.WI, REGIONS.WA];
+  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC, REGIONS.WI, REGIONS.WA, REGIONS.NE];
   return order.filter((r, i) => r && order.indexOf(r) === i);
 }
 
@@ -1970,7 +2085,7 @@ async function townPlace(names, order, fix) {
   // Rank: how it was typed, then the state order, then (towns in New England, New Jersey and Wisconsin, cities in Florida, North Carolina and
   // Washington), then nearest:
   // New Jersey has five Washington townships.
-  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' || x.st === 'NE' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
   const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
@@ -2105,7 +2220,7 @@ async function ensureData(lat, lon, force = false) {
    can actually see (a ray across a big lawn or a lot corner no longer counts).
    Massachusetts: MassGIS roof outlines. Florida: FEMA/ORNL USA Structures
    (public domain), with the state's Microsoft-derived outlines as a backup.
-   Connecticut, New Jersey, North Carolina, Wisconsin and Washington: USA Structures. Lots with no outline on file fall back to the lot line.
+   Connecticut, New Jersey, North Carolina, Wisconsin, Washington and Nebraska: USA Structures. Lots with no outline on file fall back to the lot line.
    ========================================================================= */
 const BLDG_SOURCES = {
   MA: { urls: ['https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0'], items: [], more: [] },
@@ -2116,6 +2231,7 @@ const BLDG_SOURCES = {
   NC: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   WI: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   WA: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  NE: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
 };
 const BSVC = {};
 function bldgLayer(rid) {
@@ -2514,7 +2630,7 @@ function renderCard(cand, total, idx) {
 function lotRecordsJson(L) {
   const p = L.p, [lat, lon] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
   return JSON.stringify({ housepoint: 'lot', state: p.region, key: p.key, captured: new Date().toISOString().slice(0, 10), lat: +lat.toFixed(6), lon: +lon.toFixed(6),
-    rings: p.ringsLL, records: p.raw || [] });
+    rings: p.ringsLL, records: [...(p.raw || []), ...(p.rawExtra || [])] });
 }
 async function copyRecords(L) {
   const text = lotRecordsJson(L);
@@ -2804,6 +2920,16 @@ function estimateTax(s) {
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true,
       notes: [`The ${s.fy || 'last'} tax bill from the ${s.r0.CITY_KIND === 'town' ? 'town' : 'local'} tax roll, after the state’s first-dollar and lottery credits. The lottery credit goes only to an owner who lives here, so a new owner’s bill can be a bit higher. Special assessments and charges aren’t included.`] };
   }
+  if (s.region.id === 'NE') {
+    const i = NE_COUNTIES.indexOf(r0.COUNTY || (recs[0] && recs[0].COUNTY)), rate = NE_RATES[i]; if (!(rate > 0)) return null;
+    const v = recs.filter((r) => WA_TAXED.has(useKind(r, 'NE'))).map((r) => num(r.TOTAL_VAL)).filter((x) => x > 0);
+    if (!v.length) return null;
+    const t = v.map((x) => x * rate / 100);
+    const notes = [`${NE_COUNTIES[i]} County’s average tax rate for ${NE_TAX_YEAR}, <b>${rate.toFixed(2)}%</b> of value. The real rate depends on the city, school and other districts.`];
+    if (r0.TIF) notes.push('This lot is in a tax-increment financing district, so part of its tax goes to pay for a redevelopment project; the total is about the same.');
+    notes.push('Doesn’t include the state’s property tax credits or the homestead exemption, which lower many bills.');
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes, rough: true };
+  }
   if (s.region.id === 'WA') {
     const c = r0.COUNTY || (recs[0] && recs[0].COUNTY), rate = WA_LEVY[c]; if (!rate) return null;
     const v = recs.filter((r) => WA_TAXED.has(useKind(r, 'WA'))).map((r) => num(r.TOTAL_VAL)).filter((x) => x > 0);
@@ -2834,6 +2960,10 @@ const WA_LEVY = { Adams: 10.2073, Asotin: 10.9251, Benton: 8.7949, Chelan: 7.710
 // Farm, forest and open-space land is taxed on its current use, not the market value shown, and public, church and park land is
 // mostly exempt: no estimate for those.
 const WA_TAXED = new Set(['single', 'multi', 'apartments', 'resCondo', 'comCondo', 'mobile', 'otherRes', 'mixedRes', 'mixed', 'commercial', 'industrial', 'vacant']);
+// Nebraska: each county's average tax rate for 2025, all taxes levied over all value, in percent (Department of Revenue,
+// Property Assessment Division, from the counties' Certificates of Taxes Levied), in the order of NE_COUNTIES.
+const NE_TAX_YEAR = 2025;
+const NE_RATES = '1.4015 0.9129 1.1129 1.2929 0.8740 0.6746 1.3492 0.9891 1.0351 1.5477 1.2810 1.0352 1.6643 0.8775 0.8953 0.7705 1.6980 1.0365 1.2844 0.8467 1.1540 1.3259 1.5299 1.3847 1.2879 1.0440 1.3471 2.0381 0.9720 1.0337 1.2103 1.1626 1.1506 1.2544 1.0066 1.2865 0.9019 0.6658 0.9485 1.5861 0.9750 1.0656 0.9061 1.1277 1.0357 0.7297 1.1417 1.2244 1.2176 1.1071 1.0352 0.6745 1.3385 0.9655 1.5955 1.4513 1.0792 0.8304 1.3152 0.9951 1.1218 1.3897 1.1286 1.2334 1.4025 1.3665 1.0786 0.9101 1.0628 0.9784 1.1620 0.9280 1.2115 1.0458 0.9289 1.3089 2.0028 1.3470 1.6389 1.1232 1.1231 1.0269 0.9557 1.0403 0.8996 0.9783 1.2818 1.2701 1.3272 1.1063 1.1638 0.8437 1.0150'.split(' ').map(Number);
 const round10 = (v) => Math.round(v / 10) * 10;
 function taxBoxHtml(s) {
   const t = estimateTax(s);
@@ -3014,7 +3144,7 @@ const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toF
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/',
-  NC: 'https://ncreports.ondemand.sas.com/src/', WI: 'https://dpi.wi.gov/accountability/report-cards', WA: 'https://washingtonstatereportcard.ospi.k12.wa.us/' };
+  NC: 'https://ncreports.ondemand.sas.com/src/', WI: 'https://dpi.wi.gov/accountability/report-cards', WA: 'https://washingtonstatereportcard.ospi.k12.wa.us/', NE: 'https://nep.education.ne.gov/' };
 
 function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
@@ -3516,7 +3646,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
    ========================================================================= */
 const CALC_KEY = 'housepoint.calc';
 const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
-const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228, WI: 1488, WA: 1392 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
+const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228, WI: 1488, WA: 1392, NE: 4020 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
 const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
 let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
 try {
@@ -4756,7 +4886,7 @@ $("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sa
 $('#goDemo').onclick = () => { location.search = '?demo=1'; };
 const ABOUT = `
   <h2>About Housepoint</h2>
-  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin or Washington and see its story from public records: when it was built, what it’s valued at,
+  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington or Nebraska and see its story from public records: when it was built, what it’s valued at,
   when it last sold, an estimated property tax, and its flood zone.</p>
   <h3>Privacy</h3>
   <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
@@ -4771,13 +4901,14 @@ const ABOUT = `
     <li><b>North Carolina property records and lot lines:</b> county tax offices, compiled into NC OneMap’s statewide parcels by the NC Center for Geographic Information and Analysis; property tax rates from the NC Department of Revenue.</li>
     <li><b>Wisconsin property records, last year’s tax and lot lines:</b> city, village and town tax rolls, compiled into the statewide parcel map by the Wisconsin State Cartographer’s Office and the Wisconsin Land Information Program (public domain).</li>
     <li><b>Washington property records and lot lines:</b> county assessors, compiled into the statewide parcel layer by Washington Technology Solutions (WaTech); average county levy rates from the Washington Department of Revenue.</li>
-    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida, North Carolina, Wisconsin and Washington), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
+    <li><b>Nebraska property records and lot lines:</b> county assessors, compiled into the statewide parcels by the State of Nebraska’s Office of the Chief Information Officer; average county tax rates from the Nebraska Department of Revenue.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington and Nebraska), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
     <li><b>Map search:</b> the state parcel services above, then the U.S. Census Bureau’s address lookup (Census Geocoder) and its TIGERweb map for towns; Geoapify’s address search helps with streets, towns and typos.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
-    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data; North Carolina county and town rates for 2026–27 from the NC Department of Revenue; Wisconsin shows each property’s tax from the 2025 tax roll; Washington county average levy rates for taxes due in 2025 from the Washington Department of Revenue.</li>
+    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data; North Carolina county and town rates for 2026–27 from the NC Department of Revenue; Wisconsin shows each property’s tax from the 2025 tax roll; Washington county average levy rates for taxes due in 2025 from the Washington Department of Revenue; Nebraska county average tax rates for 2025 from the Nebraska Department of Revenue.</li>
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
     <li><b>Neighborhood:</b> U.S. Census Bureau, American Community Survey 5-year estimates for the census tract (tract found with the Census Bureau’s TIGERweb, or the FCC’s area lookup as a backup).</li>
     <li><b>Safety:</b> crimes local police departments report to the FBI (Uniform Crime Reporting), via the FBI Crime Data Explorer.</li>
@@ -4834,7 +4965,7 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
    ========================================================================= */
 const HEALTH_LOT = {};          // a lot found in each state's check, for the buying checks
 const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
-  NC: [35.8085, -78.6430, 'Raleigh Five Points'], WI: [43.0700, -89.4300, 'Madison Near West'], WA: [47.6680, -122.3850, 'Seattle Ballard'] };
+  NC: [35.8085, -78.6430, 'Raleigh Five Points'], WI: [43.0700, -89.4300, 'Madison Near West'], WA: [47.6680, -122.3850, 'Seattle Ballard'], NE: [41.2611, -95.9850, 'Omaha Dundee'] };
 async function runHealth() {
   document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
     <p class="hs">Each check runs the way the app does. Green answered, amber answered with a problem, red didn’t answer.</p><ol id="hRows"></ol>

@@ -19,17 +19,12 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {
-  WI: { spots: [[43.06953, -89.42935, '2509 VAN HISE AVE', 'Madison house'], [43.07327, -89.38541, '123 W WASHINGTON AVE', 'Madison condo stack (common record + units + shops)'],
-    [43.07161, -89.38699, '309 W WASHINGTON AVE', 'Madison condo common record (CDM)'], [42.9980, -87.8980, '2586 S LENOX ST', 'Milwaukee Bay View house'],
-    [43.04076, -87.90474, null, 'Milwaukee downtown condos'], [44.95954, -89.62911, '201 JEFFERSON STREET', 'Wausau stacked units'],
-    [45.1300, -87.2400, null, 'Fish Creek (Door County)'], [43.5600, -90.8900, null, 'Vernon County (rural)'], [44.8113, -91.4985, null, 'Eau Claire']],
-    searches: ['2509 Van Hise Ave, Madison, WI', '2586 S Lenox St, Milwaukee, WI', '309 S Farwell St, Eau Claire, WI', 'Fish Creek, WI'] },
-  WA: { spots: [[47.6680, -122.3850, null, 'Seattle Ballard house'], [47.60804, -122.33966, '1419 1ST AVE', 'Seattle condo tower (King County: one record)'],
-    [47.6101, -122.2015, null, 'Bellevue'], [47.2529, -122.4443, '1102 TACOMA AVE S', 'Tacoma library'], [47.2660, -122.4430, null, 'Tacoma Stadium District'],
-    [47.6430, -117.4100, null, 'Spokane South Hill house'], [45.6387, -122.6615, null, 'Vancouver'], [46.6021, -120.5059, null, 'Yakima'],
-    [48.5343, -123.0171, null, 'Friday Harbor'], [48.3600, -119.5800, null, 'Okanogan (rural)']],
-    searches: ['1419 1st Ave, Seattle, WA', '1102 Tacoma Ave S, Tacoma, WA', '1 N Monroe St, Spokane, WA', 'Spokane, WA'] },
+const STATES = {   // Wisconsin and Washington: in git history (November 11, 2026)
+  NE: { spots: [[41.26024, -95.98456, '4745 CAPITOL AV', 'Omaha Dundee house'], [41.25577, -95.93515, '1412 HOWARD ST', 'Omaha tax-increment financing twins'],
+    [41.25726, -95.93507, '1403 FARNAM ST', 'Omaha downtown condos'], [40.79927, -96.68582, '2420 A ST', 'Lincoln condo (no parcel types)'],
+    [40.79928, -96.68444, '2534 A ST', 'Lincoln house'], [41.13612, -95.89012, '307 E MISSION AVE', 'Bellevue house (Sarpy)'],
+    [40.9250, -98.3420, null, 'Grand Island'], [40.6993, -99.0832, null, 'Kearney'], [41.8666, -103.6672, null, 'Scottsbluff'], [41.4000, -99.6400, null, 'Broken Bow (rural)']],
+    searches: ['4745 Capitol Ave, Omaha, NE', '2534 A St, Lincoln, NE', '307 E Mission Ave, Bellevue, NE', 'Kearney, NE'] },
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
@@ -58,5 +53,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Wisconsin|Washington|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/Nebraska|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();
