@@ -17,18 +17,29 @@ const page = await browser.newPage();
 await page.goto('http://localhost:8799/');
 
 const STATES = {
-  NC: {
-    layer: 'https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/FeatureServer/1',
-    // property fields only; anything owner-like is dropped below even if listed here
-    want: ['objectid', 'parno', 'altparno', 'nparno', 'siteadd', 'saddno', 'saddpref', 'saddstname', 'saddsttyp', 'saddstsuf', 'sunit', 'scity', 'szip', 'szip5', 'sstate',
-      'parval', 'landval', 'improvval', 'presentval', 'parvaltype', 'parusecode', 'parusedesc', 'parusecd2', 'parusedsc2', 'struct', 'multistruc', 'structno', 'structyear',
-      'saledate', 'saledatetx', 'reviseyear', 'revisedate', 'revdatetx', 'gisacres', 'cntyname', 'cntyfips', 'sourcedate', 'sourcedatx', 'transfdate'],
-    group: [['parusecd2', 'parusedsc2'], ['parvaltype'], ['multistruc'], ['struct']],
-    county: ['cntyname', 'cntyfips'],
-    spots: [[35.8085, -78.6430, 'Raleigh Five Points houses'], [35.7790, -78.6455, 'Raleigh downtown condos'], [35.2283, -80.8487, 'Charlotte uptown condos'],
-      [35.2050, -80.8500, 'Charlotte Dilworth houses'], [35.9940, -78.8986, 'Durham downtown'], [35.7915, -78.7811, 'Cary subdivision'],
-      [36.0726, -79.7920, 'Greensboro'], [34.2257, -77.9447, 'Wilmington'], [35.5951, -82.5515, 'Asheville downtown'], [35.6000, -82.5400, 'Asheville east'],
-      [35.9132, -79.0558, 'Chapel Hill'], [35.9574, -75.6241, 'Nags Head'], [36.2168, -81.6746, 'Boone']],
+  WI: {
+    layer: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
+    want: ['OBJECTID', 'STATEID', 'PARCELID', 'TAXPARCELID', 'PARCELDATE', 'TAXROLLYEAR', 'SITEADRESS', 'ADDNUMPREFIX', 'ADDNUM', 'ADDNUMSUFFIX', 'PREFIX', 'STREETNAME',
+      'STREETTYPE', 'SUFFIX', 'LANDMARKNAME', 'UNITTYPE', 'UNITID', 'PLACENAME', 'ZIPCODE', 'ZIP4', 'STATE', 'SCHOOLDIST', 'SCHOOLDISTNO', 'CNTASSDVALUE', 'LNDVALUE',
+      'IMPVALUE', 'MFLVALUE', 'ESTFMKVALUE', 'NETPRPTA', 'GRSPRPTA', 'PROPCLASS', 'AUXCLASS', 'ASSDACRES', 'DEEDACRES', 'GISACRES', 'CONAME', 'LOADDATE', 'PARCELFIPS',
+      'PARCELSRC', 'SITEADRESS_STAND'],
+    group: [['PROPCLASS'], ['AUXCLASS'], ['TAXROLLYEAR']],
+    codes: ['PROPCLASS', 'AUXCLASS'],
+    county: ['CONAME'],
+    spots: [[43.0790, -89.3800, 'Madison isthmus houses'], [43.0700, -89.4300, 'Madison Near West'], [43.0730, -89.3870, 'Madison downtown condos'],
+      [42.9980, -87.8980, 'Milwaukee Bay View'], [43.0400, -87.9050, 'Milwaukee downtown condos'], [44.5133, -88.0133, 'Green Bay'],
+      [45.1300, -87.2400, 'Fish Creek (Door County)'], [43.5600, -90.8900, 'Vernon County (rural)'], [44.8113, -91.4985, 'Eau Claire'], [44.9591, -89.6301, 'Wausau']],
+  },
+  WA: {
+    layer: 'https://services.arcgis.com/jsIt88o09Q0r1j8h/arcgis/rest/services/Current_Parcels/FeatureServer/0',
+    want: ['OBJECTID', 'FIPS_NR', 'COUNTY_NM', 'PARCEL_ID_NR', 'ORIG_PARCEL_ID', 'SITUS_ADDRESS', 'SUB_ADDRESS', 'SITUS_CITY_NM', 'SITUS_ZIP_NR', 'LANDUSE_CD',
+      'ORIG_LANDUSE_CD', 'VALUE_LAND', 'VALUE_BLDG', 'DATA_LINK', 'FILE_DATE'],
+    group: [['LANDUSE_CD'], ['COUNTY_NM']],
+    codes: ['LANDUSE_CD', 'ORIG_LANDUSE_CD'],
+    county: ['COUNTY_NM'],
+    spots: [[47.6680, -122.3850, 'Seattle Ballard houses'], [47.6090, -122.3400, 'Seattle downtown condos'], [47.6101, -122.2015, 'Bellevue'],
+      [47.2529, -122.4443, 'Tacoma'], [47.6588, -117.4260, 'Spokane'], [45.6387, -122.6615, 'Vancouver'], [46.6021, -120.5059, 'Yakima'],
+      [47.0379, -122.9007, 'Olympia'], [48.5343, -123.0171, 'Friday Harbor'], [48.3600, -119.5800, 'Okanogan (rural)']],
   },
 };
 
@@ -45,6 +56,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
     const m = await get(cfg.layer + '?f=json');
     if (!m.j || m.j.error) return { metaErr: m.err || JSON.stringify(m.j.error) };
     const fields = (m.j.fields || []);
+    const oidF = m.j.objectIdField || (fields.find((f) => f.type === 'esriFieldTypeOID') || {}).name || 'objectid';
     res.fields = fields.map((f) => `${f.name}:${f.type.replace('esriFieldType', '')}${f.alias && f.alias !== f.name ? `(${f.alias})` : ''}`);
     res.max = m.j.maxRecordCount; res.sr = m.j.extent && m.j.extent.spatialReference; res.adv = m.j.advancedQueryCapabilities;
     const have = new Set(fields.map((f) => f.name)), want = cfg.want.filter((f) => have.has(f) && !BAD.test(f));
@@ -53,7 +65,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
     // statewide: records per county, and the property-type groups
     const stat = async (where, groupBy, ms) => {
       const q = new URLSearchParams({ where, f: 'json', returnGeometry: 'false', groupByFieldsForStatistics: groupBy.join(','), orderByFields: 'n DESC',
-        outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: 'objectid', outStatisticFieldName: 'n' }]) });
+        outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: oidF, outStatisticFieldName: 'n' }]) });
       const r = await get(cfg.layer + '/query', ms, q.toString());
       if (!r.j || r.j.error) return { err: r.err || JSON.stringify(r.j.error).slice(0, 200), ms: r.ms };
       return { ms: r.ms, rows: (r.j.features || []).map((f) => Object.values(f.attributes).join(' | ')) };
@@ -78,8 +90,8 @@ for (const [st, cfg] of Object.entries(STATES)) {
       res.spots.push(spot);
       // codes used within ~1.5 km
       const env = { geometry: `${lon - 0.018},${lat - 0.0135},${lon + 0.018},${lat + 0.0135}`, geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', returnGeometry: 'false',
-        groupByFieldsForStatistics: ['parusecd2', 'parusedsc2', 'parusecode', 'parusedesc'].filter((f) => have.has(f)).join(','), orderByFields: 'n DESC',
-        outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: 'objectid', outStatisticFieldName: 'n' }]) };
+        groupByFieldsForStatistics: cfg.codes.filter((f) => have.has(f)).join(','), orderByFields: 'n DESC',
+        outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: oidF, outStatisticFieldName: 'n' }]) };
       const codes = await get(cfg.layer + '/query', 30000, new URLSearchParams(env).toString());
       spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || JSON.stringify(codes.j && codes.j.error).slice(0, 200));
     }

@@ -32,3 +32,9 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/live-state.mjs
+      - name: The next states' fields and property types
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/state-fields.mjs
