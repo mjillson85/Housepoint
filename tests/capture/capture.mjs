@@ -63,6 +63,8 @@ const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master
 const MA_STATE_PARCELS = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer/1';
 const PER_STATE = 120, PER_KIND = 2, MAX_RECS = 80;
 
+// Smallest and largest without spreading: a county forest's outline can have more points than a call can take as arguments.
+const lo = (a) => a.reduce((m, v) => (v < m ? v : m), Infinity), hi = (a) => a.reduce((m, v) => (v > m ? v : m), -Infinity);
 async function getJSON(url, body, ms = 60000) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
@@ -100,7 +102,7 @@ async function captureState(page, st) {
   {
     log(st, 'finding the service the way the app does');
     const sv = await page.evaluate(async (id) => { const hp = window.__hp; await hp.initService(hp.REGIONS[id]); const s = hp.SVC[id];
-      return { layerUrl: s.layerUrl, outFields: s.outFields, oid: s.oid, pageSize: s.pageSize, canon: [...s.canon.entries()] }; }, st);
+      return { layerUrl: s.layerUrl, outFields: s.outFields, oid: s.oid, pageSize: s.pageSize, canon: [...s.canon.entries()], lotWhere: hp.REGIONS[id].lotWhere || null }; }, st);
     const bad = sv.outFields.filter((f) => OWNERISH.test(f) && !KEEP_NAME.test(f));
     if (bad.length) throw new Error(`${st}: the app asks for owner-like fields ${bad.join(', ')}; stopping`);
     const meta = await getJSON(sv.layerUrl + '?f=json');
@@ -110,6 +112,7 @@ async function captureState(page, st) {
     const ask = (geom, extra = {}) => {
       const p = new URLSearchParams({ outFields, returnGeometry: 'true', outSR: '4326', geometryPrecision: '6', maxAllowableOffset: '0.000004', f: 'json', inSR: '4326',
         spatialRel: 'esriSpatialRelIntersects', resultRecordCount: String(sv.pageSize || 1000), ...geom, ...extra });
+      if (sv.lotWhere) p.set('where', sv.lotWhere);      // what the app leaves out (Wisconsin's and Maryland's street and water outlines)
       if (sv.oid) p.set('orderByFields', sv.oid);
       return p;
     };
@@ -165,7 +168,7 @@ async function captureState(page, st) {
         const j = await getJSON(`${MA_STATE_PARCELS}/query?` + new URLSearchParams({ where: `LOC_ID = '${id}'`, outFields: 'LOC_ID', returnGeometry: 'true', outSR: '4326', f: 'json' }));
         const g = j.features && j.features[0] && j.features[0].geometry; if (!g) { log('  named lot not found', id); continue; }
         const xs = g.rings.flat().map((p) => p[0]), ys = g.rings.flat().map((p) => p[1]);
-        const env = `${Math.min(...xs)},${Math.min(...ys)},${Math.max(...xs)},${Math.max(...ys)}`;
+        const env = `${lo(xs)},${lo(ys)},${hi(xs)},${hi(ys)}`;
         const feats = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 2)).filter((f) => lotKey(f) === `id:${id}`);
         if (feats.length) chosen.set(`id:${id}`, { spot: label, sig: signature(feats), feats, named: true });
         log('  named:', label, feats.length, 'records');
@@ -187,7 +190,7 @@ async function captureState(page, st) {
       if (!v.named) {
         try {
           const g = feats[0].geometry, xs = g.rings.flat().map((p) => p[0]), ys = g.rings.flat().map((p) => p[1]);
-          const env = `${Math.min(...xs)},${Math.min(...ys)},${Math.max(...xs)},${Math.max(...ys)}`;
+          const env = `${lo(xs)},${lo(ys)},${hi(xs)},${hi(ys)}`;
           const again = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 3)).filter((f) => lotKey(f) === k);
           if (again.length >= feats.length) feats = again;
         } catch (e) { log('  re-fetch failed, keeping the first copy', k); }
@@ -198,7 +201,7 @@ async function captureState(page, st) {
         // A huge outline (a river, a highway, a county forest) becomes its bounding box: it's never a house, and it keeps the files small.
         let rings = f.geometry.rings;
         if (rings.reduce((n, r) => n + r.length, 0) > 1500) {
-          const xs = rings.flat().map((q) => q[0]), ys = rings.flat().map((q) => q[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+          const xs = rings.flat().map((q) => q[0]), ys = rings.flat().map((q) => q[1]), x0 = lo(xs), x1 = hi(xs), y0 = lo(ys), y1 = hi(ys);
           rings = [[[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]];
         }
         return { attributes: a, geometry: { rings } };

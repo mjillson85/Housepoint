@@ -149,6 +149,16 @@ check(/Annapolis · Retail Store/.test(store), 'a store, by its building type');
 const balt = await open('1200 LIGHT ST');
 check(/Baltimore · /.test(balt) && /Baltimore City’s rate \(\$2\.248\)/.test(balt) && !/Morrell/i.test(balt), 'Baltimore City: the city, not the neighborhood post office; the city’s rate');
 
+const norm = await page.evaluate(() => {
+  const n = (a) => window.__hp.normalizeRecord(a, 'MD');
+  const oc = n({ JURSCODE: 'WORC', DESCTOWN: 'WORC Ocean City', ADDRESS: '2815 TERN DR', STRTUNT: '117', LU: 'U', DESCSTYL: 'HOUSING Condominium (residential)' });
+  const fr = n({ JURSCODE: 'FRED', DESCTOWN: 'FRED Frederick City', ADDRESS: '7 E PATRICK ST', STRTUNT: '7-9', LU: 'C' });
+  const th = n({ JURSCODE: 'BACI', ADDRESS: '223 LANASA LN', LU: 'R', DESCSTYL: 'STRY Townhouse-Center Unit 3 Story With Basem', CITY: 'MORRELL PARK' });
+  const cg = n({ JURSCODE: 'WORC', ACCTID: 'CONDO', __COMMON_GROUNDS: true });
+  return { oc: [oc.CITY, oc.SITE_ADDR, oc.STYLE], fr: [fr.CITY, fr.SITE_ADDR], th: [th.CITY, th.STYLE], cg: [window.__hp.useKind(cg, 'MD'), window.__hp.REGIONS.MD.useLabel(null, cg)] };
+});
+check(norm.oc.join('|') === 'Ocean City|2815 TERN DR UNIT 117|' && norm.fr.join('|') === 'Frederick|7-9 E PATRICK ST' && norm.th.join('|') === 'Baltimore|3 Story with basement'
+  && norm.cg.join('|') === 'other|Condo common grounds', 'Ocean City keeps its name, Frederick City is Frederick, a number range isn’t a unit, styles tidied, common grounds: ' + JSON.stringify(norm));
 const pq = await page.evaluate(() => ['Annapolis, MD', '100 Main St, Frederick, Maryland'].map((t) => window.__hp.parseQuery(t)));
 check(pq[0].state === 'MD' && pq[1].state === 'MD', 'Maryland typed as MD or in full');
 await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(300);

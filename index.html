@@ -1234,7 +1234,7 @@ const DC_LABEL = { 1: 'Single-family home', 11: 'Row house', 12: 'Detached house
   91: 'Vacant land', 92: 'Vacant land (permit pending)', 93: 'Vacant land (zoning limits)', 94: 'Vacant land (beside a building)', 95: 'Vacant land', 96: 'Parking (unpaved)' };
 function dcUseLabel(r) {
   if (!r) return null;
-  if (r.CONDO_LOT) return 'Condo building';
+  if (r.CONDO_LOT) return 'Condominium';
   const n = dcUse(r), k = dcKind(r);
   if (k === 'exempt') return DC_LABEL[n] || 'Tax-exempt property';
   return DC_LABEL[n] || KIND_LABEL[k] || null;
@@ -1304,8 +1304,11 @@ async function dcExpand(feats, sv) {
     if (t.res) r1.push(dcAsk(t.res, dcIn('SSL', ids), 'SSL,AYB,GBA,BEDRM,BATHRM,HF_BATHRM,ROOMS,STORIES,STYLE_D,NUM_UNITS,BLDG_NUM').then((rows) => camaInto(rows, byS, '__RES_AREA')));
     if (t.com) r1.push(dcAsk(t.com, dcIn('SSL', ids), 'SSL,AYB,LIVING_GBA,NUM_UNITS,BLDG_NUM').then((rows) => camaInto(rows, byS, '__BLD_AREA')));
   }
-  const units = [];
-  if (condoLots.length && t.relate) r1.push(dcAsk(t.relate, dcIn('MAT_SSL', condoLots.map((f) => f.attributes[SSL])), 'SSL,MAT_SSL,UNITNUM,NAME,REGIME', 4).then((rows) => units.push(...rows)));
+  const units = [], regF = sv.canon.get('REGIME');
+  // by the lot each unit sits on, or by the condo's regime number when the units name another lot of the same condo (9999: none)
+  const regimes = [...new Set(condoLots.map((f) => String(f.attributes[regF] ?? '').trim()).filter((x) => /^\d+$/.test(x) && x !== '9999'))];
+  if (condoLots.length && t.relate) r1.push(dcAsk(t.relate, `${dcIn('MAT_SSL', condoLots.map((f) => f.attributes[SSL]))}${regimes.length ? ` OR ${dcIn('REGIME', regimes)}` : ''}`,
+    'SSL,MAT_SSL,UNITNUM,NAME,REGIME', 4).then((rows) => units.push(...rows)));
   await Promise.all(r1.map((p) => p.catch((e) => console.warn('DC table', e))));
   if (!units.length || !t.itspe) return;
   // round 2: each unit's own record (address, value, tax, sale) and its year built and size
@@ -1317,9 +1320,10 @@ async function dcExpand(feats, sv) {
     t.condo ? dcAsk(t.condo, dcIn('SSL', ids), 'SSL,AYB,LIVING_GBA,BEDRM,BATHRM,HF_BATHRM,ROOMS,BLDG_NUM', 2).then((rows) => cama.push(...rows)).catch(() => {}) : Promise.resolve(),
   ]));
   const camaBy = new Map(cama.map((c) => [c.SSL, c])), lotBy = new Map(condoLots.map((f) => [f.attributes[SSL], f]));
+  const byRegime = new Map(); for (const f of condoLots) { const g = String(f.attributes[regF] ?? '').trim(); if (g && !byRegime.has(g)) byRegime.set(g, f); }
   const addrF = sv.canon.get('SITE_ADDR');
   for (const r of recs) {
-    const u = units.find((x) => x.SSL === r.SSL), lot = u && lotBy.get(u.MAT_SSL); if (!lot) continue;
+    const u = units.find((x) => x.SSL === r.SSL), lot = u && (lotBy.get(u.MAT_SSL) || byRegime.get(String(u.REGIME ?? '').trim())); if (!lot) continue;
     const c = camaBy.get(r.SSL) || {};
     feats.push({ geometry: lot.geometry, attributes: { ...r, __YEAR_BUILT: c.AYB, __RES_AREA: c.LIVING_GBA, __BEDS: c.BEDRM, __BATHS: c.BATHRM, __HALF_BATHS: c.HF_BATHRM,
       __NUM_ROOMS: c.ROOMS, __BLDG_NAME: u.NAME } });
@@ -1334,6 +1338,7 @@ async function dcExpand(feats, sv) {
 // exempt, MA marsh, CA country club) and its building type ("DWEL Center Unit", "OFFICE Office Building").
 function mdKind(r) {
   if (r.CONDO_OUTLINE) return 'condoMaster';
+  if (r.COMMON_GROUNDS) return 'other';
   const lu = String(r.USE_CODE ?? '').trim().toUpperCase(), b = String(r.BLDG_DESC ?? '').toUpperCase(), built = hasBuilding(r), unit = hasUnitNo(String(r.SITE_ADDR || ''));
   if (/PARKING SPACE|BOAT SLIP|STORAGE UNIT|MARINA CONDOMINIUM SLIP/.test(b)) return 'accessory';
   if (lu === 'E' || lu === 'EC' || String(r.EXEMPT_CLASS ?? '').trim()) return /^(STA|MUN|JUR|FED|CNT|BOE)/.test(String(r.EXEMPT_CLASS ?? '').trim()) || lu === 'E' ? 'exempt' : 'institutional';
@@ -1369,6 +1374,7 @@ function mdUseLabel(r) {
     : /^FED/.test(x) ? 'Federal property' : /^STA/.test(x) ? 'State property' : /^(MUN|JUR|CNT)/.test(x) ? 'Local government property' : /HOSPITAL/.test(x + b) ? 'Hospital'
     : /CEMETER/.test(x) ? 'Cemetery' : 'Tax-exempt property';
   if (k === 'accessory') return /SLIP/.test(b) ? 'Boat slip' : /PARKING/.test(b) ? 'Parking space' : 'Storage unit';
+  if (r.COMMON_GROUNDS) return 'Condo common grounds';
   if (lu === 'TH' || /CENTER UNIT|END UNIT|TOWNHOUSE/.test(b)) return k === 'resCondo' ? 'Condo townhouse' : 'Townhouse';
   if (k === 'resCondo') return /HI RISE/.test(b) ? 'Condo (high-rise)' : /STUDIO/.test(b) ? 'Condo (studio)' : 'Condo';
   if (k === 'single') return /RENTAL DWELLING/.test(b) ? 'Rental house' : 'Single-family home';
@@ -1387,16 +1393,19 @@ const MD_COUNTY = { ALLE: 'Allegany', ANNE: 'Anne Arundel', BACI: 'Baltimore Cit
 function mdDerive(o) {
   let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim();
   const u = String(o.UNIT ?? '').replace(/\s+/g, ' ').trim().replace(/^(APT|STE|SUITE|UNIT|#)\s*/i, '');
-  if (a && u && !hasUnitNo(a)) a = `${a} UNIT ${u}`;
+  const range = /^(\d+)-(\d+[A-Z]?)$/.exec(u), lead = /^(\d+)\s/.exec(a);
+  if (range && lead && range[1] === lead[1]) a = a.replace(/^\d+/, u);          // "7 E PATRICK ST" with "7-9": a range of numbers, not a unit
+  else if (a && u && !hasUnitNo(a)) a = `${a} UNIT ${u}`;
   if (!/^\d/.test(a)) a = a.replace(/^0+\s*/, '');
-  o.SITE_ADDR = /^\d+[A-Z]?\s+\S/i.test(a) ? a : null;
+  o.SITE_ADDR = /^\d+[A-Z]?(-\d+[A-Z]?)?\s+\S/i.test(a) ? a : null;
   const j = String(o.COUNTY ?? '').trim().toUpperCase(); o.JURS = j; o.COUNTY = MD_COUNTY[j] || null;
   const town = String(o.TOWN ?? '').replace(/^[A-Z]{4}\s+/, '').replace(/\s+/g, ' ').trim();
   o.TOWN = /^(NONE|NOT IN A TOWN|)$/i.test(town) ? null : town;
-  o.CITY = j === 'BACI' ? 'Baltimore' : o.TOWN ? o.TOWN.replace(/\s+City$/i, '').replace(/^(City|Town) of\s+/i, '') : titleCase(String(o.CITY ?? '').trim()) || null;
+  // "Frederick City" is Frederick; Ocean City, Pocomoke City and Chesapeake City are the towns' names
+  o.CITY = j === 'BACI' ? 'Baltimore' : o.TOWN ? o.TOWN.replace(/^(?!(Ocean|Pocomoke|Chesapeake) City$)(.+?)\s+City$/i, '$2').replace(/^(City|Town) of\s+/i, '') : titleCase(String(o.CITY ?? '').trim()) || null;
   const z = String(o.ZIP ?? '').trim(); o.ZIP = /^\d{5}/.test(z) ? z.slice(0, 5) : null;
   const acct = String(o.PROP_ID ?? '').trim().toUpperCase();
-  o.CONDO_OUTLINE = /^(C\d+|CONDO)$/.test(acct) && !(num(o.TOTAL_VAL) > 0);
+  o.CONDO_OUTLINE = /^(C\d+|CONDO)$/.test(acct) && !(num(o.TOTAL_VAL) > 0) && !o.COMMON_GROUNDS;
   const d = String(o.SALE_DATE ?? '').replace(/\D/g, '');
   o.LS_DATE = /^(19|20)\d{6}$/.test(d) && +d.slice(0, 4) <= THIS_YEAR ? d : null;
   if (!o.LS_DATE) o.LS_PRICE = null;
@@ -1406,7 +1415,8 @@ function mdDerive(o) {
   const y = parseInt(o.YEAR_BUILT, 10); o.YEAR_BUILT = y > 1600 && y <= THIS_YEAR ? y : null;
   if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
   if (!(num(o.UNITS) > 0)) o.UNITS = null;
-  o.STYLE = String(o.STYLE ?? '').replace(/^[A-Z]{2,}\s+/, '').trim() || null;      // "STRY 2 Story With Basement"
+  o.STYLE = String(o.STYLE ?? '').replace(/^[A-Z]{2,}\s+/, '').replace(/^Townhouse-(Center|End) Unit\s*/i, '').replace(/\s+(With|No) Basem\w*$/i, (m, w) => ` ${w.toLowerCase()} basement`)
+    .replace(/^Condominium \(\w+\)$/i, '').trim() || null;      // "STRY 2 Story With Basement", "STRY Townhouse-Center Unit 3 Story With Basem"
   if (o.STYLE && o.BLDG_DESC && String(o.BLDG_DESC).replace(/^[A-Z]{2,}\s+/, '').trim() === o.STYLE && !/^\d/.test(o.STYLE)) o.STYLE = null;   // "OFFICE Office Building" twice
   o.RECORD_URL = /^https:\/\/sdat\.dat\.maryland\.gov\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
 }
@@ -1425,21 +1435,27 @@ async function mdExpand(feats, sv) {
   const own = new Set(feats.map((f) => String(f.attributes[A] ?? '').trim()));
   const pts = [];
   for (let page = 0, offset = 0; page < 4; page++) {
-    const body = new URLSearchParams({ geometry: `${Math.min(...xs)},${Math.min(...ys)},${Math.max(...xs)},${Math.max(...ys)}`, geometryType: 'esriGeometryEnvelope', inSR: '4326',
+    const lo = (a) => a.reduce((m, v) => (v < m ? v : m), Infinity), hi = (a) => a.reduce((m, v) => (v > m ? v : m), -Infinity);
+    const body = new URLSearchParams({ geometry: `${lo(xs)},${lo(ys)},${hi(xs)},${hi(ys)}`, geometryType: 'esriGeometryEnvelope', inSR: '4326',
       spatialRel: 'esriSpatialRelIntersects', outFields: out.join(','), returnGeometry: 'true', outSR: '4326', resultOffset: String(offset), f: 'json' }).toString();
     const j = await getJSON(url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }, 8000);
     const got = j.features || []; pts.push(...got);
     if (!j.exceededTransferLimit || !got.length) break;
     offset += got.length;
   }
+  const got = new Set(), mapped = new Set();
   for (const p of pts) {
-    const id = String(p.attributes[A] ?? '').trim(), g = p.geometry; if (!g || own.has(id)) continue;
+    const id = String(p.attributes[A] ?? '').trim(), g = p.geometry; if (!g) continue;
     const home = condos.find((f) => pointInRingsLL(g.x, g.y, f.geometry.rings)); if (!home) continue;
+    if (own.has(id)) { mapped.add(home); continue; }
+    got.add(home);
     own.add(id);
     feats.push({ geometry: home.geometry, attributes: p.attributes });
     // the outline itself takes the units' street address and town, for its card and its tax rate
     for (const k of ['SITE_ADDR', 'CITY', 'TOWN', 'ZIP']) { const fld = sv.canon.get(k); if (fld && !String(home.attributes[fld] ?? '').trim() && p.attributes[fld]) home.attributes[fld] = p.attributes[fld]; }
   }
+  // Worcester County (Ocean City) maps each unit with an outline of its own: the condo's outline is then its common grounds
+  for (const f of mapped) if (!got.has(f)) f.attributes.__COMMON_GROUNDS = true;
 }
 // Maryland's 2026–27 real property tax rates per $100 of assessment (SDAT, "2026-2027 Tax Rates & Homestead Credit Caps"): each
 // county's rate, then its towns' own rates with the county rate that applies inside them. The state adds $0.112 everywhere.
@@ -2031,7 +2047,7 @@ const REGIONS = {
       YEAR_BUILT: ['YEARBLT'], BLD_AREA: ['SQFTSTRC'], SALE_DATE: ['TRADATE'], LS_PRICE: ['CONSIDR1'], CONVEY: ['CONVEY1'], OOI: ['OOI'], EXEMPT_CLASS: ['DESCEXCL'],
       UNITS: ['BLDG_UNITS'], STORIES: ['BLDG_STORY'], RECORD_URL: ['SDATWEBADR'],
     },
-    extraFields: ['QUALIFIED', 'MULTI_SALE', 'JURS', 'CONDO_OUTLINE'],
+    extraFields: ['QUALIFIED', 'MULTI_SALE', 'JURS', 'CONDO_OUTLINE', 'COMMON_GROUNDS'],
     derive: (o) => mdDerive(o),
     expand: (feats, sv) => mdExpand(feats, sv),
     // Streets and water are outlines on this layer too (Baltimore's right-of-way is one 36 km² outline): never asked for.
