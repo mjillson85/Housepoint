@@ -28,6 +28,10 @@ jobs:
       # fields and use codes), probe/nc-tax-rates.py and probe/wa-tax-rates.py (North Carolina's and Washington's tax rate tables;
       # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings), probe/mn-codes.mjs (Minnesota's numbered property classes), probe/md-speed.mjs (Maryland's parcel sources timed), probe/dc-condos.mjs (DC's condo tables), probe/md-records.mjs (Maryland's records),
       # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node).
+      - name: Census outlines of the states being added
+        working-directory: tests
+        continue-on-error: true
+        run: node probe/outlines.mjs
       - name: Utah's county parcel services
         working-directory: tests
         continue-on-error: true
