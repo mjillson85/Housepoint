@@ -1009,17 +1009,33 @@ const NE_COUNTIES = ['Adams', 'Antelope', 'Arthur', 'Banner', 'Blaine', 'Boone',
 // (100 residential, 140 vacant, 200 farm), and Itasca, Crow Wing, Koochiching, Jackson and Houston one shared list (101 farm,
 // 151 cabin, 201 and 204 homes, 205 apartments, 211 vacant, 233 commercial, 7xx exempt).
 const mnText = (r) => `${String(r.USE_CODE ?? '').toUpperCase()} | ${String(r.DWELL ?? '').toUpperCase()}`;
-const MN_NUM = { 101: 'farmForest', 111: 'farmForest', 115: 'farmForest', 151: 'cabin', 200: 'farmForest', 201: 'single', 204: 'single', 205: 'multi', 209: 'single',
-  211: 'vacant', 233: 'commercial', 244: 'commercial', 958: 'other' };
-const MN_NUM_WASH = { 100: 'single', 140: 'vacant', 200: 'farmForest', 211: 'vacant', 958: 'other' };
-function mnNumKind(r) {
-  const c = String(r.USE_CODE ?? '').trim();
+// The numbered lists, by range: Washington County's 1xx homes, 2xx farms, 3xx businesses and 9xx exempt; the shared list's 1xx
+// farms (151 cabins), 20x homes (205 apartments), 21x residential lots, 23x and 24x businesses, 6xx public or forfeited land,
+// 7xx and 9xx exempt. A number with words after it ("958 Muni Srvc Other") falls back to its number when the words don't say.
+function mnNumKind(r, codeIn) {
+  const c = String(codeIn ?? r.USE_CODE ?? '').trim();
   if (!/^\d{1,3}$/.test(c)) return null;
-  const n = +c, wash = /^WASHINGTON$/i.test(String(r.COUNTY || '').trim());
-  const k = wash ? MN_NUM_WASH[n] : MN_NUM[n] || (n >= 660 && n <= 679 ? 'public' : n >= 700 && n <= 799 ? 'public' : null);
-  return k || 'unknown';
+  const n = +c;
+  if (n === 0) return 'unknown';
+  if (/^WASHINGTON$/i.test(String(r.COUNTY || '').trim())) {
+    if (n === 140 || n === 211) return 'vacant';
+    return n < 200 ? 'single' : n < 300 ? 'farmForest' : n < 400 ? 'commercial' : n >= 900 ? 'public' : 'unknown';
+  }
+  if (n === 151) return 'cabin';
+  if (n >= 100 && n < 200) return 'farmForest';
+  if (n === 205) return 'multi';
+  if (n >= 200 && n < 210) return 'single';
+  if (n >= 210 && n < 220) return 'resLand';
+  if (n >= 230 && n < 250) return 'commercial';
+  if (n >= 600) return 'public';
+  return 'unknown';
 }
 function mnKind(r) {
+  const k = mnKindText(r), lead = /^(\d{3})\s+\S/.exec(String(r.USE_CODE ?? '').trim());
+  if (k !== 'unknown' || !lead) return k;
+  return mnKindText({ ...r, USE_CODE: lead[1] });
+}
+function mnKindText(r) {
   const t = mnText(r), u2 = String(r.USE_CODE2 ?? '').toUpperCase(), built = hasBuilding(r), unit = hasUnitNo(String(r.SITE_ADDR || ''));
   const taxed = num(r.TAX_LAST) > 0, own = String(r.OWN_TYPE ?? '').toUpperCase();
   if (String(r.EXEMPT ?? '').trim().toUpperCase() === 'Y' || /^(FEDERAL|STATE|MUNICIPAL|COUNTY FEE|TRIBAL|PORT AUTHORITY|REGIONAL GOVERNMENT|TAX FORFEIT)$/.test(own)) return 'exempt';
@@ -1027,6 +1043,7 @@ function mnKind(r) {
   if (nk) {
     if (nk === 'public') return taxed ? 'other' : 'exempt';
     if (nk === 'cabin') return built ? 'single' : 'vacant';
+    if (nk === 'resLand') return built ? 'single' : 'vacant';
     if (nk === 'single') {
       if (/CONDO/.test(t)) return 'resCondo';
       if (/TWO-FAMILY|THREE-FAMILY|DUPLEX/.test(t)) return 'multi';
@@ -1038,7 +1055,7 @@ function mnKind(r) {
     return nk;
   }
   if (!t.replace(/[\s|]/g, '')) return built ? 'unknown' : num(r.TOTAL_VAL) > 0 ? 'vacant' : 'unknown';
-  if (/(^|[\s/])5E\b|EXEMPT|FEDERAL|^STATE |STATE PUBLIC|STATE PROPERTY|STATE TRUST|STATE ADMIN|MUNICIPAL|COUNTY-|COUNTY PUBLIC|TAX FORFEIT|FORFEIT|PILT|CHURCH|CEMETERY|K-12|COLLEGE|SCHOOL|HOSPITAL|CHARITABLE|PUBLIC PROPERTY|HOUSING REDEVELOPMENT|^PUBLIC|PARK LAND/.test(t)
+  if (/(^|[\s/])5E\b|EXEMPT|FEDERAL|^STATE |STATE PUBLIC|STATE PROPERTY|STATE TRUST|STATE ADMIN|MUNICIPAL|\bMUNI\b|COUNTY-|COUNTY PUBLIC|TAX FORFEIT|FORFEIT|PILT|CHURCH|CEMETERY|K-12|COLLEGE|SCHOOL|HOSPITAL|CHARITABLE|PUBLIC PROPERTY|HOUSING REDEVELOPMENT|^PUBLIC|PARK LAND/.test(t)
     && !/^(1|2|3|4)[A-D]/.test(t)) return taxed ? 'institutional' : 'exempt';
   if (/RAILROAD|UTILIT|PIPELINE|MINERAL|PERSONAL PROPERTY|ELECTRIC|GAS DISTRIB/.test(t)) return 'other';
   if (/COMMON AREA|NON-TAX OUTLOT/.test(t)) return 'other';
@@ -1090,12 +1107,12 @@ function mnUseLabel(r) {
       : /HOSPITAL/.test(t) ? 'Hospital' : /CHARITABLE/.test(t) ? 'Charity' : /NURSING|ASSISTED|ASTD/.test(t) ? 'Nursing or assisted living'
       : /HOUSING REDEVELOPMENT|HRA/.test(t) ? 'Public housing' : /FORFEIT/.test(t + own) ? 'Tax-forfeited land' : /FEDERAL/.test(t + own) ? 'Federal property'
       : /NATIONAL FOREST|BOUNDARY WATERS/.test(t) ? 'Federal land' : /STATE/.test(t + own) ? 'State property' : /COUNTY/.test(t + own) ? 'County property'
-      : /MUNICIPAL/.test(t + own) ? 'City property' : /TRIBAL/.test(own) ? 'Tribal land' : /SPECIAL TAXING/.test(t) ? 'Special district property'
+      : /MUNICIPAL|\bMUNI\b/.test(t + own) ? 'City property' : /TRIBAL/.test(own) ? 'Tribal land' : /SPECIAL TAXING/.test(t) ? 'Special district property'
       : /COMMUNITY ORG|NON-?REVENUE|NON-PROFIT|NONPROFIT|CONGRESS/.test(t) ? 'Nonprofit' : /SOCIAL CLUB/.test(t) ? 'Social club'
-      : nk === 'public' && !(n >= 700) ? 'Public or forfeited land' : k === 'institutional' ? 'Institutional' : 'Tax-exempt property';
+      : nk === 'public' && n < 700 ? 'Public or forfeited land' : k === 'institutional' ? 'Institutional' : 'Tax-exempt property';
   }
   if (k === 'other') return /RAILROAD/.test(t) ? 'Railroad property' : /UTILIT|PIPELINE|ELECTRIC|GAS/.test(t) ? 'Utility property' : /MINERAL/.test(t) ? 'Mineral rights'
-    : /COMMON AREA|OUTLOT/.test(t) ? 'Common area' : nk === 'public' ? 'Public or forfeited land' : 'Other property';
+    : /COMMON AREA|OUTLOT/.test(t) ? 'Common area' : nk === 'public' && n < 700 ? 'Public or forfeited land' : 'Other property';
   if (k === 'accessory') return /STORAGE/.test(t) ? 'Storage unit' : /GARAGE/.test(t) || /^\s*(G|GAR)\d/.test(String(r.UNIT_ID || '').toUpperCase()) ? 'Garage' : 'Outbuilding';
   if (k === 'farmForest') return /FOREST|TIMBER/.test(t) ? 'Forest land' : /RURAL VACANT|^111|^115/.test(t) ? 'Rural land' : hasBuilding(r) ? 'Farm' : 'Farmland';
   if (k === 'vacant') return /COMMERCIAL|INDUSTRIAL/.test(t) ? 'Vacant commercial land' : /APARTMENT/.test(t) ? 'Vacant land (zoned for apartments)'
@@ -1108,7 +1125,7 @@ function mnUseLabel(r) {
   if (k === 'multi') return pick(MN_DWELL_LABEL, d) || pick(MN_DWELL_LABEL, t) || (n === 205 ? 'Apartments or multi-family' : 'Two- or three-family home');
   if (k === 'apartments') return /LOW INC|4D|QUALIFY LI/.test(t) ? 'Apartments (income-qualified)' : /COOPERATIVE|CO-OP/.test(t) ? 'Co-op building' : 'Apartments';
   if (k === 'resCondo') return /COOPERATIVE|CO-OP/.test(d) ? 'Co-op unit' : 'Condo';
-  if (k === 'commercial' || k === 'industrial') return pick(MN_BIZ_LABEL, d) || pick(MN_BIZ_LABEL, t) || (n === 244 ? 'Commercial or industrial' : KIND_LABEL[k]);
+  if (k === 'commercial' || k === 'industrial') return pick(MN_BIZ_LABEL, d) || pick(MN_BIZ_LABEL, t) || (nk === 'commercial' && n >= 240 ? 'Commercial or industrial' : KIND_LABEL[k]);
   if (k === 'otherRes') return /B&B/.test(t) ? 'Residential (B&B or multiple uses)' : 'Residential';
   return KIND_LABEL[k] || null;
 }
@@ -1120,7 +1137,10 @@ const MN_TYPE = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'D
   LANDING: 'LNDG', MEADOW: 'MDW', MEADOWS: 'MDWS', ORCHARD: 'ORCH', PASS: 'PASS', PIKE: 'PIKE', PLAZA: 'PLZ', SPUR: 'SPUR', TRACE: 'TRCE', VALLEY: 'VLY', VIEW: 'VW', VILLAGE: 'VLG', WALK: 'WALK' };
 function mnDerive(o) {
   const up = (k) => String(o[k] ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
-  const n = num(o.A_NUM), suf = up('A_SUF'), pre = up('A_PRE');
+  const n = num(o.A_NUM), suf = up('A_SUF');
+  let pre = up('A_PRE');
+  // St. Louis County (Duluth) puts the street's direction before the number too ("W" 30 W 1st St)
+  if (MN_DIR[pre] || /^(N|S|E|W|NE|NW|SE|SW)$/.test(pre)) { if (!up('S_PDIR')) o.S_PDIR = pre; pre = ''; }
   const name = up('S_NAME'), parts = [];
   if (n > 0 && name) {
     parts.push(`${pre ? pre + ' ' : ''}${n}${suf ? (/^[A-Z]$/.test(suf) ? suf : ' ' + suf) : ''}`);
@@ -1141,7 +1161,8 @@ function mnDerive(o) {
   const z = String(o.ZIP ?? '').trim(); o.ZIP = /^\d{5}/.test(z) && !/^0+$/.test(z.slice(0, 5)) ? z.slice(0, 5) : null;
   const has = (v) => num(v) > 0;
   if (!has(o.TOTAL_VAL) && (has(o.LAND_VAL) || has(o.BLDG_VAL))) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);   // Koochiching sends the parts only
-  const y = parseInt(o.FY, 10); o.FY = y > 2000 ? y : null;
+  // Some counties already mark next year's taxes (Olmsted and Washington: 2027), which can be the proposed tax.
+  const y = parseInt(o.FY, 10); o.FY = y > 2000 && y <= THIS_YEAR ? y : null; o.TAX_NEXT = y > THIS_YEAR ? y : null;
   const d = num(o.SALE_DATE);
   o.LS_DATE = d > 1e11 ? ymdUTC(d) : null;
   if (o.LS_DATE && (+o.LS_DATE.slice(0, 4) < 1901 || +o.LS_DATE.slice(0, 4) > THIS_YEAR)) o.LS_DATE = null;
@@ -3150,10 +3171,11 @@ function estimateTax(s) {
   if (s.region.id === 'MN') {        // the county's own tax figure for the property
     const t = recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
     if (!t.length) return null;
-    const notes = ['The property tax in the county’s records for this property, special assessments aside.'];
+    const notes = [r0.TAX_NEXT ? `The county marks this figure for ${r0.TAX_NEXT} taxes, so it may be next year’s proposed tax. Special assessments aside.`
+      : 'The property tax in the county’s records for this property, special assessments aside.'];
     if (recs.length === 1 && /^Y/i.test(String(r0.HOMESTEAD || ''))) notes.push('The owner lives here (a homestead), which lowers the bill. An owner who rents it out would likely pay more.');
     else notes.push('A buyer who lives here can claim the homestead exclusion, which lowers the bill for most homes.');
-    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true, title: `Property tax · ${s.fy ? `${s.fy} bill` : 'latest bill'}`, notes };
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true, title: r0.TAX_NEXT ? 'Property tax · county’s latest figure' : `Property tax · ${s.fy ? `${s.fy} bill` : 'latest bill'}`, notes };
   }
   if (s.region.id === 'NE') {
     const i = NE_COUNTIES.indexOf(r0.COUNTY || (recs[0] && recs[0].COUNTY)), rate = NE_RATES[i]; if (!(rate > 0)) return null;

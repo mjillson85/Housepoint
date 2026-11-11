@@ -198,6 +198,15 @@ const parts = await page.evaluate(() => [['4332 XERXES AVE S'], ['3005 W 43RD ST
 check(parts[0] === "(anumber=4332 AND UPPER(st_name) LIKE 'XERXES%')" && /anumber=3005 AND UPPER\(st_name\) LIKE '43RD%'/.test(parts[1]) && /LIKE '1%'/.test(parts[2])
   && /anumber=1060 AND UPPER\(st_name\) LIKE 'GRAND%'/.test(parts[3]) && /LIKE 'POKEGAMA%'/.test(parts[4]), 'an address asked as its number and street name: ' + parts.join(' ; '));
 
+const norm = await page.evaluate(() => {
+  const n = (a) => window.__hp.normalizeRecord(a, 'MN');
+  const duluth = n({ co_name: 'St. Louis', anumberpre: 'W', anumber: 30, st_pre_dir: 'West', st_name: '1st', st_pos_typ: 'Street', useclass1: 'Commercial Preferred', tax_year: 2026 });
+  const olmsted = n({ co_name: 'Olmsted', anumber: 10, st_name: 'Center', st_pos_typ: 'Street', st_pos_dir: 'East', ctu_name: 'Rochester', tax_year: 2027, total_tax: 4852 });
+  const kooch = n({ co_name: 'Koochiching', ctu_name: "City of Int'l Falls", anumber: 1320, st_name: '10th', st_pos_typ: 'Street', emv_land: 9500, emv_bldg: 82900 });
+  return { duluth: duluth.SITE_ADDR, olmsted: [olmsted.FY, olmsted.TAX_NEXT, olmsted.SITE_ADDR], kooch: [kooch.CITY, kooch.TOTAL_VAL] };
+});
+check(norm.duluth === '30 W 1ST ST' && norm.olmsted.join('|') === '|2027|10 CENTER ST E' && norm.kooch.join('|') === 'International Falls|92400',
+  'Duluth’s direction before the number, a county’s next-year tax year, Koochiching’s value from its parts: ' + JSON.stringify(norm));
 const pq = await page.evaluate(() => ['Duluth, MN', '100 Main St, Rochester, Minnesota'].map((t) => window.__hp.parseQuery(t)));
 check(pq[0].state === 'MN' && pq[1].state === 'MN', 'Minnesota typed as MN or in full');
 await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(300);
