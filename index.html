@@ -170,6 +170,7 @@
   .grid .k { font-size: 10.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .2px; font-weight: 600; white-space: nowrap; }
   .grid .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .note { font-size: 12px; color: var(--mute); line-height: 1.45; margin: 10px 0 8px; }
+  .rec-link { display: block; margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--brick-2); font-size: 14px; font-weight: 500; text-decoration: none; }
   .copyrec { display: block; margin: 4px 0 14px; padding: 6px 0; border: 0; background: none; color: var(--mute); font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
   .copytext { width: 100%; font: 11px/1.35 ui-monospace, Menlo, monospace; margin: 4px 0 14px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #fff; }
   #health { position: fixed; inset: 0; overflow: auto; background: var(--paper); color: var(--ink); padding: max(20px, env(safe-area-inset-top)) 20px 40px; z-index: 60; }
@@ -445,6 +446,8 @@
     <button data-lat="38.93389" data-lon="-74.91889" data-name="Hughes St, Cape May, NJ">Cape May, NJ</button>
     <button data-lat="29.89340" data-lon="-81.31330" data-name="St. Augustine, FL">St. Augustine, FL</button>
     <button data-lat="35.80810" data-lon="-78.64290" data-name="Five Points, Raleigh, NC">Raleigh, NC</button>
+    <button data-lat="43.07900" data-lon="-89.38000" data-name="Madison isthmus, WI">Madison, WI</button>
+    <button data-lat="47.66800" data-lon="-122.38500" data-name="Ballard, Seattle, WA">Seattle's Ballard</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
   </div>
@@ -571,7 +574,8 @@ const fmtMonth = (d) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 function titleCase(s) {
   return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim()
     .replace(/(^|[\s\-\/])([a-z])/g, (m, p, c) => p + c.toUpperCase())
-    .replace(/\b(\d+)(St|Nd|Rd|Th)\b/g, (m, n, suf) => n + suf.toLowerCase());
+    .replace(/\b(\d+)(St|Nd|Rd|Th)\b/g, (m, n, suf) => n + suf.toLowerCase())
+    .replace(/\b(Ne|Nw|Se|Sw)\b/g, (m) => m.toUpperCase());          // "2814 NW 64th St", "Beach Dr NE"
 }
 
 function compass8(deg) { return ['N','NE','E','SE','S','SW','W','NW'][Math.round(norm(deg) / 45) % 8]; }
@@ -674,6 +678,8 @@ function useKind(r, rid) {
   }
   if (rid === 'CT') return ctKind(String(r.USE_DESC || '').toUpperCase().replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim());
   if (rid === 'NC') return ncKind(r);
+  if (rid === 'WI') return wiKind(r);
+  if (rid === 'WA') return waKind(r);
   // Massachusetts (MassGIS / Department of Revenue classes): the first three digits; towns may add a fourth character.
   const d = code.replace(/\D/g, ''), c3 = d.slice(0, 3), style = String(r.STYLE || '').toUpperCase();
   if (c3.length < 3) return 'unknown';
@@ -788,6 +794,124 @@ function ncDerive(o) {
   else if (o.SALE_TEXT) { const p = parseSaleDate(String(o.SALE_TEXT).replace(/T.*$/, '')); if (p) d = `${p.getFullYear()}${String(p.getMonth() + 1).padStart(2, '0')}${String(p.getDate()).padStart(2, '0')}`; }
   o.LS_DATE = d && +d.slice(0, 4) > 1900 && +d.slice(0, 4) <= THIS_YEAR && d.slice(4) !== '0101' ? d : null;
   delete o.SALE_DATE; delete o.SALE_TEXT;
+}
+// Wisconsin: the state's classes of property, one or more per parcel ("1", "2", "4,5,5M"): 1 residential (homes of up to three
+// units and condo units), 2 commercial (which includes apartment buildings of four or more units), 3 manufacturing, 4 farmland,
+// 5 undeveloped, 5M farm woodland, 6 forest, 7 a farm's home and buildings. Exempt land has no class but an auxiliary one:
+// X1 federal, X2 state, X3 county, X4 anything else exempt; W1–W9 is forest in a state forestry program; AW and AWO are assessed
+// with another parcel. Condo common areas carry the units' class with no value (and in Dane County the unit "CDM").
+const wiList = (v) => String(v ?? '').toUpperCase().replace(/\s+/g, '').split(',').filter(Boolean);
+function wiKind(r) {
+  const p = wiList(r.USE_CODE), x = wiList(r.AUX), has = (c) => p.includes(c);
+  if (r.CONDO_COMMON) return 'condoMaster';
+  if (!p.length) return x.some((c) => /^X/.test(c)) ? 'exempt' : x.some((c) => /^W/.test(c)) ? 'farmForest' : x.length ? 'other' : 'unknown';
+  if ((has('1') || has('2')) && r.TOTAL_VAL != null && String(r.TOTAL_VAL).trim() !== '' && num(r.TOTAL_VAL) === 0 && !x.length) return 'condoMaster';
+  const built = hasBuilding(r) || r.TOTAL_VAL == null, unit = hasUnitNo(String(r.SITE_ADDR || ''));   // no values sent: most likely built
+  if (has('3')) return 'industrial';
+  if (has('1') && has('2')) return built ? 'mixed' : 'vacant';
+  if (has('2')) return !built ? 'vacant' : unit ? 'comCondo' : 'commercial';
+  if (has('1')) return !built ? (p.length > 1 ? 'farmForest' : 'vacant') : unit ? 'resCondo' : 'single';
+  if (has('4') || has('5M') || has('6') || has('7')) return 'farmForest';
+  if (has('5')) return 'vacant';
+  return 'unknown';
+}
+function wiUseLabel(r) {
+  if (!r) return null;
+  const k = wiKind(r), p = wiList(r.USE_CODE), x = wiList(r.AUX), has = (c) => p.includes(c);
+  if (k === 'exempt') return x.includes('X1') ? 'Federal property' : x.includes('X2') ? 'State property' : x.includes('X3') ? 'County property' : 'Tax-exempt property';
+  if (k === 'farmForest') return !p.length ? 'Forest land (state forestry program)' : has('7') ? 'Farm with a home or buildings'
+    : has('4') ? 'Farmland' : has('6') || has('5M') ? 'Forest land' : 'Farm or forest land';
+  if (k === 'other') return 'Assessed with a neighboring parcel';
+  if (k === 'condoMaster') return 'Condo common area';
+  if (k === 'single') return 'Residential (1 to 3 units)';
+  if (k === 'commercial') return 'Commercial or apartment building';
+  if (k === 'industrial') return 'Manufacturing';
+  if (k === 'mixed') return 'Homes and businesses';
+  if (k === 'vacant') return has('5') ? 'Undeveloped land' : has('2') ? 'Vacant commercial land' : 'Vacant land';
+  return KIND_LABEL[k] || null;
+}
+// Addresses: towns write a unit right after the street ("201 JEFFERSON STREET 419") and 0 for no house number.
+// Places come as "CITY OF MADISON", "VILLAGE OF SHOREWOOD", "TOWN OF GIBRALTAR": the place is the taxing town, not the mailing one.
+function wiDerive(o) {
+  let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim().replace(/^0+\s+/, '');
+  const u = String(o.UNIT ?? '').trim().toUpperCase();
+  if (/^(CDM|COMMON|CA|COM)$/.test(u)) { a = a.replace(new RegExp(`\\s+(UNIT\\s+)?${reEsc(u)}$`, 'i'), ''); o.CONDO_COMMON = true; }
+  else if (u && a) {
+    const tail = new RegExp(`\\s+${reEsc(u)}$`, 'i');
+    if (tail.test(a) && !UNIT_TAIL_RE.test(a)) a = a.replace(tail, ` UNIT ${u}`);
+    else if (!hasUnitNo(a)) a = `${a} UNIT ${u}`;
+  }
+  if (/^0*$/.test(a)) a = '';
+  o.SITE_ADDR = a || null;
+  const place = String(o.CITY ?? '').replace(/\s+/g, ' ').trim();
+  o.CITY = place.replace(/^(CITY|VILLAGE|TOWN) OF\s+/i, '') || null;
+  if (/^TOWN OF/i.test(place)) o.CITY_KIND = 'town';
+  const y = parseInt(o.FY, 10); o.FY = y > 2000 ? y : null;
+  if (o.TOTAL_VAL == null && (num(o.LAND_VAL) || num(o.BLDG_VAL))) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
+}
+// Washington: the Department of Revenue's two-digit land use codes, which every county's own code is mapped to. King County
+// lists a condo building as one property with the whole building's value (its codes 20 and 25); other counties list each unit.
+const WA_COUNTIES = ['Adams', 'Asotin', 'Benton', 'Chelan', 'Clallam', 'Clark', 'Columbia', 'Cowlitz', 'Douglas', 'Ferry', 'Franklin', 'Garfield',
+  'Grant', 'Grays Harbor', 'Island', 'Jefferson', 'King', 'Kitsap', 'Kittitas', 'Klickitat', 'Lewis', 'Lincoln', 'Mason', 'Okanogan', 'Pacific',
+  'Pend Oreille', 'Pierce', 'San Juan', 'Skagit', 'Skamania', 'Snohomish', 'Spokane', 'Stevens', 'Thurston', 'Wahkiakum', 'Walla Walla', 'Whatcom',
+  'Whitman', 'Yakima'];                       // in county FIPS order: 001 Adams, 003 Asotin … 077 Yakima
+const waCode = (r) => { const n = parseInt(String(r.USE_CODE ?? '').trim(), 10); return Number.isFinite(n) ? n : null; };
+function waKind(r) {
+  const n = waCode(r), orig = String(r.USE_CODE2 || '').trim(), built = hasBuilding(r);
+  if (!n) return 'unknown';
+  if (n === 11 || n === 18 || n === 19) return built ? 'single' : 'vacant';
+  if (n === 12) return 'multi';
+  if (n === 13) return 'apartments';
+  if (n === 14) return /^33-(20|25)$/.test(orig) ? 'condoMaster' : 'resCondo';
+  if (n === 15) return 'mobile';
+  if (n === 16) return 'commercial';
+  if (n === 17) return 'otherRes';
+  if (n >= 21 && n <= 39) return 'industrial';
+  if (n === 42 || n === 44 || n === 46) return 'commercial';
+  if (n >= 41 && n <= 49) return 'other';
+  if (n === 50) return 'comCondo';
+  if (n >= 51 && n <= 66) return 'commercial';
+  if (n === 67 || n === 68) return 'exempt';
+  if (n === 69 || n === 71) return 'institutional';
+  if (n >= 72 && n <= 75) return 'commercial';
+  if (n === 76 || n === 79 || n === 93) return 'other';
+  if (n === 85) return 'industrial';
+  if (n === 91 || n === 99) return 'vacant';
+  if (n >= 81 && n <= 95) return 'farmForest';
+  return 'unknown';
+}
+const WA_LABEL = { 15: 'Mobile home park', 16: 'Hotel or motel', 17: 'Group quarters (dorm or care home)', 19: 'Vacation cabin',
+  41: 'Railroad property', 42: 'Truck or bus terminal', 43: 'Airport', 44: 'Marine terminal', 45: 'Road', 46: 'Parking', 47: 'Communications site',
+  48: 'Utility property', 49: 'Transportation or utility', 51: 'Wholesale or warehouse', 52: 'Building supply store', 53: 'Store', 54: 'Grocery store',
+  55: 'Auto dealer or service', 56: 'Clothing store', 57: 'Furniture store', 58: 'Restaurant or bar', 59: 'Store', 61: 'Office building',
+  62: 'Personal services', 63: 'Office building', 64: 'Repair shop', 65: 'Medical or professional office', 66: 'Contractor’s yard',
+  67: 'Government property', 68: 'School', 69: 'Church or community service', 71: 'Museum, library or cultural site', 72: 'Arena or auditorium',
+  73: 'Amusement', 74: 'Recreation', 75: 'Resort or camp', 76: 'Park', 79: 'Recreation or cultural site', 81: 'Farm', 82: 'Farm business',
+  83: 'Farmland (current use)', 84: 'Fishing', 85: 'Mine or quarry', 88: 'Forest land', 89: 'Resource land', 92: 'Woodland', 93: 'Water',
+  94: 'Open space land', 95: 'Timberland', 99: 'Undeveloped land' };
+function waUseLabel(r) {
+  if (!r) return null;
+  const n = waCode(r), k = waKind(r), orig = String(r.USE_CODE2 || '').trim();
+  if (!n) return null;
+  if (n === 12) return { '33-3': 'Two-family', '33-4': 'Three-family', '33-5': 'Four-family' }[orig] || 'Two- to four-family home';
+  if (n === 18 && k === 'single') return orig === '33-29' ? 'Townhouse' : 'Residential';
+  if (n === 14) return k === 'condoMaster' ? 'Condo building' : 'Condo';
+  if (n >= 21 && n <= 39) return 'Manufacturing';
+  return WA_LABEL[n] || KIND_LABEL[k] || null;
+}
+// Counties write ranges as "1113 TO 1117 TACOMA AVE S", a unit as "210 NICHOLS ST W   -A", and zip codes with or without the +4.
+function waDerive(o) {
+  const f = parseInt(String(o.COUNTY_FIPS ?? '').replace(/\D/g, '') || String(o.COUNTY ?? '').replace(/\D/g, '') || 'x', 10);
+  let c = f > 0 && f % 2 ? WA_COUNTIES[(f - 1) / 2] : null;
+  if (!c) { const n = String(o.COUNTY ?? '').replace(/[^A-Za-z]/g, '').toUpperCase(); c = WA_COUNTIES.find((x) => x.replace(/\s/g, '').toUpperCase() === n) || null; }
+  o.COUNTY = c || null; delete o.COUNTY_FIPS;
+  let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim();
+  a = a.replace(/^(\d+[A-Z]?) TO (\d+[A-Z]?) /, '$1-$2 ').replace(/\s*-\s*([A-Z0-9]{1,4})$/, (m, u) => (/^\d+$/.test(u) && !/\s-/.test(m) ? m : ` UNIT ${u}`)).replace(/^0+\s+/, '');
+  o.SITE_ADDR = /^0*$/.test(a) ? null : a;
+  const z = String(o.ZIP ?? '').trim(); o.ZIP = /^\d{5}/.test(z) && !/^0+$/.test(z.slice(0, 5)) ? z.slice(0, 5) : null;
+  const has = (v) => v != null && String(v).trim() !== '';
+  o.TOTAL_VAL = has(o.LAND_VAL) || has(o.BLDG_VAL) ? (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0) : null;
+  o.RECORD_URL = /^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
 }
 const KIND_LABEL = { single: 'Single-family home', multi: 'Multi-family home', apartments: 'Apartments', resCondo: 'Condo', comCondo: 'Commercial condo',
   condoMaster: 'Condo common record', mobile: 'Mobile home', mixedRes: 'Home with a business', mixed: 'Mixed use', otherRes: 'Residential',
@@ -1121,6 +1245,7 @@ const REGIONS = {
       if (/^C/i.test(q) && o.SITE_ADDR && !/\b(UNIT|APT|STE)\b|#/i.test(o.SITE_ADDR)) o.SITE_ADDR = `${String(o.SITE_ADDR).trim()} UNIT ${q.replace(/^C0*/i, '') || q}`;
     },
     noDelta: true,      // towns assess at different shares of market value, so "vs. sale" would mislead
+    actualTax: true,    // the tax shown is last year's real bill
     valueLabel: 'Town assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
     yearLabel: () => '',
     source: () => 'Source: town tax assessors via New Jersey’s MOD-IV tax list and the NJ Office of GIS. Towns assess at different shares of market value, so compare assessed values within one town, not across towns.',
@@ -1159,9 +1284,72 @@ const REGIONS = {
     commonNote: 'This county doesn’t map its condo units one by one on the statewide map, so unit values and sales aren’t available here.',
     useLabel: (c, r) => ncUseLabel(r),
   },
+  WI: {
+    id: 'WI', name: 'Wisconsin',
+    bbox: [-92.9, 42.49, -86.25, 47.1],
+    // Rough outline: the Mississippi and St. Croix on the Minnesota and Iowa side, the Montreal, Brule and Menominee rivers on
+    // Michigan's, the Illinois line straight. Loose out into Lake Michigan and Lake Superior.
+    poly: [[-87.8, 42.49], [-90.64, 42.51], [-90.72, 42.64], [-91.06, 42.74], [-91.16, 43.0], [-91.2, 43.35], [-91.22, 43.5], [-91.26, 43.8],
+      [-91.43, 44.0], [-91.72, 44.2], [-91.92, 44.33], [-92.3, 44.55], [-92.55, 44.57], [-92.8, 44.75], [-92.76, 45.05], [-92.75, 45.3],
+      [-92.65, 45.4], [-92.86, 45.62], [-92.86, 45.75], [-92.7, 45.95], [-92.29, 46.08], [-92.29, 46.66], [-92.2, 46.66], [-92.16, 46.7],
+      [-92.13, 46.745], [-92.09, 46.745], [-92.05, 46.72], [-92.01, 46.705], [-91.4, 46.95], [-90.9, 47.05], [-90.4, 47.05], [-90.42, 46.57],
+      [-90.3, 46.52], [-90.178, 46.455], [-90.12, 46.33], [-89.09, 46.14], [-88.65, 46.01],
+      [-88.12, 45.92], [-88.06, 45.78], [-87.83, 45.38], [-87.6, 45.1], [-87.1, 45.45], [-86.7, 45.45], [-86.85, 44.9], [-87.25, 44.4],
+      [-87.45, 43.8], [-87.65, 43.2], [-87.65, 42.49], [-87.8, 42.49]],
+    declination: (lat, lon) => -3.08 - 0.78 * (lon + 89.4) - 0.1 * (lat - 44),   // ~ -0.6 at Hudson, ~ -3.0 in Madison, ~ -4.9 in Door County
+    // The State Cartographer's Office's statewide parcels: every county's tax roll in one layer, public domain, refreshed yearly.
+    services: ['https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
+      'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels/FeatureServer/0'],
+    discover: 'type:"Feature Service" AND title:"Wisconsin Statewide Parcels"',
+    detect: ['CNTASSDVALUE', 'PROPCLASS', 'SITEADRESS', 'NETPRPTA'],
+    fields: {           // owner names and the tax bill's mailing address (OWNERNME1, OWNERNME2, PSTLADRESS) are never asked for
+      PROP_ID: ['PARCELID'], SITE_ADDR: ['SITEADRESS'], UNIT: ['UNITID'], CITY: ['PLACENAME'], ZIP: ['ZIPCODE'], COUNTY: ['CONAME'],
+      FY: ['TAXROLLYEAR'], TOTAL_VAL: ['CNTASSDVALUE'], LAND_VAL: ['LNDVALUE'], BLDG_VAL: ['IMPVALUE'], MKT_EST: ['ESTFMKVALUE'],
+      TAX_LAST: ['NETPRPTA'], USE_CODE: ['PROPCLASS'], AUX: ['AUXCLASS'],
+    },
+    derive: (o) => wiDerive(o),
+    cityPrefixes: ['CITY OF ', 'VILLAGE OF ', 'TOWN OF '],
+    noSales: true, noDelta: true, actualTax: true,
+    valueLabel: 'Assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
+    yearLabel: (fy) => `${fy} tax roll`,
+    source: (fy) => `Source: city, village and town assessors’ tax rolls via the Wisconsin State Cartographer’s Office statewide parcels${fy ? ` (${fy} tax roll)` : ''}. Assessed value is for taxes, not a market estimate, and places assess at different shares of market value.`,
+    shareSource: 'Wisconsin tax rolls via the State Cartographer’s Office',
+    commonNote: 'This lot has no value of its own on the tax roll, which usually means a condo’s common area. The units’ values aren’t on this map.',
+    useLabel: (c, r) => wiUseLabel(r),
+  },
+  WA: {
+    id: 'WA', name: 'Washington',
+    bbox: [-124.85, 45.54, -116.9, 49.01],
+    // Rough outline: the Columbia and the 46th parallel on the Oregon side, straight up the Idaho line, the Canadian border
+    // through the straits so Victoria stays out and Point Roberts stays in. Loose along the Pacific.
+    poly: [[-124.8, 48.45], [-123.6, 48.25], [-123.22, 48.3], [-123.25, 48.7], [-123.0, 48.8], [-123.32, 49.0], [-117.04, 49.0], [-117.04, 46.42],
+      [-116.92, 46.17], [-116.92, 46.0], [-118.98, 46.0], [-119.3, 45.93], [-119.6, 45.92], [-120.2, 45.72], [-120.65, 45.74], [-121.2, 45.61],
+      [-121.5, 45.72], [-121.9, 45.65], [-122.25, 45.55], [-122.4, 45.58], [-122.67, 45.612], [-122.77, 45.75], [-122.8, 45.9], [-122.95, 46.11],
+      [-123.25, 46.15], [-123.55, 46.25], [-123.9, 46.24], [-124.1, 46.25], [-124.3, 46.25], [-124.3, 47.0], [-124.8, 47.9], [-124.8, 48.45]],
+    declination: (lat, lon) => 14.47 - 0.21 * (lon + 121) + 0.21 * (lat - 47.3),   // ~ +13.5 in Pullman, ~ +14.9 in Seattle, ~ +15.2 at Forks
+    // WaTech's statewide parcels (the public copy, without owners): every county's parcels with the Department of Revenue's land
+    // use codes and the county's market values.
+    services: ['https://services.arcgis.com/jsIt88o09Q0r1j8h/arcgis/rest/services/Current_Parcels/FeatureServer/0'],
+    items: ['2b603a599a0842a3b2284c04c8927f35'],
+    discover: 'type:"Feature Service" AND (title:"Current Parcels" OR title:"Washington Statewide Parcels")',
+    detect: ['LANDUSE_CD', 'VALUE_LAND', 'SITUS_ADDRESS'],
+    fields: {           // this copy has no owner names or mailing addresses; the building name field (SUB_ADDRESS) isn't asked for either
+      PROP_ID: ['PARCEL_ID_NR'], SITE_ADDR: ['SITUS_ADDRESS'], CITY: ['SITUS_CITY_NM'], ZIP: ['SITUS_ZIP_NR'], COUNTY: ['COUNTY_NM'],
+      COUNTY_FIPS: ['FIPS_NR'], USE_CODE: ['LANDUSE_CD'], USE_CODE2: ['ORIG_LANDUSE_CD'], LAND_VAL: ['VALUE_LAND'], BLDG_VAL: ['VALUE_BLDG'],
+      RECORD_URL: ['DATA_LINK'],
+    },
+    derive: (o) => waDerive(o),
+    noSales: true,
+    valueLabel: 'County market value', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
+    yearLabel: () => '',
+    source: () => 'Source: county assessors via WaTech’s statewide parcels (Washington Geospatial Open Data Portal). Market value is the county’s value for taxes, not an appraisal.',
+    shareSource: 'Washington county assessor records via WaTech',
+    commonNote: 'King County lists a condo building as one property. Each unit’s value is on the county assessor’s page.',
+    useLabel: (c, r) => waUseLabel(r),
+  },
 };
 const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => Object.keys(r.fields)).concat(['LS_DATE', 'TOTAL_VAL', 'FY']));
-const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida and North Carolina';
+const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin and Washington';
 const BORDER_SLOP = 1500;   // meters: near a state line, load both states' records
 
 function inPoly(lon, lat, ring) {
@@ -1174,7 +1362,7 @@ function inPoly(lon, lat, ring) {
 }
 const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
-const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC'];
+const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA'];
 function regionFor(lat, lon) {
   if (lat == null || lon == null) return null;
   for (const id of REGION_ORDER) if (inRegion(REGIONS[id], lat, lon)) return REGIONS[id];
@@ -1373,7 +1561,7 @@ const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first h
 const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
 const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
 const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
-const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC' };
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA' };
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
 // Apartment and unit numbers aren't needed to find a lot.
@@ -1423,7 +1611,9 @@ function parseQuery(text) {
     const lone = parts.length === 1 && numFirst;
     const court = st === 'CT' && !before.some((x, k) => k >= 2 && STREET_END.has(x));
     const northeast = st === 'NE' && (STREET_END.has(w[w.length - 2]) || !before.some((x, k) => k >= 1 && STREET_END.has(x)));
-    if (m && m.index > 0 && !(lone && (court || northeast))) { q.state = st; parts[parts.length - 1] = lastU.slice(0, m.index).trim(); }
+    // "Mount Washington" and "Port Washington" are towns (in Massachusetts and Wisconsin), not Washington state.
+    const placeName = m && m[1].length > 4 && /^(MOUNT|MT|PORT|FORT|FT|LAKE|NEW|EAST|WEST|NORTH|SOUTH|OLD)$/.test(lastU.slice(0, m.index).trim().split(' ').pop() || '');
+    if (m && m.index > 0 && !placeName && !(lone && (court || northeast))) { q.state = st; parts[parts.length - 1] = lastU.slice(0, m.index).trim(); }
   }
   const first = parts[0] || '';
   const nm = /^(\d+[A-Z]?)(-\d+[A-Z]?)?\s+(.+)$/i.exec(first);
@@ -1492,13 +1682,13 @@ function knownTown(name) {
 }
 
 // Which states to look in, most likely first: the one typed; otherwise the one the town is known to be in, the one the
-// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida, North Carolina.
+// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington.
 function searchOrder(q, kt) {
   if (q.state) return REGIONS[q.state] ? [REGIONS[q.state]] : [];
   const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
   // The town lists cover only Massachusetts and Connecticut, so with the map in New Jersey or Florida, that state still comes first.
   const townSt = kt && (!here || here.id === 'MA' || here.id === 'CT') ? (here && kt.states.includes(here.id) ? here.id : kt.states[0]) : null;
-  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC];
+  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC, REGIONS.WI, REGIONS.WA];
   return order.filter((r, i) => r && order.indexOf(r) === i);
 }
 
@@ -1586,7 +1776,8 @@ async function searchIn(region, alts, town, street, near) {
   // searched in a small circle around a point; a statewide search on it never finishes.
   const like = (pat) => { const xs = (near ? [A, A2] : [A]).filter(Boolean).map((f) => `UPPER(${f}) LIKE '${pat}'`); return xs.length > 1 ? `(${xs.join(' OR ')})` : xs[0]; };
   const cityUp = (t) => String(t || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
-  const inTown = (t) => (t && C ? ` AND UPPER(${C}) LIKE '${sqlq(cityUp(t))}%'` : '');
+  // Wisconsin's places are "CITY OF MADISON", "VILLAGE OF SHOREWOOD", "TOWN OF GIBRALTAR".
+  const inTown = (t) => (t && C ? ` AND (${['', ...(region.cityPrefixes || [])].map((pre) => `UPPER(${C}) LIKE '${sqlq(pre + cityUp(t))}%'`).join(' OR ')})` : '');
   const T = inTown(town);
   const tries = [];
   if (street) { if (!T) return null; tries.push(`(${like(`% ${sqlq(street)}`)} OR ${like(`% ${sqlq(street)} %`)})${T}`); }
@@ -1748,9 +1939,10 @@ async function townPlace(names, order, fix) {
       found.push({ st, kind, lat, lon, name, prio: from.prio, fix: !!from.fix });
     }
   }));
-  // Rank: how it was typed, then the state order, then (towns in New England and New Jersey, cities in Florida and North Carolina), then nearest:
+  // Rank: how it was typed, then the state order, then (towns in New England, New Jersey and Wisconsin, cities in Florida, North Carolina and
+  // Washington), then nearest:
   // New Jersey has five Washington townships.
-  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
   const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
@@ -1885,7 +2077,7 @@ async function ensureData(lat, lon, force = false) {
    can actually see (a ray across a big lawn or a lot corner no longer counts).
    Massachusetts: MassGIS roof outlines. Florida: FEMA/ORNL USA Structures
    (public domain), with the state's Microsoft-derived outlines as a backup.
-   Connecticut and New Jersey: USA Structures. Lots with no outline on file fall back to the lot line.
+   Connecticut, New Jersey, North Carolina, Wisconsin and Washington: USA Structures. Lots with no outline on file fall back to the lot line.
    ========================================================================= */
 const BLDG_SOURCES = {
   MA: { urls: ['https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0'], items: [], more: [] },
@@ -1894,6 +2086,8 @@ const BLDG_SOURCES = {
   CT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   NJ: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   NC: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  WI: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  WA: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
 };
 const BSVC = {};
 function bldgLayer(rid) {
@@ -2097,7 +2291,8 @@ function summarize(p) {
   const commonOnly = (region.id === 'FL' ? flCondoCode(r0.USE_CODE)
     : region.id === 'CT' ? recs.length === 1 && /CONDO|COMMON/i.test(String(r0.USE_DESC || ''))
     : region.id === 'NJ' ? recs.length === 1 && /CONDO|COMMON|C\/E/i.test(`${r0.BLDG_DESC || ''} ${r0.LAND_DESC || ''}`)
-    : region.id === 'NC' ? recs.length === 1 && ncKind(r0) === 'condoMaster' : false) && !vals.some((v) => v > 1000);
+    : region.id === 'NC' || region.id === 'WI' ? recs.length === 1 && useKind(r0, region.id) === 'condoMaster' : false) && !vals.some((v) => v > 1000)
+    || (region.id === 'WA' && lot.kinds.every((k) => k === 'condoMaster'));    // King County: the whole building, with its value
   // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
   // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
   const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
@@ -2105,6 +2300,7 @@ function summarize(p) {
   const oneHome = num(r0.RES_AREA) > 0 && num(r0.RES_AREA) < 3000;
   const park = recs.length === 1 && (region.id === 'MA' ? /^103/.test(dig) && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))
     : region.id === 'FL' ? parseInt(dig || 'x', 10) === 28 && sites >= 3
+    : region.id === 'WA' ? waCode(r0) === 15
     : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))) : false);
   let use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
   if (lot.kinds[lot.main] === 'vacant' && /^(Commercial|Industrial)$/.test(use || '')) use = `Vacant ${use.toLowerCase()} land`;   // 3939: land, not a store
@@ -2138,8 +2334,10 @@ function parkNote(s) {
     ? 'Homes on rented lots in a park usually pay a yearly mobile home license fee instead of property tax, so they don’t show up as separate properties.'
     : s.region.id === 'CT'
     ? 'Each home in a Connecticut park is taxed on its own bill, but the homes sit on land the park owns, so the state’s lot map shows the park as one property.'
+    : s.region.id === 'WA'
+    ? 'Each home in a Washington park is taxed on its own as personal property, but the homes sit on land the park owns, so the county lists the park as one property.'
     : 'Homes in a Massachusetts park don’t get their own property tax bill; the park pays the town a monthly fee for each home instead. So the town records the park as one property.';
-  return `<b>The individual homes aren’t on the property records.</b> ${why} The value and sale here are for the whole park.`;
+  return `<b>The individual homes aren’t on the property records.</b> ${why} The value${s.region.noSales ? '' : ' and sale'} here ${s.region.noSales ? 'is' : 'are'} for the whole park.`;
 }
 // "Oldest of 86 houses nearby": how this house ranks among the houses within about a quarter mile.
 function badgesFor(L) {
@@ -2192,12 +2390,14 @@ function renderCard(cand, total, idx) {
     const m = s.sales.find((q) => q.p >= 10000);
     if (m) return `Latest unit sale <b>${money(m.p)}</b> · ${fmtMonth(m.d)}`;
     if (s.region.noSalePrice && s.sales[0]) return `Latest unit sale ${fmtMonth(s.sales[0].d)} · the state’s records don’t list prices`;
+    if (s.region.noSales) return 'The state’s records don’t include sales';
     return s.sales[0] ? `No market sales on record (latest transfer ${fmtMonth(s.sales[0].d)} was for a nominal amount)` : 'No recorded sales';
   };
   let valueBlock = '';
   if (s.commonOnly) {
+    const whole = s.recs.reduce((t, x) => t + (num(x.TOTAL_VAL) || 0), 0);
     valueBlock = `<div class="value"><div class="k">Condo building</div><div class="v">${s.units > 1 ? s.units + ' units' : 'Condo'}</div>
-      <div class="s">${s.region.commonNote || 'This county doesn’t publish individual unit records on the statewide map, so unit values and sales aren’t available here.'}</div></div>`;
+      <div class="s">${s.region.commonNote || 'This county doesn’t publish individual unit records on the statewide map, so unit values and sales aren’t available here.'}${whole > 1000 ? `<br>The county values the whole building at <b>${moneyFull(whole)}</b>.` : ''}</div></div>`;
   } else if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
@@ -2205,7 +2405,7 @@ function renderCard(cand, total, idx) {
       <div class="s">${condoSaleLine(s)}</div></div>${staleHtml(s)}`;
   } else {
     const v = num(r.TOTAL_VAL), sale = s.sales[0];
-    let saleLine = 'No recorded sale on file';
+    let saleLine = s.region.noSales ? 'The state’s records don’t include sales' : 'No recorded sale on file';
     if (sale) {
       const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
       if (sale.p && sale.p >= 10000) {
@@ -2238,7 +2438,10 @@ function renderCard(cand, total, idx) {
   cells.push(['Lot', lotText(L)]);
   if (s.park && s.sites) cells.push(['Home sites', s.sites]);
   else if (s.units > 1 && !s.park && (s.condo || home)) cells.push(['Units', s.units]);
-  if (num(r.LAND_VAL) && !s.condo) cells.push(['Land value', money(r.LAND_VAL)]);
+  if (num(r.LAND_VAL) && !s.condo && !s.commonOnly) cells.push(['Land value', money(r.LAND_VAL)]);
+  // Wisconsin: the state's estimate of market value (the assessed value over the town's assessment ratio), where they differ.
+  const mkt = num(r.MKT_EST), av = num(r.TOTAL_VAL);
+  if (mkt > 0 && av > 0 && !s.condo && Math.abs(mkt / av - 1) >= 0.05) cells.push(['State market estimate', money(mkt)]);
   while (cells.length % 3) cells.push(['', '']);
   const grid = `<div class="grid">${cells.map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>`;
 
@@ -2257,6 +2460,7 @@ function renderCard(cand, total, idx) {
     ${grid}
     ${unitList}
     ${s.isHome ? buyBoxHtml(L) : ''}
+    ${r.RECORD_URL ? `<a class="rec-link" href="${esc(r.RECORD_URL)}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
     <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
     ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
@@ -2343,7 +2547,7 @@ function recRowHtml(s, u, kind, i, label, more) {
   const t = estimateTax({ region: s.region, r0: u, recs: [u], taxRecs: [u], commonOnly: false });
   const area = areaOf(u, res), yb = num(u.YEAR_BUILT);
   const cell = (k, v) => v ? `<div>${esc(k)}<b>${esc(v)}</b></div>` : '';
-  const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', sale),
+  const det = [cell('Value', moneyFull(u.TOTAL_VAL) || '—'), cell('Last sale', s.region.noSales ? '' : sale),
     cell(res ? 'Living area' : 'Floor area', area ? `${Math.round(area).toLocaleString('en-US')} ft²` : ''),
     res ? cell('Rooms', num(u.NUM_ROOMS) ? String(num(u.NUM_ROOMS)) : '') : '', res ? cell('Bedrooms', num(u.BEDS) ? String(num(u.BEDS)) : '') : '',
     res ? cell('Baths', num(u.BATHS) ? bathText(u) : '') : '',
@@ -2566,6 +2770,22 @@ function estimateTax(s) {
     notes.push('Doesn’t include fire or other special district taxes, or exemptions (seniors, veterans and others).');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
+  if (s.region.id === 'WI') {        // so does Wisconsin's tax roll
+    const t = recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
+    if (!t.length) return null;
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true,
+      notes: [`The ${s.fy || 'last'} tax bill from the ${s.r0.CITY_KIND === 'town' ? 'town' : 'local'} tax roll, after the state’s first-dollar and lottery credits. The lottery credit goes only to an owner who lives here, so a new owner’s bill can be a bit higher. Special assessments and charges aren’t included.`] };
+  }
+  if (s.region.id === 'WA') {
+    const c = r0.COUNTY || (recs[0] && recs[0].COUNTY), rate = WA_LEVY[c]; if (!rate) return null;
+    const v = recs.filter((r) => WA_TAXED.has(useKind(r, 'WA'))).map((r) => num(r.TOTAL_VAL)).filter((x) => x > 0);
+    if (!v.length) return null;
+    const t = v.map((x) => x * rate / 1000);
+    const notes = [`${c} County’s average levy rate for ${WA_LEVY_YEAR} taxes, <b>$${rate.toFixed(2)}</b> per $1,000 of value. The real rate depends on the city and districts, often a dollar or two either way.`];
+    if (s.park) notes.unshift('The park owner’s tax on the land. Each home in the park is taxed on its own too.');
+    notes.push('Doesn’t include exemptions (seniors, people with disabilities, veterans) or special assessments.');
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes, rough: true };
+  }
   if (s.region.id === 'NJ') {        // New Jersey publishes the real bill, so there's nothing to estimate
     if (/^15/.test(String(r0.USE_CODE || '').trim())) return { exempt: true };
     const t = recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
@@ -2575,17 +2795,28 @@ function estimateTax(s) {
   }
   return null;
 }
+// Washington: each county's average levy rate per $1,000 of value, taxes due 2025 (Department of Revenue, Property Tax Statistics,
+// table 28). One rate across the county: cities and districts make it higher or lower.
+const WA_LEVY_YEAR = 2025;
+const WA_LEVY = { Adams: 10.2073, Asotin: 10.9251, Benton: 8.7949, Chelan: 7.7104, Clallam: 8.4214, Clark: 9.5419, Columbia: 12.1927, Cowlitz: 8.883,
+  Douglas: 7.7294, Ferry: 8.5293, Franklin: 8.3212, Garfield: 10.9927, Grant: 9.4289, 'Grays Harbor': 8.5978, Island: 7.2768, Jefferson: 8.2165,
+  King: 8.9352, Kitsap: 8.6244, Kittitas: 7.2183, Klickitat: 8.5015, Lewis: 8.0525, Lincoln: 9.7871, Mason: 8.1108, Okanogan: 8.5023, Pacific: 7.2911,
+  'Pend Oreille': 7.9468, Pierce: 10.1377, 'San Juan': 5.9213, Skagit: 8.7005, Skamania: 8.3791, Snohomish: 8.3155, Spokane: 9.8508, Stevens: 7.678,
+  Thurston: 9.8906, Wahkiakum: 6.1701, 'Walla Walla': 10.2399, Whatcom: 8.0509, Whitman: 12.3324, Yakima: 9.0747 };
+// Farm, forest and open-space land is taxed on its current use, not the market value shown, and public, church and park land is
+// mostly exempt: no estimate for those.
+const WA_TAXED = new Set(['single', 'multi', 'apartments', 'resCondo', 'comCondo', 'mobile', 'otherRes', 'mixedRes', 'mixed', 'commercial', 'industrial', 'vacant']);
 const round10 = (v) => Math.round(v / 10) * 10;
 function taxBoxHtml(s) {
   const t = estimateTax(s);
   if (!t) return '';
-  if (t.exempt) return `<div class="tax"><div class="k">${s.region.id === 'NJ' ? 'Property tax' : 'Estimated property tax'}</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
+  if (t.exempt) return `<div class="tax"><div class="k">${s.region.actualTax ? 'Property tax' : 'Estimated property tax'}</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
   const ap = t.actual ? '' : '≈ ', R = t.actual ? Math.round : round10;   // last year's real bill is shown to the dollar
   const big = t.hi < 1 ? `${ap}$0` : t.perUnit && R(t.hi) !== R(t.lo) ? `${ap}${moneyFull(R(t.lo)) || '$0'}–${moneyFull(R(t.hi)).slice(1)}` : `${ap}${moneyFull(R(t.hi)) || '$0'}`;
   const unit = t.perUnit ? 'per unit, per year' : 'per year';
   const lines = t.notes.slice();
   if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
-  const title = t.actual ? 'Property tax · last year’s bill' : s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
+  const title = t.actual ? 'Property tax · last year’s bill' : t.rough || s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
   return `<div class="tax"><div class="k">${title}${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
@@ -2755,7 +2986,7 @@ const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toF
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/',
-  NC: 'https://ncreports.ondemand.sas.com/src/' };
+  NC: 'https://ncreports.ondemand.sas.com/src/', WI: 'https://dpi.wi.gov/accountability/report-cards', WA: 'https://washingtonstatereportcard.ospi.k12.wa.us/' };
 
 function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
@@ -3257,7 +3488,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
    ========================================================================= */
 const CALC_KEY = 'housepoint.calc';
 const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
-const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
+const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228, WI: 1488, WA: 1392 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
 const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
 let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
 try {
@@ -3269,7 +3500,7 @@ try {
 const CALC_EDITS = new Map();                            // card key -> price/insurance/fee typed in
 function calcDefaults(s) {
   const sale = s.condo || s.multiSale || s.unqualified ? null : s.sales.find((q) => q.p >= 10000);   // not a multi-lot or non-market sale
-  const value = s.condo ? median(s.vals) : num(s.r0.TOTAL_VAL);
+  const value = s.condo ? median(s.vals) : num(s.r0.MKT_EST) || num(s.r0.TOTAL_VAL);    // Wisconsin: the state's market estimate
   const price = Math.round(Math.max(value || 0, sale ? sale.p : 0) / 1000) * 1000;
   const t = estimateTax(s);
   const taxYr = !t || t.exempt ? 0 : (t.buyer || (t.lo + t.hi) / 2);
@@ -3324,7 +3555,7 @@ function wireCalc(L, s) {
       + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
     const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: 'the estimate above', none: 'not included' }[c.taxKind];
     $('#cNote').innerHTML = `Rate: Freddie Mac’s average 30-year rate was ${RATE30.rate}% (${RATE30.asOf}); yours depends on credit and points${c.term !== 30 ? ', and shorter loans usually run a bit lower' : ''}. `
-      + `Price starts at the ${s.condo ? 'typical unit value' : 'town’s value or the last sale, whichever is higher'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : staleRecord(s) ? ` (the town’s value here is from FY${s.fy})` : ''}. Tax: ${taxWhy}. `
+      + `Price starts at the ${s.condo ? 'typical unit value' : num(s.r0.MKT_EST) > 0 ? 'state’s market estimate' : 'town’s value or the last sale, whichever is higher'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : staleRecord(s) ? ` (the town’s value here is from FY${s.fy})` : ''}. Tax: ${taxWhy}. `
       + `Insurance: ${s.condo ? 'add your condo policy quote' : `${esc(s.region.name)}’s average policy; get a real quote`}.${m.pmi ? ` Mortgage insurance is a rough ${PMI_RATE * 100}% a year.` : ''} `
       + `Cash needed: <b>${dollars(m.cash)}</b> down plus closing costs, often 2–5% of the loan.`;
     if (edited) patchSaved(key, { calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } });
@@ -4497,7 +4728,7 @@ $("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sa
 $('#goDemo').onclick = () => { location.search = '?demo=1'; };
 const ABOUT = `
   <h2>About Housepoint</h2>
-  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey or Florida and see its story from public records: when it was built, what it’s valued at,
+  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin or Washington and see its story from public records: when it was built, what it’s valued at,
   when it last sold, an estimated property tax, and its flood zone.</p>
   <h3>Privacy</h3>
   <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
@@ -4510,13 +4741,15 @@ const ABOUT = `
     <li><b>New Jersey property records, last year’s tax and lot lines:</b> town tax assessors via the NJ Division of Taxation’s MOD-IV tax list, joined to the statewide parcel map by the NJ Office of Information Technology, Office of GIS (NJOGIS), and the counties.</li>
     <li><b>Florida property records and lot lines:</b> Florida’s county property appraisers and the Florida Department of Revenue, Property Tax Oversight, via the Florida Geographic Information Office.</li>
     <li><b>North Carolina property records and lot lines:</b> county tax offices, compiled into NC OneMap’s statewide parcels by the NC Center for Geographic Information and Analysis; property tax rates from the NC Department of Revenue.</li>
-    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida and North Carolina), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
+    <li><b>Wisconsin property records, last year’s tax and lot lines:</b> city, village and town tax rolls, compiled into the statewide parcel map by the Wisconsin State Cartographer’s Office and the Wisconsin Land Information Program (public domain).</li>
+    <li><b>Washington property records and lot lines:</b> county assessors, compiled into the statewide parcel layer by Washington Technology Solutions (WaTech); average county levy rates from the Washington Department of Revenue.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida, North Carolina, Wisconsin and Washington), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
     <li><b>Map search:</b> the state parcel services above, then the U.S. Census Bureau’s address lookup (Census Geocoder) and its TIGERweb map for towns; Geoapify’s address search helps with streets, towns and typos.</li>
     <li><b>Ground elevation:</b> USGS 3D Elevation Program, via the Elevation Point Query Service.</li>
-    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data.</li>
+    <li><b>Tax rates:</b> Massachusetts Division of Local Services, FY2026 residential rates by town; Connecticut Office of Policy and Management, FY2026 mill rates by town; New Jersey shows each property’s actual tax from last year instead of an estimate; Florida county average tax rates from Florida TaxWatch, “How Florida Counties Compare 2025,” based on Florida Department of Revenue data; North Carolina county and town rates for 2026–27 from the NC Department of Revenue; Wisconsin shows each property’s tax from the 2025 tax roll; Washington county average levy rates for taxes due in 2025 from the Washington Department of Revenue.</li>
     <li><b>Schools:</b> National Center for Education Statistics (NCES) school and district data, via its EDGE program.</li>
     <li><b>Neighborhood:</b> U.S. Census Bureau, American Community Survey 5-year estimates for the census tract (tract found with the Census Bureau’s TIGERweb, or the FCC’s area lookup as a backup).</li>
     <li><b>Safety:</b> crimes local police departments report to the FBI (Uniform Crime Reporting), via the FBI Crime Data Explorer.</li>
@@ -4527,7 +4760,7 @@ const ABOUT = `
   </ul>
   <h3>How accurate is it?</h3>
   <p>Lot lines are a drawing of property boundaries, not a survey. Assessed, appraised and “just” values are what towns and counties use for taxes, not market
-  estimates. Tax amounts (except New Jersey’s, which are last year’s actual bills) are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
+  estimates. Tax amounts (except New Jersey’s and Wisconsin’s, which are last year’s actual bills) are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
   pointing at depends on your phone’s GPS and compass; if it picks the wrong one, tap “Not it.”</p>
   <h3>Fonts</h3>
   <p>Inter and Fraunces, under the SIL Open Font License.</p>
@@ -4573,7 +4806,7 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
    ========================================================================= */
 const HEALTH_LOT = {};          // a lot found in each state's check, for the buying checks
 const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
-  NC: [35.8085, -78.6430, 'Raleigh Five Points'] };
+  NC: [35.8085, -78.6430, 'Raleigh Five Points'], WI: [43.0700, -89.4300, 'Madison Near West'], WA: [47.6680, -122.3850, 'Seattle Ballard'] };
 async function runHealth() {
   document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
     <p class="hs">Each check runs the way the app does. Green answered, amber answered with a problem, red didn’t answer.</p><ol id="hRows"></ol>
@@ -4657,7 +4890,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

@@ -31,7 +31,8 @@ jobs:
         working-directory: tests
         env:
           CHROME: /usr/bin/google-chrome
-        run: node capture/capture.mjs ${{ github.event.inputs.states }}
+        # A push captures only states without records yet; "Run workflow" with no states refreshes them all.
+        run: node capture/capture.mjs ${{ github.event_name == 'push' && 'new' || github.event.inputs.states }}
       - name: Commit the records
         if: always()
         run: |
