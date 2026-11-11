@@ -2065,7 +2065,8 @@ function utKind(r) {
   if (/^COMMERCIAL/.test(c)) return 'commercial';
   if (/^TAX EXEMPT/.test(c)) return 'exempt';
   if (c === 'VACANT' || c === 'UNDEVELOPED') return 'vacant';
-  if (c === 'GREENBELT') return 'farmForest';
+  if (c === 'GREENBELT' || c === 'AGRICULTURAL') return 'farmForest';
+  if (c === 'MIXED USE') return 'mixed';
   return 'other';
 }
 const UT_LABEL = { GREENBELT: 'Farmland (greenbelt)', RECREATIONAL: 'Recreational', 'COMMERCIAL - OFFICE SPACE': 'Offices', 'COMMERCIAL - RETAIL': 'Retail',

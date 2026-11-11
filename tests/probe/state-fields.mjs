@@ -20,15 +20,7 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {   // Tier 2 round 1 (all of them, want 'auto') is in git history (November 11, 2026). Utah's other counties' property classes:
-  UT_Utah: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Utah_LIR/FeatureServer/0', want: ['PARCEL_ID', 'PARCEL_ADD', 'PARCEL_CITY', 'PROP_CLASS', 'HOUSE_CNT', 'BLDG_SQFT', 'BUILT_YR', 'TOTAL_MKT_VALUE', 'LAND_MKT_VALUE', 'TAXEXEMPT_TYPE', 'PRIMARY_RES', 'FLOORS_CNT'],
-    group: [['PROP_CLASS']], codes: ['PROP_CLASS'], county: [], spots: [[40.2338, -111.6585, 'Provo'], [40.3900, -111.8500, 'Lehi']] },
-  UT_Davis: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Davis_LIR/FeatureServer/0', want: ['PARCEL_ID', 'PARCEL_ADD', 'PARCEL_CITY', 'PROP_CLASS', 'HOUSE_CNT', 'BLDG_SQFT', 'BUILT_YR', 'TOTAL_MKT_VALUE', 'LAND_MKT_VALUE', 'TAXEXEMPT_TYPE', 'PRIMARY_RES', 'FLOORS_CNT'],
-    group: [['PROP_CLASS']], codes: ['PROP_CLASS'], county: [], spots: [[41.0350, -111.9380, 'Kaysville']] },
-  UT_Washington: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Washington_LIR/FeatureServer/0', want: ['PARCEL_ID', 'PARCEL_ADD', 'PARCEL_CITY', 'PROP_CLASS', 'HOUSE_CNT', 'BLDG_SQFT', 'BUILT_YR', 'TOTAL_MKT_VALUE', 'LAND_MKT_VALUE', 'TAXEXEMPT_TYPE', 'PRIMARY_RES', 'FLOORS_CNT'],
-    group: [['PROP_CLASS']], codes: ['PROP_CLASS'], county: [], spots: [[37.1000, -113.5700, 'St. George']] },
-  UT_Cache: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Cache_LIR/FeatureServer/0', want: ['PARCEL_ID', 'PARCEL_ADD', 'PARCEL_CITY', 'PROP_CLASS', 'HOUSE_CNT', 'BLDG_SQFT', 'BUILT_YR', 'TOTAL_MKT_VALUE', 'LAND_MKT_VALUE', 'TAXEXEMPT_TYPE', 'PRIMARY_RES', 'FLOORS_CNT'],
-    group: [['PROP_CLASS']], codes: ['PROP_CLASS'], county: [], spots: [[41.7370, -111.8338, 'Logan']] },
+const STATES = {   // Tier 2 rounds (all of them, want 'auto'; Utah's counties' classes) are in git history (November 11, 2026)
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;

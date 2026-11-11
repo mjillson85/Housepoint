@@ -38,6 +38,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
       const hp = window.__hp, S = hp.S, t0 = performance.now();
       try { await hp.centerMap(lat, lon); } catch (e) { return { err: String(e && e.message || e) }; }
       const ms = Math.round(performance.now() - t0);
+      for (let i = 0; i < 30 && !S.bldgs.length; i++) await new Promise((r) => setTimeout(r, 100));   // outlines (Wyoming, Colorado: what makes a lot built)
       const near = (l) => { const [x, y] = S.proj.fwd(lat, lon); return Math.hypot(l.c[0] - x, l.c[1] - y); };
       const L = addr ? S.local.find((l) => l.p.records.some((x) => String(x.SITE_ADDR || '').toUpperCase().startsWith(addr)))
         : S.local.filter((l) => l.p.built).sort((a, b) => near(a) - near(b))[0];

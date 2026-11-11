@@ -161,7 +161,7 @@ const kinds = await page.evaluate(() => {
     coLarimer: k('CO', { USE_DESC: 'Residential' }), coMulti: k('CO', { USE_DESC: 'Multiple Unit' }),
     wy: k('WY', {}), utHouse: k('UT', { USE_CODE: 'Residential', UNITS: 1 }), utDuplex: k('UT', { USE_CODE: 'Residential', UNITS: 2 }), utCondo: k('UT', { USE_CODE: 'Commercial - Apartment & Condo', UNITS: 1 }),
     utApts: k('UT', { USE_CODE: 'Commercial - Apartment & Condo', UNITS: 28 }), utOffice: k('UT', { USE_CODE: 'Commercial - Office Space' }), utExempt: k('UT', { USE_CODE: 'Tax Exempt - Government' }),
-    utGreen: k('UT', { USE_CODE: 'Greenbelt' }), utLand: k('UT', { USE_CODE: 'Residential', BLDG_VAL: 0 }),
+    utGreen: k('UT', { USE_CODE: 'Greenbelt' }), utAg: k('UT', { USE_CODE: 'Agricultural' }), utMixed: k('UT', { USE_CODE: 'Mixed Use' }), utBlank: k('UT', { USE_CODE: '' }), utLand: k('UT', { USE_CODE: 'Residential', BLDG_VAL: 0 }),
     akHouse: k('AK', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'Residential 1 Family' }), akFour: k('AK', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'Fourplex' }), akCondo: k('AK', { USE_CODE: 'CONDO', USE_DESC: 'Condo (Fee simple)' }),
     akShop: k('AK', { USE_CODE: 'COMMERCIAL', USE_DESC: 'Retail single occupancy' }), akLand: k('AK', { USE_CODE: 'VACANT LAND', USE_DESC: 'Residential Vacant Land' }), akJuneau: k('AK', { USE_CODE: 'PARCEL' }),
     akAssembled: k('AK', { USE_CODE: 'Lot', USE_DESC: 'Assembled' }) };
@@ -172,7 +172,7 @@ const wantK = { vtHouse: 'single', vtDuplex: 'multi', vtCondo: 'resCondo', vtCam
   ilHouse: 'single', ilFlat: 'multi', ilCondoBldg: 'condoMaster', ilCondo: 'resCondo', ilApts: 'apartments', ilShop: 'commercial', ilPlant: 'industrial', ilExempt: 'exempt', ilLand: 'vacant',
   coHouse: 'single', coRow: 'single', coCondo: 'resCondo', coComCondo: 'comCondo', coDuplex: 'multi', coApts: 'apartments', coOffice: 'commercial', coExempt: 'exempt', coHoa: 'other',
   coCode: 'unknown', coLarimer: 'single', coMulti: 'multi', wy: 'unknown', utHouse: 'single', utDuplex: 'multi', utCondo: 'resCondo', utApts: 'apartments', utOffice: 'commercial',
-  utExempt: 'exempt', utGreen: 'farmForest', utLand: 'vacant', akHouse: 'single', akFour: 'multi', akCondo: 'resCondo', akShop: 'commercial', akLand: 'vacant', akJuneau: 'unknown',
+  utExempt: 'exempt', utGreen: 'farmForest', utAg: 'farmForest', utMixed: 'mixed', utBlank: 'unknown', utLand: 'vacant', akHouse: 'single', akFour: 'multi', akCondo: 'resCondo', akShop: 'commercial', akLand: 'vacant', akJuneau: 'unknown',
   akAssembled: 'other' };
 const badK = Object.entries(wantK).filter(([k, v]) => kinds[k] !== v).map(([k, v]) => `${k}: ${kinds[k]} (want ${v})`);
 check(!badK.length, 'property types read as the right kind' + (badK.length ? ': ' + badK.join(', ') : ''));

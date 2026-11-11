@@ -7,6 +7,8 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8798/');
 const L = {
+  MT: ['https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1', 'PARCELID,AddressLine1,AddressLine2,CityStateZip,CountyName,TaxYear,PropType,TotalValue,TotalLandValue,TotalBuildingValue,GrazingAcres',
+    [[45.7800, -108.5300, 'Billings'], [46.8650, -113.9950, 'Missoula'], [47.5000, -111.3000, 'Great Falls']]],
   CO: ['https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', 'parcel_id,situsAdd,sitAddCty,landUseDsc,apprValTot,salePrice,saleDate',
     [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [39.5500, -105.0000, 'Highlands Ranch'], [40.0150, -105.2700, 'Boulder']]],
   UT: ['https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_SaltLake_LIR/FeatureServer/0', 'PARCEL_ID,PARCEL_ADD,PARCEL_CITY,TOTAL_MKT_VALUE,PROP_CLASS,BUILT_YR',
