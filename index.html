@@ -1319,6 +1319,9 @@ const REGIONS = {
       TAX_LAST: ['NETPRPTA'], USE_CODE: ['PROPCLASS'], AUX: ['AUXCLASS'],
     },
     derive: (o) => wiDerive(o),
+    // Street right-of-way, water, rail and gaps are outlines on this layer too, with a label for a parcel number. One town's
+    // right-of-way is a single outline with every block cut out of it (Wausau's: 189,000 points, 4.6 MB): never asked for.
+    lotWhere: "(PARCELID IS NULL OR PARCELID NOT IN ('ROW','HYDRO','WATER','LAKE','RAIL','GAP','RIVER','STREAM'))",
     cityPrefixes: ['CITY OF ', 'VILLAGE OF ', 'TOWN OF '],
     noSales: true, noDelta: true, actualTax: true, stackedUnits: true,
     valueLabel: 'Assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
@@ -1414,6 +1417,19 @@ async function getJSON(url, opts = {}, ms = 20000) {
   } finally { clearTimeout(t); }
   if (j && j.error) throw new Error(j.error.message || 'Service error');
   return j;
+}
+
+// A big hosted layer now and then leaves one request hanging for 20 to 45 seconds while the same question asked again answers
+// in a fraction of a second (Madison, on the Wisconsin layer). So a lot query that hasn't answered in a few seconds is asked
+// a second time, and whichever answers first wins.
+const HEDGE_MS = 5000;
+async function hedgedJSON(url, opts = {}, after = HEDGE_MS, ms = 20000) {
+  const ctls = [], ask = () => { const c = new AbortController(); ctls.push(c); return getJSON(url, { ...opts, signal: c.signal }, ms); };
+  const first = ask();
+  const second = new Promise((res, rej) => { const t = setTimeout(() => ask().then(res, rej), after); first.then(() => clearTimeout(t), () => {}); });
+  try { return await Promise.any([first, second]); }
+  catch (e) { throw (e && e.errors && e.errors[0]) || e; }
+  finally { ctls.forEach((c) => c.abort()); }
 }
 
 async function tryLayer(region, url) {
@@ -1543,7 +1559,8 @@ async function queryRegion(region, lat, lon, radius) {
       outSR: '4326', geometryPrecision: '7', resultOffset: String(offset), resultRecordCount: String(sv.pageSize), f: 'json',
     });
     if (sv.oid) params.set('orderByFields', sv.oid);
-    const j = await getJSON(sv.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+    if (region.lotWhere) params.set('where', region.lotWhere);
+    const j = await hedgedJSON(sv.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
     const got = j.features || [];
     feats.push(...got);
     if (!j.exceededTransferLimit || !got.length) break;   // dense areas (condos) can exceed one page

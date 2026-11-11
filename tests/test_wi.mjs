@@ -26,7 +26,7 @@ await browser.defaultBrowserContext().overridePermissions(ORIGIN, ['geolocation'
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-const asked = { where: [], outFields: '' };
+const asked = { where: [], outFields: '', lotWhere: [], lotQueries: 0, hangNext: false };
 await page.setRequestInterception(true);
 page.on('request', (req) => {
   const u = req.url();
@@ -36,11 +36,15 @@ page.on('request', (req) => {
   if (u.startsWith(WI_SVC + '/query')) {
     const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]);
     asked.outFields = q.get('outFields');
-    if (q.get('where')) {
+    if (q.get('where') && !q.get('geometry')) {
       asked.where.push(q.get('where'));
       return json({ features: /2509 VAN HISE AVE/.test(q.get('where')) ? [{ geometry: { rings: [ring(15, -12, 40, 12, [lon0, lat0])] }, attributes: { ...secret, OBJECTID: 1, SITEADRESS: '2509 VAN HISE AVE', PLACENAME: 'CITY OF MADISON' } }] : [] });
     }
     const b = q.get('geometry').split(',').map(Number);
+    asked.lotWhere.push(q.get('where'));
+    // The layer's habit: now and then one request hangs (Madison, 20 to 45 seconds) while the same one asked again answers at once
+    asked.lotQueries++;
+    if (asked.hangNext) { asked.hangNext = false; return setTimeout(() => { try { json({ features: [] }); } catch (e) { /* the app gave up on it */ } }, 30000); }
     const feats = [];
     // Madison: a house, assessed below the state's market estimate
     feats.push({ geometry: { rings: [ring(15, -12, 40, 12, b)] }, attributes: { ...secret, ...yr, OBJECTID: 1, PARCELID: '070921124023', SITEADRESS: '2509 VAN HISE AVE',
@@ -124,6 +128,7 @@ check(/PROPERTY TAX · LAST YEAR’S BILL/i.test(card) && /\$13,422 per year/.te
 check(/State market estimate \| \$812k/i.test(card), 'the state’s market estimate where it differs from the assessed value');
 check(/State Cartographer/.test(card) && /different shares of market value/.test(card), 'source line');
 check(!/SECRET/.test(card), 'no owner name or mailing address on the card');
+check(asked.lotWhere.every((w) => /PARCELID NOT IN \('ROW','HYDRO','WATER','LAKE','RAIL','GAP'/.test(w || '')), 'street right-of-way, water, rail and gap outlines are never asked for');
 check(asked.outFields && !/OWNER|PSTL/i.test(asked.outFields) && /CNTASSDVALUE/.test(asked.outFields) && /NETPRPTA/.test(asked.outFields) && /AUXCLASS/.test(asked.outFields),
   'owner and mailing fields never requested: ' + asked.outFields);
 const calc = await page.evaluate(() => { const L = window.__hp.S.local.find((l) => l.p.records.some((r) => String(r.SITE_ADDR || '').startsWith('2509'))); return window.__hp.calcDefaults(window.__hp.summarize(L.p)); }).catch(() => null);
@@ -176,6 +181,13 @@ console.log('stacks:', JSON.stringify(stacks));
 check(stacks.four.join() === 'true,4,resCondo', 'four stacked homes, one with a unit number: a condo building with 4 units');
 check(stacks.tower.join() === 'true,3,mixedCondo' && stacks.lone === 'apartments', 'a $105M tower filed as class 1 isn’t a 1-to-3-unit home; with its shop and garage, a 3-unit condo');
 check(stacks.parking === '321 W MIFFLIN ST PARKING 94', 'a parking space keeps its own label: ' + stacks.parking);
+
+// The layer's habit: now and then one request hangs while the same one asked again answers at once
+asked.hangNext = true; const before = asked.lotQueries;
+const hedge = await page.evaluate(async () => { const t0 = performance.now(); await window.__hp.centerMap(43.0750, -89.4100);
+  return { ms: Math.round(performance.now() - t0), lots: window.__hp.S.local.length }; });
+console.log('hedge:', JSON.stringify(hedge), asked.lotQueries - before, 'lot queries');
+check(hedge.lots > 0 && hedge.ms >= 4500 && hedge.ms < 9000 && asked.lotQueries - before >= 2, 'a lot query that hangs is asked again after 5 seconds, and that answer is used');
 
 const pq = await page.evaluate(() => ['Port Washington', '12 Main St, Port Washington, WI', 'Madison WI', '100 Main St, Madison, Wisconsin'].map((t) => window.__hp.parseQuery(t)));
 console.log('parsed:', JSON.stringify(pq));
