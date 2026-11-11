@@ -87,8 +87,8 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(['seattle', 'spokane', 'vancouver', 'tacoma', 'bellingham', 'blaine', 'pointRoberts', 'fridayHarbor', 'portAngeles', 'forks', 'longview', 'walla', 'clarkston', 'longBeach', 'omak']
   .every((k) => rg[k] === 'WA'), 'Washington places land in Washington');
-check(['portland', 'astoria', 'rainier', 'umatilla', 'lewiston', 'coeurDAlene', 'victoria', 'sidney', 'vancouverBC', 'tsawwassen'].every((k) => rg[k] === null),
-  'Oregon, Idaho and British Columbia stay out');
+check(rg.portland === 'OR_METRO' && ['astoria', 'rainier', 'umatilla', 'lewiston', 'coeurDAlene', 'victoria', 'sidney', 'vancouverBC', 'tsawwassen'].every((k) => rg[k] === null),
+  'Oregon, Idaho and British Columbia stay out (Portland is the Portland-area region of its own)');
 check(rg.boston === 'MA' && rg.madison === 'WI', 'other states unchanged');
 const decl = await page.evaluate(() => [[47.61, -122.33], [46.73, -117.18], [47.95, -124.39]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] - 14.9) < 0.4 && Math.abs(decl[1] - 13.5) < 0.4 && Math.abs(decl[2] - 15.2) < 0.4, 'compass declination: Seattle, Pullman, Forks ' + decl.join(', '));

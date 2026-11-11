@@ -29,10 +29,10 @@ jobs:
       # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings), probe/mn-codes.mjs (Minnesota's numbered property classes), probe/md-speed.mjs (Maryland's parcel sources timed), probe/dc-condos.mjs (DC's condo tables), probe/md-records.mjs (Maryland's records),
       # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node),
       # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services),
-      # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers).
-      - name: The next states' fields and property types
+      # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers), probe/me-join.mjs (Maine's assessing table).
+      - name: The newest regions against their real services
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/state-fields.mjs
+        run: node probe/live-state.mjs

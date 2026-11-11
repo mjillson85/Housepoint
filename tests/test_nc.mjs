@@ -89,7 +89,7 @@ const rg = await page.evaluate(() => {
 });
 console.log('regions:', JSON.stringify(rg));
 check(['raleigh', 'charlotte', 'pineville', 'asheville', 'wilmington', 'nagsHead', 'hatteras', 'boone', 'murphy', 'greensboro'].every((k) => rg[k] === 'NC'), 'North Carolina places land in North Carolina');
-check(['myrtle', 'greenvilleSC', 'rockHill', 'knoxville', 'norfolk', 'danville'].every((k) => rg[k] === null), 'South Carolina, Tennessee and Virginia stay out');
+check(['myrtle', 'greenvilleSC', 'rockHill', 'knoxville'].every((k) => rg[k] === null) && rg.norfolk === 'VA' && rg.danville === 'VA', 'South Carolina and Tennessee stay out; Virginia places land in Virginia');
 check(rg.boston === 'MA' && rg.miami === 'FL', 'other states unchanged');
 
 // How each county's codes are read (descriptions from the real records the probe found)

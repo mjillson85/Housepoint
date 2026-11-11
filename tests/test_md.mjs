@@ -100,8 +100,11 @@ check(['annapolis', 'baltimore', 'bethesda', 'silverSpring', 'oceanCity', 'cumbe
   'sharptown', 'galestown', 'marydel', 'federalsburg', 'delmarMD', 'kitzmiller', 'gorman', 'westernport'].every((k) => rg[k] === 'MD'),
   'Maryland places land in Maryland, along the Delaware line and the North Branch too');
 check(rg.dc === 'DC', 'DC stays DC');
-check(['harpersFerry', 'shepherdstown', 'leesburg', 'arlington', 'wilmington', 'newark', 'york', 'chincoteague', 'martinsburg', 'delmarDE', 'seaford', 'dover', 'keyser'].every((k) => rg[k] === null),
-  'Virginia, West Virginia, Delaware and Pennsylvania stay out');
+// Virginia, West Virginia and Delaware are regions of their own now (lot lines); Pennsylvania isn't covered
+const outMD = { harpersFerry: 'WV', shepherdstown: 'WV', leesburg: 'VA', arlington: 'VA', wilmington: 'DE', newark: 'DE', york: null, chincoteague: 'VA', martinsburg: 'WV',
+  delmarDE: 'DE', seaford: 'DE', dover: 'DE', keyser: 'WV' };
+const badOut = Object.entries(outMD).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
+check(!badOut.length, 'Virginia, West Virginia, Delaware and Pennsylvania places stay out of Maryland' + (badOut.length ? ': ' + badOut.join(', ') : ''));
 const decl = await page.evaluate(() => [[39.29, -76.61], [39.41, -79.41], [38.34, -75.08]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 11.0) < 0.4 && Math.abs(decl[1] + 9.5) < 0.4 && Math.abs(decl[2] + 11.6) < 0.4, 'compass declination: Baltimore, Oakland, Ocean City ' + decl.join(', '));
 

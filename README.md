@@ -1,6 +1,10 @@
 # Housepoint
 
-Point your phone at any house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska or Cook County (Illinois) and see its story: when it was built, what it last sold for, and what it's valued at.
+Point your phone at a house and see its story: when it was built, what it last sold for, and what it's valued at. It covers 26 states and DC, and big counties in 12 more:
+
+- **Property records and lot lines:** Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska and Maine.
+- **Big counties and cities:** Cook County (Chicago); Harris (Houston) and Tarrant (Fort Worth), Texas; Alameda and San Bernardino, California; Franklin (Columbus) and Hamilton (Cincinnati), Ohio; Nashville; Bismarck; the Portland area (Multnomah, Washington and Clackamas); Ada County (Boise); Oakland and Macomb, Michigan; Sedgwick County (Wichita); Atlanta; Maricopa County (Phoenix).
+- **Lot lines and addresses only** (values are on the county's or town's site, linked where the state's map has the link): Indiana, New Hampshire, West Virginia, Nevada, Hawaii, Delaware and Virginia.
 
 **Live:** https://mjillson85.github.io/Housepoint/
 
@@ -26,10 +30,19 @@ Point your phone at any house in Massachusetts, Connecticut, New Jersey, Florida
 - Wyoming: county actual values on the state's 2026 parcels. No property type, so lots count as built when a building outline sits on them.
 - Utah: county assessor records on UGRC's parcels, one service per county (the app asks the county around the spot): market value, year built, size, units, floors. Utah doesn't make sale prices public.
 - Alaska: borough and city records on the state's parcels: assessed value, the local property type words. No street addresses (nearest one from OpenStreetMap, as in Vermont); some places (Juneau) share lot lines only.
-- No tax estimate yet in the Tier 2 states.
+- Maine: the towns' assessing records (values, the town's use words) joined to the Maine GeoLibrary's parcels by state id. Towns assess at their own share of market value.
+- The big counties, each a region of its own inside a state that isn't otherwise covered (a search typed with "TX" looks in Harris and Tarrant):
+  - Harris County (HCAD) and Tarrant County (TAD), Texas: market value, the state's property class (Harris), bedrooms, baths and year built (Tarrant). Texas doesn't make sale prices public.
+  - Alameda and San Bernardino counties, California: Proposition 13 assessed values (often far below market), Alameda's use codes, San Bernardino's use words; San Bernardino has no street addresses (nearest one from OpenStreetMap).
+  - Franklin and Hamilton counties, Ohio: the auditors' values, Ohio's land use classes, last sale; Hamilton's actual annual tax.
+  - Nashville (Metro assessor), Bismarck (city assessor), the Portland area (Metro's tax lots with the three county assessors' real market value), Ada County, Idaho, Sedgwick County, Kansas (Wichita's layer), Atlanta (the city's tax parcels) and Maricopa County, Arizona (full cash value, last sale, a link to the assessor's page).
+  - Oakland and Macomb counties, Michigan: Michigan assesses at half of market value, so the value shown is twice the assessed value; Macomb links each lot to its community's BS&A page.
+- Indiana, New Hampshire, West Virginia, Nevada, Hawaii, Delaware and Virginia: the state's lot lines (and in Indiana, New Hampshire and West Virginia the address; Indiana adds the DLGF property class). The card says values are on the county's or town's site; Nevada and Hawaii link each lot to it. Nevada, Hawaii, Delaware and Virginia have no street addresses (nearest one from OpenStreetMap).
+- Region outlines are the Census Bureau's state, county and city lines, about 400 m outside and cut back where a covered neighbour begins; near a line both sides' lots load.
+- No tax estimate yet in the Tier 2 states or the newer regions (Hamilton County shows its actual tax).
 - Owner names are never requested or shown, in any state. No accounts, ads or tracking; fonts are served from this site. See [privacy.html](privacy.html).
 - Aerial photos: MassGIS 2025 aerial imagery in Massachusetts (15 cm, leaf-off), USGS NAIP elsewhere and as a fallback.
-- Building outlines (to aim at roofs, not lawns): MassGIS Building Structures; FEMA/ORNL USA Structures in Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, DC, the Tier 2 states, Maryland and New York, with Florida's statewide footprints as a backup.
+- Building outlines (to aim at roofs, not lawns): MassGIS Building Structures; FEMA/ORNL USA Structures in Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, DC, the Tier 2 states, Maryland, New York and the newer states and counties, with Florida's statewide footprints as a backup.
 - Flood zone: FEMA National Flood Hazard Layer. Ground elevation: USGS Elevation Point Query Service.
 - Map search: an address with a house number is looked up in the state parcel services first (the exact lot); then the U.S. Census Bureau geocoder (free, no key) finds the address, and the Census Bureau's TIGERweb map finds a town on its own. When a Geoapify key is set, Geoapify's address search leads for streets and towns and backs up the Census for house numbers (it handles typos). What you type is sent to these services.
 - "Thinking of buying?" (on each card, loaded when opened): listing links (Zillow, a listings search), the nearest public schools and school district (NCES), Census tract figures next to the state's (American Community Survey), the local police department's crime rates from the FBI, and distances to groceries, transit, parks and more (OpenStreetMap places via Geoapify, with public Overpass servers as a backup). Free keys go in `KEYS` near the top of that section of index.html: a Census key (api.census.gov/data/key_signup.html), an api.data.gov key for the FBI, and a Geoapify key (free plan, 3,000 credits a day). Both are free rate-limit keys, not secrets.

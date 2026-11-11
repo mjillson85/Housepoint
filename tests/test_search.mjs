@@ -128,7 +128,7 @@ async function newPage(url) {
       if (/100 Warren St, Roxbury, MA$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '100 WARREN ST, ROXBURY, MA, 02119', coordinates: { x: -71.0832, y: 42.3266 } }] } });
       if (/12 Oak St/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '12 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: ll(-30, 3).lon, y: ll(-30, 3).lat } }] } });   // in front of 12 ELM ST
       if (/44 Oak St, Clifton, NJ$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '44 OAK ST, CLIFTON, NJ, 07011', coordinates: { x: -74.1576, y: 40.863 } }] } });
-      if (/Broad/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '500 BROAD ST, COLUMBUS, OH, 43215', coordinates: { x: -82.99, y: 39.96 } }] } });
+      if (/Broad/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '500 BROAD ST, AUGUSTA, GA, 30901', coordinates: { x: -81.965, y: 33.475 } }] } });
       return script(cb, { result: { addressMatches: [] } });
     }
     // TIGERweb
@@ -283,10 +283,10 @@ check(/^Showing Elm St, Holbrook\. Tap a house, or add a house number\.$/.test(r
 
 // 5. Outside the covered states
 reset();
-r = await search(page, '100 Congress Ave, Austin, TX');
-check(/^Texas is outside Housepoint’s area\. It covers Massachusetts, Connecticut, New Jersey, Florida, North Carolina(, [A-Z][a-z]+( [A-Z][a-z]+)?(, (DC|Illinois))?)* and [A-Z][a-z]+( [A-Z][a-z]+)?(, (DC|Illinois))? for now\.$/.test(r.help), 'typed state outside coverage: said plainly');
+r = await search(page, '100 Main St, Columbia, SC');
+check(/^South Carolina is outside Housepoint’s area\. It covers 26 states, DC and big counties in 12 more \(listed in About\) for now\.$/.test(r.help), 'typed state outside coverage: said plainly, with what’s covered');
 check(!seen.census.length && !seen.where.length && !seen.tiger.length, 'typed state outside coverage: nothing sent anywhere');
-r = await search(page, '500 Broad St, Columbus');
+r = await search(page, '500 Broad St, Augusta');
 check(/^That place is outside Housepoint’s area/.test(r.help), 'geocoded point outside coverage: said plainly');
 
 // 6. Nothing found

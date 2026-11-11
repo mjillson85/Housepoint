@@ -19,6 +19,7 @@ Set `CHROME=/path/to/chrome` if Chrome isn't at `/usr/bin/google-chrome`. Run on
 | test_buy, test_buy2 | "Thinking of buying?": schools, Census, FBI, nearby places, backups when a service fails |
 | test_ct, test_nj, test_nc, test_wi, test_wa, test_ne, test_mn, test_dc, test_md, test_ny, test_regions | Connecticut, New Jersey, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, DC, Maryland, New York, state borders |
 | test_tier2 | Vermont, Montana, Arkansas, Cook County, Colorado, Wyoming, Utah and Alaska: outlines and shared state lines, property types, a card in each, owner fields never asked for, Vermont's and Alaska's nearest address, Utah's county layers |
+| test_lotlines | The big counties, Maine and the lot-line states: outlines and the lines between states and counties, compass, property types, Texas searched in its counties, a card in each, owner fields never asked for, Maine's assessing table |
 | test_extras | Screen kept awake while pointing, feet and miles, price per square foot |
 | test_tax, test_park, test_condo | Tax estimates, mobile home parks, condos |
 | test_camera | Camera on only while pointing: off on the map and in the background, back on when you return, never asked for by map-only users, no stray or doubled camera requests |

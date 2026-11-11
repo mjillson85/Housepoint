@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD NY VT MT AR IL CO WY UT AK]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD NY VT MT AR IL CO WY UT AK TX_HARRIS … ME IN … VA]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -77,6 +77,30 @@ const SPOTS = {
     ['Provo', 40.2338, -111.6585, 150], ['Orem', 40.2970, -111.6950, 150], ['Lehi', 40.3900, -111.8500, 150], ['Kaysville (Davis)', 41.0350, -111.9380, 150]],
   AK: [['Anchorage', 61.1900, -149.8800, 250], ['Anchorage hillside', 61.1300, -149.7700, 300], ['Fairbanks', 64.8400, -147.7300, 200], ['Juneau', 58.3000, -134.4200, 200],
     ['Wasilla (Mat-Su)', 61.5800, -149.4400, 300], ['Kenai Peninsula (Soldotna)', 60.4900, -151.0600, 300], ['Ketchikan', 55.3420, -131.6460, 250]],
+  // The big counties and Maine (records), and the lot-line states (November 11, 2026)
+  TX_HARRIS: [['Houston Montrose', 29.7400, -95.3900, 250], ['Houston River Oaks', 29.7600, -95.4600, 250], ['Cypress', 29.9900, -95.5500, 400]],
+  TX_TARRANT: [['Fort Worth Fairmount', 32.7300, -97.3500, 250], ['Arlington', 32.7350, -97.1100, 300]],
+  CA_ALAMEDA: [['Berkeley', 37.8690, -122.2710, 250], ['Oakland Rockridge', 37.8440, -122.2510, 250], ['Fremont', 37.5480, -121.9880, 300]],
+  CA_SBD: [['Redlands', 34.0590, -117.1810, 250], ['San Bernardino', 34.1080, -117.2890, 300], ['Big Bear', 34.2440, -116.9110, 400]],
+  OH_FRANKLIN: [['Columbus Short North', 39.9890, -83.0100, 250], ['Upper Arlington', 40.0000, -83.0600, 300]],
+  OH_HAMILTON: [['Cincinnati Hyde Park', 39.1400, -84.4400, 250], ['Cincinnati downtown', 39.1030, -84.5120, 250]],
+  TN_DAVIDSON: [['Nashville Hillsboro', 36.1300, -86.8000, 250], ['East Nashville', 36.1750, -86.7600, 250], ['The Gulch condos', 36.1520, -86.7880, 200]],
+  ND_BISMARCK: [['Bismarck', 46.8190, -100.7700, 300], ['Bismarck north', 46.8500, -100.7800, 300]],
+  OR_METRO: [['Portland Sunnyside', 45.5120, -122.6400, 250], ['Beaverton', 45.4870, -122.8040, 300], ['Oregon City', 45.3700, -122.6000, 400]],
+  ID_ADA: [['Boise', 43.6000, -116.2600, 300], ['Boise downtown', 43.6142, -116.1999, 200]],
+  MI_OAKLAND: [['Royal Oak', 42.4890, -83.1410, 250], ['Bloomfield Hills', 42.5800, -83.2400, 400]],
+  MI_MACOMB: [['St. Clair Shores', 42.4970, -82.8880, 250], ['Clinton Township', 42.5792, -82.9193, 300]],
+  KS_SEDGWICK: [['Wichita College Hill', 37.6890, -97.3000, 250], ['Wichita west', 37.6900, -97.4300, 300]],
+  GA_ATLANTA: [['Atlanta Virginia-Highland', 33.7800, -84.3600, 250], ['Atlanta Midtown condos', 33.7840, -84.3840, 200]],
+  AZ_MARICOPA: [['Phoenix', 33.4990, -112.0500, 300], ['Tempe', 33.4200, -111.9400, 250], ['Scottsdale', 33.5000, -111.9260, 300]],
+  ME: [['Portland, Maine', 43.6594, -70.2601, 250], ['Bangor', 44.8016, -68.7712, 300], ['Brunswick', 43.9140, -69.9650, 300]],
+  IN: [['Indianapolis', 39.7900, -86.1500, 250], ['South Bend', 41.6800, -86.2500, 300]],
+  NH: [['Concord', 43.2100, -71.5400, 250], ['Manchester', 42.9900, -71.4600, 300]],
+  WV: [['Charleston', 38.3500, -81.6300, 250], ['Morgantown', 39.6300, -79.9550, 300]],
+  NV: [['Reno', 39.5200, -119.8100, 250], ['Las Vegas', 36.1500, -115.1500, 300]],
+  HI: [['Honolulu Kaimuki', 21.2790, -157.8000, 250], ['Hilo', 19.7200, -155.0900, 300]],
+  DE: [['Wilmington', 39.7500, -75.5500, 250], ['Dover', 39.1580, -75.5240, 300]],
+  VA: [['Richmond', 37.5500, -77.4600, 250], ['Arlington', 38.8800, -77.1000, 250], ['Norfolk', 36.8500, -76.2900, 300]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
