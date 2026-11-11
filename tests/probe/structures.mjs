@@ -14,25 +14,26 @@ console.log('item:', item.j.title, '|', url);
 const meta = await get(url + '?f=json');
 console.log('fields:', (meta.j.fields || []).map((f) => `${f.name}:${f.type.replace('esriFieldType', '')}`).join('  '));
 console.log('max', meta.j.maxRecordCount);
-const SPOTS = [[33.9980, -81.0300, 'Columbia SC'], [38.2400, -85.7300, 'Louisville KY Highlands'], [39.9520, -75.1800, 'Philadelphia Rittenhouse'],
-  [35.0900, -106.6300, 'Albuquerque Nob Hill'], [29.9300, -90.1000, 'New Orleans Uptown'], [36.1400, -95.9700, 'Tulsa'], [43.5450, -96.7300, 'Sioux Falls'],
-  [41.8300, -71.4000, 'Providence East Side'], [41.5900, -93.6500, 'Des Moines'], [33.5000, -86.8000, 'Birmingham AL'], [39.0500, -94.5900, 'Kansas City MO'],
-  [32.3200, -90.1800, 'Jackson MS'], [30.2700, -97.7400, 'Austin TX (outside the counties)'], [34.0600, -118.3000, 'Los Angeles'], [41.4900, -81.6900, 'Cleveland'],
-  [42.3300, -83.0500, 'Detroit'], [40.4400, -79.9500, 'Pittsburgh']];
+const SPOTS = [[33.9980, -81.0300, 'Columbia SC'], [39.9520, -75.1800, 'Philadelphia Rittenhouse'], [35.0900, -106.6300, 'Albuquerque Nob Hill'],
+  [29.9300, -90.1000, 'New Orleans Uptown'], [43.5450, -96.7300, 'Sioux Falls'], [30.2700, -97.7400, 'Austin TX (outside the counties)']];
+const FIELDS = 'BUILD_ID,OCC_CLS,PRIM_OCC,PROP_ADDR,PROP_CITY,PROP_ZIP,PROP_CNTY,OUTBLDG,HEIGHT,SQFEET';
+const box = (lat, lon, m) => { const dlat = m / 111320, dlon = m / (111320 * Math.cos(lat * Math.PI / 180)); return `${lon - dlon},${lat - dlat},${lon + dlon},${lat + dlat}`; };
+const ask = async (params, ms = 40000) => { const t0 = Date.now(); try { const r = await get(`${url}/query?${new URLSearchParams({ f: 'json', ...params })}`, ms);
+  return { n: (r.j.features || []).length, ms: Date.now() - t0, err: r.j.error ? JSON.stringify(r.j.error).slice(0, 120) : '', feats: r.j.features || [] }; } catch (e) { return { n: 0, ms: Date.now() - t0, err: e.name }; } };
 for (const [lat, lon, name] of SPOTS) {
-  try {
-    const p = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', distance: '80',
-      units: 'esriSRUnit_Meter', outFields: '*', returnGeometry: 'false', f: 'json', resultRecordCount: '40' });
-    const r = await get(`${url}/query?${p}`);
-    const fs2 = (r.j.features || []).map((f) => f.attributes);
-    const occ = {}; for (const a of fs2) { const k = `${a.OCC_CLS ?? a.occ_cls ?? '?'} / ${a.PRIM_OCC ?? a.prim_occ ?? '?'}`; occ[k] = (occ[k] || 0) + 1; }
-    const withAddr = fs2.filter((a) => a.PROP_ADDR || a.prop_addr).length;
-    console.log(`== ${name}: ${fs2.length} buildings in ${r.ms} ms, ${withAddr} with an address; kinds ${JSON.stringify(occ)}`);
-    for (const a of fs2.slice(0, 3)) console.log('   ' + JSON.stringify(a).slice(0, 700));
-    if (geoKey) {
-      const g = await get(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&format=json&apiKey=${geoKey}`);
-      const x = (g.j.results || [])[0] || {};
-      console.log(`   geoapify (${g.ms} ms): ${JSON.stringify({ housenumber: x.housenumber, street: x.street, city: x.city, town: x.town, village: x.village, suburb: x.suburb, county: x.county, state_code: x.state_code, postcode: x.postcode, result_type: x.result_type, distance: x.distance })}`);
-    }
-  } catch (e) { console.log(`== ${name}: ${e.message}`); }
+  const near = { geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', distance: '220', units: 'esriSRUnit_Meter' };
+  const env = { geometry: box(lat, lon, 220), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects' };
+  const a = await ask({ ...near, returnGeometry: 'true', outSR: '4326', geometryPrecision: '7' });                         // as the app asks for outlines today
+  const b = await ask({ ...near, returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', outFields: FIELDS });
+  const c = await ask({ ...env, returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', outFields: FIELDS });
+  console.log(`== ${name}: outlines only ${a.n} in ${a.ms} ms ${a.err} · with fields ${b.n} in ${b.ms} ms ${b.err} · box with fields ${c.n} in ${c.ms} ms ${c.err}`);
+  const fsx = (c.feats.length ? c.feats : b.feats).map((f) => f.attributes);
+  const occ = {}; for (const x of fsx) { const k = `${x.OCC_CLS} / ${x.PRIM_OCC}`; occ[k] = (occ[k] || 0) + 1; }
+  console.log(`   ${fsx.filter((x) => x.PROP_ADDR).length} of ${fsx.length} with an address; kinds ${JSON.stringify(occ)}`);
+  for (const x of fsx.slice(0, 3)) console.log('   ' + JSON.stringify(x));
+  if (geoKey) {
+    const g = await get(`https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&format=json&apiKey=${geoKey}`);
+    const x = (g.j.results || [])[0] || {};
+    console.log(`   geoapify (${g.ms} ms): ${JSON.stringify({ housenumber: x.housenumber, street: x.street, city: x.city, town: x.town, village: x.village, county: x.county, state_code: x.state_code, postcode: x.postcode, distance: x.distance })}`);
+  }
 }
