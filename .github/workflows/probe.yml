@@ -33,9 +33,7 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/live-state.mjs
-      - name: The next states' fields and property types
+      - name: Wisconsin lot query speed
         working-directory: tests
         continue-on-error: true
-        env:
-          CHROME: /usr/bin/google-chrome
-        run: node probe/state-fields.mjs
+        run: node probe/wi-speed.mjs
