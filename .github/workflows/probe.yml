@@ -19,6 +19,10 @@ jobs:
       - name: Install the test tools
         working-directory: tests
         run: npm install --no-audit --no-fund
+      - name: The Census Bureau's state lines along Housepoint's state outlines
+        working-directory: tests
+        continue-on-error: true
+        run: node probe/borders.mjs
       - name: Probe
         working-directory: tests
         env:
