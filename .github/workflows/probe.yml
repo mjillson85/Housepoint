@@ -19,6 +19,10 @@ jobs:
       - name: Install the test tools
         working-directory: tests
         run: npm install --no-audit --no-fund
+      - name: Washington tax rates
+        working-directory: tests
+        continue-on-error: true
+        run: pip install --quiet openpyxl && python3 probe/wa-tax-rates.py
       - name: Probe
         working-directory: tests
         env:
