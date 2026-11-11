@@ -20,31 +20,17 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {   // Earlier rounds are in git history (November 11, 2026). Round 2: statewide Tennessee and Oregon Metro, big counties.
-  TN: { layer: 'https://services1.arcgis.com/YuVBSS7Y1of2Qud1/arcgis/rest/services/Tennessee_Property_Boundaries_Public_Use/FeatureServer/0', want: 'auto', spots: [[36.16, -86.78, 'Nashville'], [35.13, -90.0, 'Memphis'], [35.96, -83.92, 'Knoxville']] },
-  OR_METRO: { layer: 'https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Taxlots_with_Right_of_Way_Public/FeatureServer/0', want: 'auto', spots: [[45.52, -122.65, 'Portland'], [45.5, -122.8, 'Beaverton']] },
-  AZ_MARICOPA: { layer: 'https://gis.maricopa.gov/arcgis/rest/services/IndividualService/Parcel/MapServer/0', want: 'auto', spots: [[33.5, -112.05, 'Phoenix'], [33.42, -111.93, 'Tempe']] },
-  TX_HARRIS: { layer: 'https://www.gis.hctx.net/arcgishcpid/rest/services/HCAD/Parcels/MapServer/0', want: 'auto', spots: [[29.74, -95.39, 'Houston']] },
-  TX_BEXAR: { layer: 'https://services.arcgis.com/g1fRTDLeMgspWrYp/arcgis/rest/services/BCAD_Parcels/FeatureServer/0', want: 'auto', spots: [[29.45, -98.49, 'San Antonio']] },
-  TX_TRAVIS: { layer: 'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/EXTERNAL_tcad_parcel/FeatureServer/0', want: 'auto', spots: [[30.29, -97.74, 'Austin']] },
-  TX_TARRANT: { layer: 'https://mapit.tarrantcounty.com/arcgis/rest/services/Dynamic/TADParcels/MapServer/0', want: 'auto', spots: [[32.73, -97.35, 'Fort Worth']] },
-  CA_ALAMEDA: { layer: 'https://services5.arcgis.com/ROBnTHSNjoZ2Wm1P/arcgis/rest/services/Parcels/FeatureServer/0', want: 'auto', spots: [[37.81, -122.25, 'Oakland']] },
-  CA_SAC: { layer: 'https://services1.arcgis.com/5NARefyPVtAeuJPU/arcgis/rest/services/Parcels/FeatureServer/0', want: 'auto', spots: [[38.58, -121.49, 'Sacramento']] },
-  CA_SBD: { layer: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0', want: 'auto', spots: [[34.11, -117.29, 'San Bernardino']] },
-  OH_FRANKLIN: { layer: 'https://gis.franklincountyohio.gov/hosting/rest/services/ParcelFeatures/Parcel_Features/MapServer/0', want: 'auto', spots: [[39.96, -83.0, 'Columbus']] },
-  OH_HAMILTON: { layer: 'https://cagisonline.hamilton-co.org/arcgis/rest/services/COUNTYWIDE/Cadastral/MapServer/0', want: 'auto', spots: [[39.14, -84.51, 'Cincinnati']] },
-  TN_NASH: { layer: 'https://services2.arcgis.com/HdTo6HJqh92wn4D8/arcgis/rest/services/Parcels_view/FeatureServer/0', want: 'auto', spots: [[36.16, -86.78, 'Nashville']] },
-  KY_LOU: { layer: 'https://gis.lojic.org/maps/rest/services/LojicSolutions/OpenDataPVA/MapServer/1', want: 'auto', spots: [[38.25, -85.73, 'Louisville']] },
-  NM_BERN: { layer: 'https://services.arcgis.com/CWv1abTnC3urn4bV/arcgis/rest/services/berncoparcels_forIDO/FeatureServer/0', want: 'auto', spots: [[35.08, -106.62, 'Albuquerque']] },
-  IN_INDY: { layer: 'https://gis.indy.gov/server/rest/services/Accela/AGIS_INDIANAPOLIS/MapServer/15', want: 'auto', spots: [[39.77, -86.15, 'Indianapolis']] },
-  GA_GWIN: { layer: 'https://services3.arcgis.com/RfpmnkSAQleRbndX/arcgis/rest/services/Property_and_Tax/FeatureServer/0', want: 'auto', spots: [[33.96, -84.0, 'Lawrenceville']] },
-  LA_NOLA: { layer: 'https://gis.nola.gov/arcgis/rest/services/LandBase/Parcels/MapServer/0', want: 'auto', spots: [[29.95, -90.07, 'New Orleans']] },
-  LA_EBR: { layer: 'https://maps.brla.gov/gis/rest/services/Cadastral/Tax_Parcel/MapServer/0', want: 'auto', spots: [[30.45, -91.15, 'Baton Rouge']] },
-  SD_SF: { layer: 'https://gis.siouxfalls.gov/arcgis/rest/services/Data/Property/MapServer/1', want: 'auto', spots: [[43.54, -96.73, 'Sioux Falls']] },
-  MI_MACOMB: { layer: 'https://services6.arcgis.com/K0qS4r8AEJxrE8em/arcgis/rest/services/Macomb_County_Parcel_Data/FeatureServer/0', want: 'auto', spots: [[42.58, -82.92, 'Mount Clemens']] },
-  HI_HNL: { layer: 'https://services.arcgis.com/tNJpAOha4mODLkXz/arcgis/rest/services/Cadastral_2020/FeatureServer/0', want: 'auto', spots: [[21.285, -157.815, 'Honolulu']] },
-  MO_STLCO: { layer: 'https://services2.arcgis.com/w657bnjzrjguNyOy/arcgis/rest/services/Pardata_JurisFeb2024/FeatureServer/0', want: 'auto', spots: [[38.63, -90.35, 'Clayton']] },
-  ME: { layer: 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/1', want: 'auto', spots: [[43.66, -70.26, 'Portland ME']] },
+const STATES = {   // Earlier rounds are in git history (November 11, 2026). Round 3: more counties (want 'auto' prints only property facts).
+  MI_DETROIT: { layer: 'https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/parcel_file_current/FeatureServer/0', want: 'auto', spots: [[42.35, -83.06, 'Detroit Midtown']] },
+  GA_FULTON: { layer: 'https://services1.arcgis.com/AQDHTHDrZzfsFsB5/arcgis/rest/services/Tax_Parcels/FeatureServer/0', want: 'auto', spots: [[33.78, -84.38, 'Atlanta Midtown']] },
+  GA_ATL: { layer: 'https://gis.atlantaga.gov/dpcd/rest/services/AdministrativeArea/TaxParcel/MapServer/0', want: 'auto', spots: [[33.78, -84.38, 'Atlanta Midtown']] },
+  MI_OAKLAND: { layer: 'https://gisservices.oakgov.com/arcgis/rest/services/Enterprise/EnterpriseOpenParcelDataMapService/MapServer/1', want: 'auto', spots: [[42.53, -83.15, 'Royal Oak']] },
+  ID_ADA: { layer: 'https://services2.arcgis.com/dgGjZc6xAH5m5JyP/arcgis/rest/services/Parcels/FeatureServer/0', want: 'auto', spots: [[43.615, -116.2, 'Boise']] },
+  KS_WICHITA: { layer: 'https://gismaps.wichita.gov/ageweb/rest/services/COWGIS/Property_and_Location/MapServer/4', want: 'auto', spots: [[37.69, -97.33, 'Wichita']] },
+  SC_GVL: { layer: 'https://smpesri.scdot.org/arcgis/rest/services/GISMapping/SC_Parcels/MapServer/22', want: 'auto', spots: [[34.85, -82.4, 'Greenville SC']] },
+  PA_ALLEGHENY: { layer: 'https://gisdata.alleghenycounty.us/arcgis/rest/services/OPENDATA/Parcels/MapServer/0', want: 'auto', spots: [[40.44, -79.95, 'Pittsburgh']] },
+  ND_BIS: { layer: 'https://services1.arcgis.com/XxHmL09eFqJWI0gE/arcgis/rest/services/ParcelsPublic/FeatureServer/0', want: 'auto', spots: [[46.81, -100.78, 'Bismarck']] },
+  CA_STATE: { layer: 'https://bz1uwWPKUInZBK94.svcs5.arcgis.com/bz1uwWPKUInZBK94/arcgis/rest/services/CA_Statewide_Parcels_Public_view/FeatureServer/0', want: 'auto', spots: [[37.76, -122.44, 'San Francisco']] },
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 // (also "original" and "unmodified" copies of a record, which can hold the owner's name and mailing address: Alabama's do)
@@ -71,7 +57,11 @@ for (const [st, cfg] of Object.entries(STATES)) {
     // "Mailing Address 1")
     const alias = Object.fromEntries(fields.map((f) => [f.name, f.alias || '']));
     const ok = (f) => !BAD.test(f) && !BAD.test(alias[f] || '') && !/mailing|owner|taxpayer|grantee|grantor/i.test(alias[f] || '');
-    const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f) && !AUTO.test(alias[f] || '')) : cfg.want).filter((f) => have.has(f) && ok(f));
+    // auto: only fields that look like property facts (values, sizes, years, types, the property's own address), never a bare
+    // "address" or "line 2" (Bexar's addr_line2 is the owner's mailing address) or anything signed by a person
+    const FACT = /val|appr|mkt|market|land|impr|imps|bldg|bld|build|year|yr|built|sqft|area|acre|class|cls|use|luc|type|situs|site|prop|city|zip|unit|room|bed|bath|stor|sale|price|tax|county|parcel|pin|apn|acct|account|^id$|_id$|link|url|web/i;
+    const NOT_FACT = /addr_?line|line ?[12]|mail|own|signed|comment|note|contact|name/i;
+    const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f) && !AUTO.test(alias[f] || '') && FACT.test(f) && !NOT_FACT.test(f) && !NOT_FACT.test(alias[f] || '')) : cfg.want).filter((f) => have.has(f) && ok(f));
     res.asked = want.join(',');
     // auto: the property-type fields (use, class or type, not zoning), grouped statewide and near each spot
     const codeF = cfg.want === 'auto' ? want.filter((f) => /use|class|type|cls/i.test(f) && !/zon|exempt|const|area|acre/i.test(f)).slice(0, 3) : cfg.codes || [];

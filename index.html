@@ -160,6 +160,7 @@
   .value { margin: 16px 0 4px; padding: 16px 16px 14px; border-radius: 16px; background: #fffaf1; border: 1px solid var(--line); }
   .value .k { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
   .value .v { font-family: var(--serif); font-weight: 700; font-size: 34px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .value .v.small { font-size: 22px; }
   .value .s { font-size: 14px; color: var(--mute); margin-top: 4px; line-height: 1.4; }
   .value .s b { color: var(--ink); font-weight: 600; }
   .delta { font-weight: 600; }
@@ -2914,7 +2915,8 @@ function inPoly(lon, lat, ring) {
   }
   return inside;
 }
-const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
+// One outline (poly) or several (polys: Hawaii's islands)
+const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (r.polys ? r.polys.some((p) => inPoly(lon, lat, p)) : !r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
 const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA', 'NE', 'MN', 'DC', 'MD', 'NY', 'VT', 'MT', 'AR', 'IL', 'CO', 'WY', 'UT', 'AK'];   // DC before Maryland: Maryland's outline holds it   // Wisconsin before Minnesota: their outlines share the river line
 function regionFor(lat, lon) {
@@ -3148,7 +3150,10 @@ const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first h
 const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
 const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
 const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
-const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA', 31: 'NE', 27: 'MN', 11: 'DC', 24: 'MD', 36: 'NY', 50: 'VT', 30: 'MT', '05': 'AR', 17: 'IL', '08': 'CO', 56: 'WY', 49: 'UT', '02': 'AK' };
+// A state covered by its counties (Illinois: Cook County) is '*': a place there belongs to whichever region holds it, if any.
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA', 31: 'NE', 27: 'MN', 11: 'DC', 24: 'MD', 36: 'NY', 50: 'VT', 30: 'MT', '05': 'AR', 17: '*', '08': 'CO', 56: 'WY', 49: 'UT', '02': 'AK' };
+// The state a region is in: its own id, or (a county's region) its state's.
+const stateOf = (rid) => (REGIONS[rid] && REGIONS[rid].state) || rid;
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
 // Apartment and unit numbers aren't needed to find a lot.
@@ -3536,7 +3541,7 @@ async function townPlace(names, order, fix) {
     const j = await twGet(`${TIGER}/${l.id}/query?${p}`).catch(() => null);
     for (const ft of (j && j.features) || []) {
       const a = {}; for (const [k, v] of Object.entries(ft.attributes || {})) a[k.toUpperCase()] = v;
-      const st = STATE_FIPS[String(a.STATE ?? String(a.GEOID || '').slice(0, 2)).padStart(2, '0')];
+      let st = STATE_FIPS[String(a.STATE ?? String(a.GEOID || '').slice(0, 2)).padStart(2, '0')];
       if (!st) continue;
       let lat = parseFloat(a.INTPTLAT ?? a.CENTLAT), lon = parseFloat(a.INTPTLON ?? a.CENTLON);   // a point inside the town ("+42.15")
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {     // no point given: the middle of its outline
@@ -3545,6 +3550,7 @@ async function townPlace(names, order, fix) {
         const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
         lon = (Math.min(...xs) + Math.max(...xs)) / 2; lat = (Math.min(...ys) + Math.max(...ys)) / 2;
       }
+      if (st === '*') { st = (regionFor(lat, lon) || {}).id; if (!st) continue; }   // a state covered county by county
       const B = up(a.BASENAME || a.NAME), from = byName.get(B) || { prio: 99 };
       let name = titleCase(a.BASENAME || a.NAME || names[0]);
       if (!/ TOWN$/.test(from.n || '')) name = name.replace(/ Town$/i, '');            // "Braintree Town" → Braintree
@@ -3554,10 +3560,10 @@ async function townPlace(names, order, fix) {
   // Rank: how it was typed, then the state order, then (towns in New England, New Jersey and Wisconsin, cities in Florida, North Carolina and
   // Washington), then nearest:
   // New Jersey has five Washington townships.
-  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' || x.st === 'NE' || x.st === 'MN' || x.st === 'DC' || x.st === 'MD' || x.st === 'NY' || /^(MT|AR|IL|CO|WY|UT|AK)$/.test(x.st) ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  // Towns (county subdivisions) come first in New England, New Jersey and Wisconsin; cities and places elsewhere
+  const ids = order.map((r) => r.id), pref = (x) => (/^(MA|CT|NJ|WI|VT|NH|ME|RI)$/.test(stateOf(x.st)) ? ['cousub', 'place', 'cdp'] : ['place', 'cdp', 'cousub']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
-  // Illinois is Cook County only: a town elsewhere in the state isn't a match
-  const ok = found.filter((x) => ids.includes(x.st) && (x.st !== 'IL' || (regionFor(x.lat, x.lon) || {}).id === 'IL')).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
+  const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
   const b = ok[0];
   return { kind: 'town', lat: b.lat, lon: b.lon, name: `${b.name}, ${b.st}`, st: b.st, town: b.name, fixed: b.fix };
@@ -3706,6 +3712,7 @@ const BLDG_SOURCES = {
   DC: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   MD: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   NY: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  ANY: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   VT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   MT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   AR: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
@@ -3719,7 +3726,7 @@ const BSVC = {};
 function bldgLayer(rid) {
   if (BSVC[rid]) return BSVC[rid];
   BSVC[rid] = (async () => {
-    const src = BLDG_SOURCES[rid]; if (!src) return null;
+    const src = BLDG_SOURCES[rid] || BLDG_SOURCES.ANY; if (!src) return null;   // Esri's USA Structures covers every state
     const cands = [...src.urls];
     for (const id of src.items) {
       try { const it = await getJSON(`https://www.arcgis.com/sharing/rest/content/items/${id}?f=json`, {}, 10000);
@@ -4032,6 +4039,9 @@ function renderCard(cand, total, idx) {
     const whole = s.recs.reduce((t, x) => t + (num(x.TOTAL_VAL) || 0), 0);
     valueBlock = `<div class="value"><div class="k">Condo building</div><div class="v">${s.units > 1 ? s.units + ' units' : 'Condo'}</div>
       <div class="s">${s.region.commonNote || 'This county doesn’t publish individual unit records on the statewide map, so unit values and sales aren’t available here.'}${whole > 1000 ? `<br>The county values the whole building at <b>${moneyFull(whole)}</b>.` : ''}</div></div>`;
+  } else if (s.region.noValues) {
+    valueBlock = `<div class="value"><div class="k">Property record</div><div class="v small">${r.RECORD_URL ? 'On the county’s site' : 'Lot lines only'}</div>
+      <div class="s">${esc(s.region.noValues)}</div></div>`;
   } else if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy && s.region.yearLabel(s.fy) ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
@@ -4903,7 +4913,7 @@ function schoolsHtml(d, s, lat, lon) {
         x.charter ? 'Charter' : '', x.magnet ? 'Magnet' : ''].filter(Boolean).join(' · ')}</small></div><div class="r">${miles(x.d)}</div></div>`
     : `<div class="brow"><div class="l">${label}</div><div class="m"><small>None within 4 miles</small></div></div>`).join('');
   const yr = (d.schools.find((x) => x.year) || {}).year;
-  const rc = REPORT_CARDS[s.region.id];
+  const rc = REPORT_CARDS[stateOf(s.region.id)];
   return `<div class="bt">Schools</div>${dist ? `<div class="bl">District: ${dist}</div>` : ''}<div class="brows">${rows}</div>
     <div class="bl">The nearest public schools, favoring the home’s own district. The district decides which school a home is actually assigned to. Source: NCES${yr ? `, ${esc(yr)}` : ''}.${rc ? ` Test scores: <a href="${rc}" target="_blank" rel="noopener">state report cards ↗</a>` : ''}</div>`;
 }
@@ -5198,7 +5208,7 @@ function calcDefaults(s) {
   const price = Math.round(Math.max(value || 0, sale ? sale.p : 0) / 1000) * 1000;
   const t = estimateTax(s);
   const taxYr = !t || t.exempt ? 0 : (t.buyer || (t.lo + t.hi) / 2);
-  return { price, taxYr, taxKind: !t || t.exempt ? 'none' : t.actual ? 'actual' : t.buyer ? 'buyer' : 'estimate', ins: s.condo || s.commonOnly ? 0 : (STATE_INSURANCE[s.region.id] || 0), hoa: 0 };
+  return { price, taxYr, taxKind: !t || t.exempt ? 'none' : t.actual ? 'actual' : t.buyer ? 'buyer' : 'estimate', ins: s.condo || s.commonOnly ? 0 : (STATE_INSURANCE[stateOf(s.region.id)] || 0), hoa: 0 };
 }
 function monthlyCost(c) {
   const loan = Math.max(0, c.price * (1 - c.down / 100)), r = c.rate / 100 / 12, n = c.term * 12;

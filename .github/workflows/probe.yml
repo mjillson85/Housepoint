@@ -30,10 +30,14 @@ jobs:
       # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node),
       # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services),
       # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers).
-      - name: Parcel services to add (servers and ArcGIS Online)
+      - name: Census outlines of the states and counties being added
         working-directory: tests
         continue-on-error: true
-        run: node probe/find-services.mjs
+        run: node probe/outlines.mjs
+      - name: Layers of the services being added
+        working-directory: tests
+        continue-on-error: true
+        run: node probe/layers.mjs
       - name: The next states' fields and property types
         working-directory: tests
         continue-on-error: true

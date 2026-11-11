@@ -1,10 +1,16 @@
 // Lists the layers and tables of the services behind the Tier 2 states, with each one's field names, to find tables (buildings,
 // dwellings, sales) that could be joined to the lots by parcel number, as DC's are. Plain Node; prints names only.
-const ROOTS = ['https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer',
-  'https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Planning_Cadastre/FeatureServer',
-  'https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer'];
+const ROOTS = ['https://gis.maricopa.gov/arcgis/rest/services/IndividualService/Parcel/MapServer',
+  'https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Taxlots_with_Right_of_Way_Public/FeatureServer',
+  'https://services6.arcgis.com/K0qS4r8AEJxrE8em/arcgis/rest/services/Macomb_County_Parcel_Data/FeatureServer',
+  'https://services.arcgis.com/tNJpAOha4mODLkXz/arcgis/rest/services/Cadastral_2020/FeatureServer',
+  'https://services2.arcgis.com/w657bnjzrjguNyOy/arcgis/rest/services/Pardata_JurisFeb2024/FeatureServer',
+  'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer',
+  'https://services2.arcgis.com/qvkbeam7Wirps6zC/arcgis/rest/services/parcel_file_current/FeatureServer',
+  'https://services1.arcgis.com/AQDHTHDrZzfsFsB5/arcgis/rest/services/Tax_Parcels/FeatureServer',
+  'https://services2.arcgis.com/dgGjZc6xAH5m5JyP/arcgis/rest/services/Parcels/FeatureServer'];
 const get = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error(`${r.status}`); return r.json(); };
-const SKIP = /own|mail|name|legal|careof|grant|deed|buyer|seller|taxpayer/i;
+const SKIP = /own|mail|name|legal|careof|grant|deed|buyer|seller|taxpayer|addr_?line|signed|comment/i;
 for (const root of ROOTS) {
   console.log(`== ${root}`);
   try {
