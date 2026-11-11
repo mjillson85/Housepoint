@@ -160,6 +160,23 @@ const forest = await page.evaluate(() => { const S = window.__hp.S; const L = S.
   window.__hp.openSheet([{ L, dist: 20, cdist: 30, bearing: 0 }], 0); return document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | '); });
 check(/Address not listed/.test(forest) && /Forest land \(state forestry program\)/.test(forest), 'forest in the state’s program, no address');
 
+// Condo units stacked on one outline with or without unit numbers; an apartment tower filed as class 1; parking spaces
+const stacks = await page.evaluate(() => {
+  const hp = window.__hp, rec = (a) => hp.normalizeRecord({ TAXROLLYEAR: '2025', PLACENAME: 'CITY OF MILWAUKEE', ...a }, 'WI');
+  const four = [rec({ SITEADRESS: '15260 MARILYN DR UNIT 3', UNITID: '3', PROPCLASS: '1', CNTASSDVALUE: 110300, IMPVALUE: 53000 }),
+    ...[110300, 101600, 101600].map((v) => rec({ SITEADRESS: '15260 MARILYN DR', PROPCLASS: '1', CNTASSDVALUE: v, IMPVALUE: v / 2 }))];
+  const tower = [rec({ SITEADRESS: '777 N VAN BUREN ST', PROPCLASS: '1', CNTASSDVALUE: 105237900, IMPVALUE: 102990100 }),
+    rec({ SITEADRESS: '777 N VAN BUREN ST 2', UNITID: '2', PROPCLASS: '2', CNTASSDVALUE: 13010600, IMPVALUE: 10776000 }),
+    rec({ SITEADRESS: '777 N VAN BUREN ST', PROPCLASS: '2', CNTASSDVALUE: 2551400, IMPVALUE: 2054800 })];
+  const a = hp.classifyLot(four, 'WI'), b = hp.classifyLot(tower, 'WI');
+  return { four: [a.condo, a.units.length, a.building], tower: [b.condo, b.units.length, b.building], lone: hp.useKind(tower[0], 'WI'),
+    parking: rec({ SITEADRESS: '321 W MIFFLIN ST PARKING 94', UNITID: '94', PROPCLASS: '1', CNTASSDVALUE: 15000, IMPVALUE: 7000 }).SITE_ADDR };
+});
+console.log('stacks:', JSON.stringify(stacks));
+check(stacks.four.join() === 'true,4,resCondo', 'four stacked homes, one with a unit number: a condo building with 4 units');
+check(stacks.tower.join() === 'true,3,mixedCondo' && stacks.lone === 'apartments', 'a $105M tower filed as class 1 isn’t a 1-to-3-unit home; with its shop and garage, a 3-unit condo');
+check(stacks.parking === '321 W MIFFLIN ST PARKING 94', 'a parking space keeps its own label: ' + stacks.parking);
+
 const pq = await page.evaluate(() => ['Port Washington', '12 Main St, Port Washington, WI', 'Madison WI', '100 Main St, Madison, Wisconsin'].map((t) => window.__hp.parseQuery(t)));
 console.log('parsed:', JSON.stringify(pq));
 check(/PORT WASHINGTON/i.test(pq[0].town) && !pq[0].state, '“Port Washington” is a Wisconsin city, not Washington state');

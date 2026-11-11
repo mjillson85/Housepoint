@@ -810,7 +810,8 @@ function wiKind(r) {
   if (has('3')) return 'industrial';
   if (has('1') && has('2')) return built ? 'mixed' : 'vacant';
   if (has('2')) return !built ? 'vacant' : unit ? 'comCondo' : 'commercial';
-  if (has('1')) return !built ? (p.length > 1 ? 'farmForest' : 'vacant') : unit ? 'resCondo' : 'single';
+  // Milwaukee files some apartment towers as class 1 (777 N Van Buren St, $105 million): not a 1-to-3-unit home.
+  if (has('1')) return !built ? (p.length > 1 ? 'farmForest' : 'vacant') : unit ? 'resCondo' : num(r.TOTAL_VAL) >= 8e6 ? 'apartments' : 'single';
   if (has('4') || has('5M') || has('6') || has('7')) return 'farmForest';
   if (has('5')) return 'vacant';
   return 'unknown';
@@ -824,6 +825,7 @@ function wiUseLabel(r) {
   if (k === 'other') return 'Assessed with a neighboring parcel';
   if (k === 'condoMaster') return 'Condo common area';
   if (k === 'single') return 'Residential (1 to 3 units)';
+  if (k === 'apartments') return 'Large residential building';
   if (k === 'commercial') return 'Commercial or apartment building';
   if (k === 'industrial') return 'Manufacturing';
   if (k === 'mixed') return 'Homes and businesses';
@@ -838,7 +840,7 @@ function wiDerive(o) {
   if (/^(CDM|COMMON|CA|COM)$/.test(u)) { a = a.replace(new RegExp(`\\s+(UNIT\\s+)?${reEsc(u)}$`, 'i'), ''); o.CONDO_COMMON = true; }
   else if (u && a) {
     const tail = new RegExp(`\\s+${reEsc(u)}$`, 'i');
-    if (tail.test(a) && !UNIT_TAIL_RE.test(a)) a = a.replace(tail, ` UNIT ${u}`);
+    if (tail.test(a) && !UNIT_TAIL_RE.test(a)) { if (!/\b(PARKING|PKG|GARAGE|STALL|STORAGE|SLIP|SPACE|BOAT)\s+\S+$/.test(a)) a = a.replace(tail, ` UNIT ${u}`); }
     else if (!hasUnitNo(a)) a = `${a} UNIT ${u}`;
   }
   if (/^0*$/.test(a)) a = '';
@@ -859,7 +861,9 @@ const waCode = (r) => { const n = parseInt(String(r.USE_CODE ?? '').trim(), 10);
 function waKind(r) {
   const n = waCode(r), orig = String(r.USE_CODE2 || '').trim(), built = hasBuilding(r);
   if (!n) return 'unknown';
-  if (n === 11 || n === 18 || n === 19) return built ? 'single' : 'vacant';
+  if (n === 11 || n === 19) return built ? 'single' : 'vacant';
+  // "Other residential": King County's townhouses, elsewhere anything from a cottage to a retirement complex
+  if (n === 18) return !built ? 'vacant' : orig === '33-29' || num(r.TOTAL_VAL) < 3e6 ? 'single' : 'otherRes';
   if (n === 12) return 'multi';
   if (n === 13) return 'apartments';
   if (n === 14) return /^33-(20|25)$/.test(orig) ? 'condoMaster' : 'resCondo';
@@ -894,8 +898,8 @@ function waUseLabel(r) {
   const n = waCode(r), k = waKind(r), orig = String(r.USE_CODE2 || '').trim();
   if (!n) return null;
   if (n === 12) return { '33-3': 'Two-family', '33-4': 'Three-family', '33-5': 'Four-family' }[orig] || 'Two- to four-family home';
-  if (n === 18 && k === 'single') return orig === '33-29' ? 'Townhouse' : 'Residential';
-  if (n === 14) return k === 'condoMaster' ? 'Condo building' : 'Condo';
+  if (n === 18) return k === 'single' && orig === '33-29' ? 'Townhouse' : 'Residential';
+  if (n === 14) return k === 'condoMaster' ? 'Condominium' : 'Condo';
   if (n >= 21 && n <= 39) return 'Manufacturing';
   return WA_LABEL[n] || KIND_LABEL[k] || null;
 }
@@ -927,6 +931,13 @@ function classifyLot(recs, rid) {
   const BIZ = new Set(['commercial', 'industrial', 'mixed']);
   const bizUnits = kinds.map((k, i) => (BIZ.has(k) && hasUnitNo(addrOf(recs[i])) ? i : -1)).filter((i) => i >= 0);
   if (masters.size || bizUnits.length >= 2) for (const i of bizUnits) kinds[i] = 'comCondo';
+  // Wisconsin and Washington stack each condo unit on the building's outline, unit number or not ("15260 MARILYN DR" four times,
+  // each with its own value): two or more taxed records with a building on one outline are units.
+  if (REGIONS[rid] && REGIONS[rid].stackedUnits) {
+    const RES = new Set(['single', 'multi', 'apartments', 'otherRes', 'mixedRes', 'resCondo']), COM = new Set(['commercial', 'industrial', 'mixed', 'comCondo']);
+    const stack = kinds.map((k, i) => ((RES.has(k) || COM.has(k)) && hasBuilding(recs[i]) && num(recs[i].TOTAL_VAL) > 0 ? i : -1)).filter((i) => i >= 0);
+    if (stack.length >= 2) for (const i of stack) kinds[i] = RES.has(kinds[i]) ? 'resCondo' : 'comCondo';
+  }
   // Beside a master record, every record with a building is a unit: a shop as a commercial unit, a home as a condo, and a unit an
   // exempt owner holds (a charity's office) as whichever kind most of the others are. Parking spaces and land aren't units.
   if (masters.size) {
@@ -1309,7 +1320,7 @@ const REGIONS = {
     },
     derive: (o) => wiDerive(o),
     cityPrefixes: ['CITY OF ', 'VILLAGE OF ', 'TOWN OF '],
-    noSales: true, noDelta: true, actualTax: true,
+    noSales: true, noDelta: true, actualTax: true, stackedUnits: true,
     valueLabel: 'Assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
     yearLabel: (fy) => `${fy} tax roll`,
     source: (fy) => `Source: city, village and town assessors’ tax rolls via the Wisconsin State Cartographer’s Office statewide parcels${fy ? ` (${fy} tax roll)` : ''}. Assessed value is for taxes, not a market estimate, and places assess at different shares of market value.`,
@@ -1339,7 +1350,7 @@ const REGIONS = {
       RECORD_URL: ['DATA_LINK'],
     },
     derive: (o) => waDerive(o),
-    noSales: true,
+    noSales: true, stackedUnits: true,
     valueLabel: 'County market value', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
     yearLabel: () => '',
     source: () => 'Source: county assessors via WaTech’s statewide parcels (Washington Geospatial Open Data Portal). Market value is the county’s value for taxes, not an appraisal.',
