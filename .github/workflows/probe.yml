@@ -27,15 +27,12 @@ jobs:
       # Run by hand when needed: probe/states.mjs (which states have free parcel services), probe/state-fields.mjs (a new state's
       # fields and use codes), probe/nc-tax-rates.py and probe/wa-tax-rates.py (North Carolina's and Washington's tax rate tables;
       # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings), probe/mn-codes.mjs (Minnesota's numbered property classes), probe/md-speed.mjs (Maryland's parcel sources timed), probe/dc-condos.mjs (DC's condo tables), probe/md-records.mjs (Maryland's records),
-      # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node).
-      - name: Census outlines of the states being added
+      # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node),
+      # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services).
+      - name: The Tier 2 services' other layers and tables
         working-directory: tests
         continue-on-error: true
-        run: node probe/outlines.mjs
-      - name: Utah's county parcel services
-        working-directory: tests
-        continue-on-error: true
-        run: node probe/utah-services.mjs
+        run: node probe/layers.mjs
       - name: The slow Tier 2 layers timed
         working-directory: tests
         continue-on-error: true
