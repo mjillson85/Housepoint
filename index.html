@@ -1856,6 +1856,7 @@ function mtUseLabel(r) {
   if (!r) return null;
   const t = t2clean(r.USE_CODE).toUpperCase(); if (!t) return null;
   if (/^IMPROVED/.test(t) && (num(r.AG_ACRES) || 0) >= 20) return 'Farm or ranch';
+  if (/^IMPROVED/.test(t) && mtKind(r) === 'vacant') return KIND_LABEL.vacant;
   return MT_LABEL[t] || KIND_LABEL[mtKind(r)] || null;
 }
 function mtDerive(o) {
@@ -1863,8 +1864,8 @@ function mtDerive(o) {
   let a = a1 + (/^(UNIT|APT|STE|#)\s*\S+$/i.test(a2) ? ` ${a2.replace(/^#\s*/, 'UNIT ')}` : '');
   a = a.replace(/^0+\s+/, '');
   o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null; delete o.ADDR2;
-  const csz = t2clean(o.CSZ), m = /^(.*?),?\s+MT\s+(\d{5})/i.exec(csz);
-  o.CITY = m ? m[1] || null : csz.replace(/,.*$/, '') || null; o.ZIP = m ? m[2] : null; delete o.CSZ;
+  const csz = t2clean(o.CSZ), m = /^(.*?),?\s+MT(?:\s+(\d{5}))?\b/i.exec(csz);
+  o.CITY = m ? m[1] || null : csz.replace(/,.*$/, '') || null; o.ZIP = m && m[2] ? m[2] : null; delete o.CSZ;
   o.AG_ACRES = ['CROP_AC', 'FALLOW_AC', 'GRAZE_AC', 'HAY_AC', 'IRR_AC', 'FOREST_AC'].reduce((t, k) => { const v = num(o[k]) || 0; delete o[k]; return t + v; }, 0);
   if (!(num(o.TOTAL_VAL) > 0) && (num(o.LAND_VAL) > 0 || num(o.BLDG_VAL) > 0)) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
   o.FY = num(o.FY) > 1900 && num(o.FY) <= THIS_YEAR + 1 ? num(o.FY) : null;
@@ -1904,12 +1905,24 @@ function arDerive(o) {
 // it has no street address, so the card finds the nearest one on the map.
 const VT_LABEL = { R2: 'Home on 6+ acres', S1: 'Seasonal home or camp', S2: 'Seasonal home or camp on 6+ acres', F: 'Farm', W: 'Woodland', UE: 'Electric utility',
   UO: 'Utility', M: 'Miscellaneous', MHU: 'Mobile home on rented land', MHL: 'Mobile home with its land', CA: 'Apartments', I: 'Industrial' };
+// What the town's description says about the building, as a word (the description itself isn't kept).
+function vtDescFlag(d) {
+  d = t2clean(d).toUpperCase();
+  if (/\b[2-4][- ]?(FAM|FAMILY|UNITS?|APTS?)\b|DUPLEX|TRIPLEX|DWL ?\/ ?(APT|2 APTS)|2 ?APT/.test(d)) return 'multi';
+  if (/\bCONDO|TOWNHOME|\bUNITS? [0-9A-Z-]+$/.test(d) && !/\b\d+ ?(UNITS?|APTS?)\b.*(BLDG|LAND)|APARTMENT BUILDING/.test(d)) return 'condo';
+  if (/\b([5-9]|\d\d+) ?(UNITS?|APTS?|U)\b|APARTMENT/.test(d)) return 'apartments';
+  return null;
+}
 function vtKind(r) {
-  const c = t2clean(r.USE_CODE).toUpperCase(), d = t2clean(r.PROP_DESC).toUpperCase(), built = hasBuilding(r), condo = /\bCONDO|\bUNIT\b/.test(d);
+  const c = t2clean(r.USE_CODE).toUpperCase(), flag = r.VT_DESC || vtDescFlag(r.PROP_DESC), condo = flag === 'condo';
+  // A home category with an improvement value of exactly 0 (and land valued) is a vacant lot; no value at all says nothing.
+  const bare = r.BLDG_VAL != null && String(r.BLDG_VAL).trim() !== '' && num(r.BLDG_VAL) === 0 && num(r.LAND_VAL) > 0;
+  const built = hasBuilding(r);
   if (/^(R1|R2|S1|S2)$/.test(c)) {
+    if (flag === 'multi') return 'multi';
     if (condo) return 'resCondo';
-    if (!built) return 'vacant';
-    return /\b[2-4][- ]?(FAM|FAMILY|UNIT|APT)|DUPLEX|TRIPLEX|\bAPTS?\b/.test(d) ? 'multi' : 'single';
+    if (bare) return 'vacant';
+    return flag === 'apartments' ? 'apartments' : 'single';
   }
   if (c === 'MHU' || c === 'MHL') return 'mobile';
   if (c === 'C') return condo ? 'comCondo' : built ? 'commercial' : 'vacant';
@@ -1927,25 +1940,26 @@ function vtUseLabel(r) {
   return VT_LABEL[c] || (c ? KIND_LABEL[k] : null) || null;
 }
 function vtDerive(o) {
+  o.VT_DESC = vtDescFlag(o.PROP_DESC); delete o.PROP_DESC;
   const loc = t2clean(o.LOC);
   let a = t2clean(o.SITE_ADDR) || (/^\d+[A-Z]?\s+[A-Z]/i.test(loc) ? loc : '');
   a = a.replace(/^0+\s+/, '');
   o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null; delete o.LOC;
   o.CITY = t2clean(o.CITY).replace(/^(CITY|TOWN) OF\s+/i, '') || null;
   o.FY = num(o.FY) > 1900 && num(o.FY) <= THIS_YEAR ? num(o.FY) : null;
-  o.HOMESTEAD = /^Y/i.test(t2clean(o.HOMESTEAD)) ? 'Y' : null;
 }
 
 // Cook County: the assessor's values on the county's parcel map. Values there are assessed values, a fixed share of market
 // value by class (10% for homes and most apartments, 20% for not-for-profits, 25% for businesses), so the card shows the market
 // value they stand for. A condo building is one lot with its units' values added up.
-function ilLevel(c) { const d = t2clean(c).toUpperCase()[0]; return /[1236789]/.test(d || '') ? 0.10 : d === '4' ? 0.20 : d === '5' ? 0.25 : null; }
+// (Incentive classes 6, 7 and 8 rise from 10% toward 25% over their last years, so their level isn't known from the class alone.)
+function ilLevel(c) { const d = t2clean(c).replace(/[^0-9A-Z]/gi, '').toUpperCase()[0]; return /[1239]/.test(d || '') ? 0.10 : d === '4' ? 0.20 : d === '5' ? 0.25 : null; }
 const IL_LABEL = { 100: 'Vacant land', 190: 'Vacant land', 200: 'Residential land', 201: 'Garage', 202: 'One-story house', 203: 'One-story house', 204: 'One-story house',
   205: 'Two-story house', 206: 'Two-story house', 207: 'Two-story house', 208: 'Two-story house', 209: 'Two-story house', 210: 'Townhouse', 211: 'Two- to six-unit building',
   212: 'Shops with apartments', 213: 'Co-op', 224: 'Farm building', 234: 'Split-level house', 239: 'Farm', 241: 'Vacant land', 278: 'Two-story house',
   288: 'House', 290: 'Minor building', 295: 'Townhouse', 297: 'Special residential', 299: 'Condo', 599: 'Commercial condo', EX: 'Tax-exempt', RR: 'Railroad' };
 function ilKind(r) {
-  const c = t2clean(r.USE_CODE).toUpperCase(), n = parseInt(c, 10), units = num(r.UNITS) || 1;
+  const c = t2clean(r.USE_CODE).replace(/[^0-9A-Z]/gi, '').toUpperCase(), n = parseInt(c, 10), units = num(r.UNITS) || 1;
   if (c === 'EX') return 'exempt';
   if (c === 'RR') return 'other';
   if (!Number.isFinite(n)) return 'unknown';
@@ -1971,8 +1985,10 @@ function ilKind(r) {
 }
 function ilUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(), k = ilKind(r); if (k === 'condoMaster') return 'Condominium'; return IL_LABEL[c] || IL_LABEL[parseInt(c, 10)] || (c ? KIND_LABEL[k] : null) || null; }
 function ilDerive(o) {
-  const lv = ilLevel(o.USE_CODE), sc = (v) => (lv && num(v) > 0 ? Math.round(num(v) / lv) : num(v) === 0 ? 0 : null);
-  o.ASSESSED = num(o.TOTAL_VAL);
+  const lv = ilLevel(o.USE_CODE), has = (v) => v != null && String(v).trim() !== '';
+  const sc = (v) => (!has(v) ? null : num(v) > 0 ? Math.round(num(v) / (lv || 1)) : 0);
+  o.ASSESSED = has(o.TOTAL_VAL) ? num(o.TOTAL_VAL) : null;
+  o.VALUE_KIND = lv ? 'market' : /^EX|^RR/i.test(t2clean(o.USE_CODE)) ? null : 'assessed';
   o.TOTAL_VAL = sc(o.TOTAL_VAL); o.LAND_VAL = sc(o.LAND_VAL); o.BLDG_VAL = sc(o.BLDG_VAL);
   const fy = num(o.FY), age = num(o.BLDG_AGE);
   o.FY = fy > 1900 && fy <= THIS_YEAR ? fy : null;
@@ -1995,10 +2011,11 @@ function coKind(r) {
   if (/COMMON|\bHOA\b/.test(t)) return 'other';
   if (/EXEMPT|SCHOOL|CHURCH|RELIG|GOVERN|POLITICAL|NON ?TAXABLE|CHARIT|PUBLIC|FEDERAL|COUNTY NON/.test(t)) return 'exempt';
   if (/MOBILE|MANUFACT.*HOME|\bMH\b/.test(t)) return 'mobile';
-  if (/VACANT|LAND ONLY|UNIMPROVED/.test(t)) return /AG|FARM|RANCH/.test(t) ? 'farmForest' : 'vacant';
+  if (/VACANT|LAND ONLY|UNIMPROVED/.test(t)) return /\bAG|FARM|RANCH/.test(t) ? 'farmForest' : 'vacant';
   if (/AGRI|FARM|RANCH|GRAZ|FOREST|IRRIG|DRY ?LAND|MEADOW|ORCHARD/.test(t)) return 'farmForest';
   if (/CONDO/.test(t)) return /COMM|OFFICE|RETAIL|INDUS|WAREHOUSE/.test(t) ? 'comCondo' : 'resCondo';
-  if (/APART|9 ?- ?UP|9\+|MULTI ?UNIT APTS|4 TO 8/.test(t)) return 'apartments';
+  if (/MIXED|MULTI-? ?USE/.test(t)) return 'mixed';
+  if (/APART|9 ?- ?UP|9\+|9 AND UP|MULTI-? ?UNIT APTS|4 TO 8/.test(t)) return 'apartments';
   if (/DUPLEX|TRIPLEX|DUP\/|2-3|2-4|MULTIPLE UNIT|MULTI/.test(t)) return 'multi';
   if (/ROW ?HOUSE|TOWN ?HOUSE|TOWNHOME/.test(t)) return 'single';
   if (/MIXED/.test(t)) return 'mixed';
@@ -2077,13 +2094,13 @@ function utDerive(o) {
   o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null;
   o.CITY = t2clean(o.CITY) || null; o.COUNTY = t2clean(o.COUNTY) || null;
   const tv = num(o.TOTAL_VAL), lv = num(o.LAND_VAL);
-  o.BLDG_VAL = tv > 0 && lv >= 0 && tv > lv ? tv - lv : null;
+  const hasLand = o.LAND_VAL != null && String(o.LAND_VAL).trim() !== '';
+  o.BLDG_VAL = tv > 0 && hasLand && lv >= 0 && tv > lv ? tv - lv : null;
   o.YEAR_BUILT = t2year(o.YEAR_BUILT); o.EFF_YEAR = t2year(o.EFF_YEAR);
   if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
   if (/^RESIDENTIAL$/i.test(t2clean(o.USE_CODE)) && o.BLD_AREA) o.RES_AREA = o.BLD_AREA;
   o.UNITS = num(o.UNITS) > 0 ? num(o.UNITS) : null;
   if (!(num(o.STORIES) > 0)) o.STORIES = null;
-  o.HOMESTEAD = /^Y/i.test(t2clean(o.HOMESTEAD)) ? 'Y' : null;
 }
 
 // Alaska: the state's parcels with each borough's or city's records (property types in their own words). No street addresses,
@@ -2092,16 +2109,16 @@ function akKind(r) {
   const t = `${t2clean(r.USE_CODE)} ${t2clean(r.USE_DESC)}`.toUpperCase();
   if (!t.trim() || /^(PARCEL|LOT|TAX LOT|TRACT)\s*(NO DATA)?$/.test(t.trim())) return 'unknown';
   if (/ASSEMBLED/.test(t)) return 'other';
-  if (/EXEMPT|STATE|BOROUGH|CITY OF|AGENCY|GOVERN|NATIVE ALLOT|CHURCH|SCHOOL/.test(t) && !/PARTIAL/.test(t)) return 'exempt';
+  if (/EXEMPT|\bSTATE\b|\bBOROUGH\b|CITY OF|AGENCY|GOVERN|NATIVE ALLOT|CHURCH|SCHOOL/.test(t) && !/PARTIAL/.test(t)) return 'exempt';
   if (/CONDO/.test(t)) return /COMMERCIAL|OFFICE/.test(t) ? 'comCondo' : 'resCondo';
   if (/MOBILE|MANUFACT/.test(t)) return 'mobile';
   if (/VACANT|\bVAC\b/.test(t)) return 'vacant';
   if (/ACCESSORY/.test(t)) return 'accessory';
   if (/APARTMENT/.test(t)) return 'apartments';
-  if (/2 FAMILY|DUPLEX|TRIPLEX|FOURPLEX|MULTI|3 FAMILY|4 FAMILY/.test(t)) return 'multi';
+  if (/2 FAMILY|DUPLEX|TRIPLEX|FOURPLEX|MULTI|3 FAMILY|4 FAMILY/.test(t)) return r.BLDG_VAL === 0 ? 'vacant' : 'multi';
   if (/INDUSTRIAL|WAREHOUSE/.test(t)) return 'industrial';
   if (/COMMERCIAL|OFFICE|RETAIL|RESTAURANT|HOTEL|MOTEL|PARKING|THEATER|STORE/.test(t)) return 'commercial';
-  if (/RESIDENTIAL|1 FAMILY|SINGLE|\bRES\b|HOMESITE|R1|RR1/.test(t)) return 'single';
+  if (/RESIDENTIAL|1 FAMILY|SINGLE|\bRES\b|HOMESITE|\bR1\b|\bRR1\b/.test(t)) return r.BLDG_VAL === 0 ? 'vacant' : 'single';   // a home's lot with no building on it
   return 'unknown';
 }
 function akUseLabel(r) {
@@ -2113,8 +2130,10 @@ function akUseLabel(r) {
 function akDerive(o) {
   const g = t2clean(o.COUNTY);
   o.COUNTY = g || null;
-  o.CITY = g.replace(/\s+(Municipality|Borough|City and Borough|City & Borough|Census Area)$/i, '').replace(/^(City|Municipality) of\s+/i, '') || null;
-  for (const k of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL']) if (!(num(o[k]) > 0)) o[k] = num(o[k]) === 0 && num(o.TOTAL_VAL) > 0 ? 0 : null;
+  // Anchorage Municipality is Anchorage, the City and Borough of Juneau is Juneau; a borough's name stays a borough's
+  o.CITY = g.replace(/\s+Municipality$/i, '').replace(/^(City (and|&) Borough|Municipality|City) of\s+/i, '').replace(/\s+City (and|&) Borough$/i, '') || null;
+  const has = (v) => v != null && String(v).trim() !== '';
+  for (const k of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL']) if (!(num(o[k]) > 0)) o[k] = has(o[k]) && num(o[k]) === 0 && num(o.TOTAL_VAL) > 0 ? 0 : null;
 }
 
 // Vermont and Alaska records have no street address: the card asks Geoapify (OpenStreetMap) for the address nearest the lot.
@@ -2126,7 +2145,10 @@ async function posAddrFor(p) {
   try {
     const j = await getJSON(`https://api.geoapify.com/v1/geocode/reverse?lat=${y.toFixed(6)}&lon=${x.toFixed(6)}&format=json&limit=1&apiKey=${encodeURIComponent(KEYS.geoapify)}`, {}, 8000);
     const a = (j.results || [])[0];
-    if (a && a.housenumber && a.street && !(a.distance > 60)) p.posAddr = `${a.housenumber} ${a.street}`;
+    if (a && a.housenumber && a.street && !(a.distance > 60)) {
+      const inside = p.ringsLL.some((rr) => inPoly(+a.lon, +a.lat, rr));
+      p.posAddr = `${inside ? '' : 'Near '}${a.housenumber} ${a.street}`;
+    }
   } catch (e) { /* the card keeps "Address not listed" */ }
   return p.posAddr;
 }
@@ -2611,9 +2633,12 @@ const REGIONS = {
     lotWhere: "PROPTYPE = 'PARCEL'",
     fields: {
       PROP_ID: ['SPAN'], SITE_ADDR: ['E911ADDR'], LOC: ['LOCAPROP'], CITY: ['TOWN'], FY: ['GLYEAR'], USE_CODE: ['CAT'], PROP_DESC: ['DESCPROP'],
-      TOTAL_VAL: ['REAL_FLV'], LAND_VAL: ['LAND_LV'], BLDG_VAL: ['IMPRV_LV'], HOMESTEAD: ['HSDECL'],
+      TOTAL_VAL: ['REAL_FLV'], LAND_VAL: ['LAND_LV'], BLDG_VAL: ['IMPRV_LV'],
     },
-    extraFields: ['LOC', 'PROP_DESC'],
+    extraFields: ['LOC', 'PROP_DESC', 'VT_DESC'],
+    // The grand list's description is the town's free text: read for what it says about the building (condo, apartments), then
+    // dropped, and never in the copied records.
+    noCopy: ['DESCPROP'],
     derive: (o) => vtDerive(o),
     stackedUnits: true, noSales: true, addrByPosition: true,
     valueLabel: 'Town listed value', deltaWord: 'value', valueWord: 'Listed value', valueTitle: 'Listed value',
@@ -2681,6 +2706,7 @@ const REGIONS = {
     },
     extraFields: ['ADDR2', 'CSZ', 'AG_ACRES', 'CROP_AC', 'FALLOW_AC', 'GRAZE_AC', 'HAY_AC', 'IRR_AC', 'FOREST_AC'],
     derive: (o) => mtDerive(o),
+    townFields: ['CSZ'],          // "MISSOULA, MT 59801": the town is the start of it
     stackedUnits: true, noSales: true,
     valueLabel: 'State market value', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
     yearLabel: (y) => `${y} tax year`,
@@ -2763,7 +2789,8 @@ const REGIONS = {
       PROP_ID: ['PIN14'], SITE_ADDR: ['Address'], CITY: ['City'], ZIP: ['Zip_Code'], USE_CODE: ['BLDGClass'], BLD_AREA: ['BldgSqft'], BLDG_AGE: ['BldgAge'],
       TOTAL_VAL: ['TotalValue'], LAND_VAL: ['LandValue'], BLDG_VAL: ['BldgValue'], FY: ['TAXYR'], UNITS: ['RECORD_COUNT'],
     },
-    extraFields: ['BLDG_AGE', 'ASSESSED'],
+    extraFields: ['BLDG_AGE', 'ASSESSED', 'VALUE_KIND'],
+    valueLabelFor: (r) => (r && r.VALUE_KIND === 'assessed' ? 'County assessed value (an incentive class: 10% to 25% of market value)' : 'County market value (from the assessment)'),
     derive: (o) => ilDerive(o),
     noSales: true, noDelta: true,
     valueLabel: 'County market value (from the assessment)', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
@@ -2817,7 +2844,7 @@ const REGIONS = {
     detect: ['PARCELNB', 'ACTUALVALU', 'LOCATIONAD'],
     fields: { PROP_ID: ['parcelnb'], SITE_ADDR: ['locationad'], COUNTY: ['jurisdicti'], FY: ['taxyear'], TOTAL_VAL: ['actualvalu'], ASSESSED: ['assessedva'] },
     derive: (o) => wyDerive(o),
-    stackedUnits: true, noSales: true, builtByOutline: true,
+    stackedUnits: true, noSales: true, builtByOutline: true, slowSearch: true,    // no town on the records: addresses are found by position
     valueLabel: 'County actual value', deltaWord: 'value', valueWord: 'Actual value', valueTitle: 'Actual value',
     yearLabel: (y) => `${y} tax year`,
     source: (fy) => `Source: county assessors via the State of Wyoming’s parcels${fy ? `, ${fy} tax year` : ''}. Actual value is the county’s market value for taxes. The records don’t say what kind of property it is.`,
@@ -2839,7 +2866,7 @@ const REGIONS = {
     layersFor: (lat, lon, m) => utLayersFor(lat, lon, m),
     fields: {
       PROP_ID: ['PARCEL_ID'], SITE_ADDR: ['PARCEL_ADD'], CITY: ['PARCEL_CITY'], COUNTY: ['COUNTY_NAME'], TOTAL_VAL: ['TOTAL_MKT_VALUE'], LAND_VAL: ['LAND_MKT_VALUE'],
-      USE_CODE: ['PROP_CLASS'], HOMESTEAD: ['PRIMARY_RES'], UNITS: ['HOUSE_CNT'], BLD_AREA: ['BLDG_SQFT'], STORIES: ['FLOORS_CNT'], YEAR_BUILT: ['BUILT_YR'],
+      USE_CODE: ['PROP_CLASS'], UNITS: ['HOUSE_CNT'], BLD_AREA: ['BLDG_SQFT'], STORIES: ['FLOORS_CNT'], YEAR_BUILT: ['BUILT_YR'],
       EFF_YEAR: ['EFFBUILT_YR'],
     },
     derive: (o) => utDerive(o),
@@ -3091,7 +3118,9 @@ async function queryRegion(region, lat, lon, radius) {
     return out;
   };
   const parts = await Promise.allSettled(layers.map(fetchLayer));
-  if (parts.length && parts.every((x) => x.status === 'rejected')) throw parts[0].reason;
+  // Any layer failing with no lots from the others is a failure, not an empty map
+  const bad = parts.find((x) => x.status === 'rejected');
+  if (bad && !parts.some((x) => x.status === 'fulfilled' && x.value.length)) throw bad.reason;
   const feats = parts.flatMap((x) => (x.status === 'fulfilled' ? x.value : []));
   // DC keeps condo units and building details in other tables: added here, and the lots still load if those don't answer.
   if (region.expand && feats.length) { try { await timeLimit(region.expand(feats, sv), EXPAND_MS); } catch (e) { console.warn(`${region.id} extra records`, e); } }
@@ -3366,8 +3395,11 @@ async function searchIn(region, alts, town, street, near) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '10', f: 'json' });
     if (near) for (const [k, v] of Object.entries({ geometry: `${near.lon.toFixed(6)},${near.lat.toFixed(6)}`, geometryType: 'esriGeometryPoint', inSR: '4326',
       spatialRel: 'esriSpatialRelIntersects', distance: String(near.m), units: 'esriSRUnit_Meter' })) params.set(k, v);
-    const url = near && region.layersFor ? region.layersFor(near.lat, near.lon, near.m)[0] || sv.layerUrl : sv.layerUrl;
-    const j = await getJSON(url + '/query?' + params.toString(), {}, near ? NEAR_LOT_MS : SEARCH_LOT_MS);
+    // Utah: every county layer near the spot
+    const urls = near && region.layersFor ? region.layersFor(near.lat, near.lon, near.m) : [sv.layerUrl];
+    const answers = await Promise.allSettled((urls.length ? urls : [sv.layerUrl]).map((u) => getJSON(u + '/query?' + params.toString(), {}, near ? NEAR_LOT_MS : SEARCH_LOT_MS)));
+    if (answers.every((x) => x.status === 'rejected')) throw answers[0].reason;
+    const j = { features: answers.flatMap((x) => (x.status === 'fulfilled' ? x.value.features || [] : [])) };
     const ps = buildParcels(j.features || [], region.id);
     if (ps.length) {
       const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
@@ -3524,7 +3556,8 @@ async function townPlace(names, order, fix) {
   // New Jersey has five Washington townships.
   const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' || x.st === 'NE' || x.st === 'MN' || x.st === 'DC' || x.st === 'MD' || x.st === 'NY' || /^(MT|AR|IL|CO|WY|UT|AK)$/.test(x.st) ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
-  const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
+  // Illinois is Cook County only: a town elsewhere in the state isn't a match
+  const ok = found.filter((x) => ids.includes(x.st) && (x.st !== 'IL' || (regionFor(x.lat, x.lon) || {}).id === 'IL')).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
   const b = ok[0];
   return { kind: 'town', lat: b.lat, lon: b.lon, name: `${b.name}, ${b.st}`, st: b.st, town: b.name, fixed: b.fix };
@@ -4052,7 +4085,7 @@ function renderCard(cand, total, idx) {
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
   $('#cardBody').innerHTML = `${aerialSvg(L)}
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
-    <div class="addrrow"><div class="addr">${esc(s.addr)}</div>${saveBtnHtml(L.p.key)}</div>
+    <div class="addrrow"><div class="addr" data-k="${esc(L.p.key)}">${esc(s.addr)}</div>${saveBtnHtml(L.p.key)}</div>
     <div class="town">${esc([s.town, s.typeLabel].filter(Boolean).join(' · '))}</div>
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
@@ -4070,9 +4103,9 @@ function renderCard(cand, total, idx) {
   // No street address on the record (Vermont, Alaska): look up the nearest one, then show the card again if it's still open.
   if (s.region.addrByPosition && !DEMO && L.p.posAddr === undefined && s.addr === 'Address not listed') {
     posAddrFor(L.p).then((a) => {
-      L.badges = null;
-      const c = S.candidates && S.candidates[S.cIdx];
-      if (a && c && c.L === L && $('#sheet').classList.contains('open')) renderCard(c, S.candidates.length, S.cIdx);
+      const el = $('#cardBody .addr'); if (!a || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
+      el.textContent = a;
+      const n = $('#cardBody .note'); if (n) n.insertAdjacentText('afterbegin', 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ');
     });
   }
   const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, s);
@@ -4095,7 +4128,7 @@ function renderCard(cand, total, idx) {
 function lotRecordsJson(L) {
   const p = L.p, [lat, lon] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
   return JSON.stringify({ housepoint: 'lot', state: p.region, key: p.key, captured: new Date().toISOString().slice(0, 10), lat: +lat.toFixed(6), lon: +lon.toFixed(6),
-    rings: p.ringsLL, records: [...(p.raw || []), ...(p.rawExtra || [])] });
+    rings: p.ringsLL, records: [...(p.raw || []), ...(p.rawExtra || [])].map((a) => { const no = (REGIONS[p.region] || {}).noCopy; if (!no) return a; const c = { ...a }; for (const k of no) delete c[k]; return c; }) });
 }
 async function copyRecords(L) {
   const text = lotRecordsJson(L);
@@ -4115,7 +4148,7 @@ function perSqft(s) {
   if (sale) return { v: sale.p / living, kind: 'sale' };
   const tv = num(r.TOTAL_VAL);
   // (New York's fractional assessments aren't a value to divide)
-  return tv && s.region.id !== 'NJ' && !(s.region.id === 'NY' && r.VALUE_KIND !== 'full') ? { v: tv / living, kind: 'value' } : null;
+  return tv && s.region.id !== 'NJ' && !(s.region.id === 'NY' && r.VALUE_KIND !== 'full') && r.VALUE_KIND !== 'assessed' ? { v: tv / living, kind: 'value' } : null;
 }
 // A link that opens this house on the map for whoever gets it: a point inside the lot, plus its record key.
 function houseLink(cand) {

@@ -26,7 +26,7 @@ const STATES = {
     lots: [[[15, -12, 40, 12], { SPAN: '114-035-15522', TOWN: 'BURLINGTON', GLYEAR: 2025, CAT: 'R1', DESCPROP: '1-FAMILY WITH 3 BEDROOMS', REAL_FLV: 524000, LAND_LV: 210000, IMPRV_LV: 314000, HSDECL: 'Y', PROPTYPE: 'PARCEL' }],
       [[-45, -15, -15, 15], { SPAN: '114-035-15530', TOWN: 'BURLINGTON', GLYEAR: 2025, CAT: 'C', DESCPROP: '0.43 AC & OFFICE BLDG', E911ADDR: '407 PINE ST', REAL_FLV: 1166800, LAND_LV: 400000, IMPRV_LV: 766800, PROPTYPE: 'PARCEL' }]],
     owner: { OWNER1: 'SECRET OWNER', ADDRGL1: 'SECRET MAILING', CITYGL: 'SECRET CITY' },
-    card: [/26 Hillcrest Road \|/, /Burlington · Single-family home/, /TOWN LISTED VALUE · 2025 GRAND LIST \| \$524,000/, /nearest one on OpenStreetMap/] },
+    card: [/\| 26 Hillcrest Road \|/, /Burlington · Single-family home/, /TOWN LISTED VALUE · 2025 GRAND LIST \| \$524,000/, /nearest one on OpenStreetMap/] },
   MT: { url: 'https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1',
     fields: ['OBJECTID', 'PARCELID', 'COUNTYCD', 'CountyName', 'CountyAbbr', 'TaxYear', 'PropertyID', 'LegalDescriptionShort', 'Subdivision', 'AddressLine1', 'AddressLine2', 'CityStateZip',
       'PropType', 'ContinuousCropAcres', 'FallowAcres', 'ForestAcres', 'GrazingAcres', 'WildHayAcres', 'IrrigatedAcres', 'TotalAcres', 'TotalBuildingValue', 'TotalLandValue', 'TotalValue',
@@ -88,7 +88,7 @@ const STATES = {
     lots: [[[15, -12, 40, 12], { parcel_id: '40509', property_type: 'Lot', property_use: 'Residential', land_value: 14550, building_value: 229220, total_value: 243770,
       local_gov: 'Fairbanks North Star Borough' }]],
     owner: { owner: 'SECRET OWNER', alt_owner: 'SECRET OWNER 2' },
-    card: [/26 Hillcrest Road \|/, /Fairbanks North Star · Single-family home/, /ASSESSED VALUE \| \$243,770/] },
+    card: [/\| 26 Hillcrest Road \|/, /Fairbanks North Star Borough · Single-family home/, /ASSESSED VALUE \| \$243,770/] },
 };
 // Utah County's layer (Provo): a second county layer, picked by position
 const UT_PROVO = { url: UT('Utah'), spot: [40.2338, -111.6585],
@@ -105,7 +105,8 @@ page.on('request', (req) => {
   const u = req.url();
   const json = (o) => req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) });
   if (u.startsWith(ORIGIN)) return req.continue();
-  if (u.startsWith('https://api.geoapify.com/v1/geocode/reverse')) { reverse.push(u); return json({ results: [{ housenumber: '26', street: 'Hillcrest Road', distance: 12 }] }); }
+  if (u.startsWith('https://api.geoapify.com/v1/geocode/reverse')) { reverse.push(u); const q = new URL(u).searchParams;   // the point it's asked about: inside the lot
+    return json({ results: [{ housenumber: '26', street: 'Hillcrest Road', distance: 12, lat: +q.get('lat'), lon: +q.get('lon') }] }); }
   const all = [...Object.entries(STATES).map(([st, c]) => [st, c]), ['UT', UT_PROVO]];
   for (const [st, c] of all) {
     if (u.startsWith(c.url + '?f=json')) return json({ objectIdField: 'OBJECTID', maxRecordCount: 2000, geometryType: 'esriGeometryPolygon', fields: (c.fields || UT_FIELDS).map((name) => ({ name })) });
@@ -149,7 +150,8 @@ const kinds = await page.evaluate(() => {
   const k = (rid, r) => window.__hp.useKind({ TOTAL_VAL: 300000, BLDG_VAL: 200000, ...r }, rid);
   return {
     vtHouse: k('VT', { USE_CODE: 'R1', PROP_DESC: '0.06 AC & DWL' }), vtDuplex: k('VT', { USE_CODE: 'R1', PROP_DESC: '2-FAMILY DWL' }), vtCondo: k('VT', { USE_CODE: 'O', PROP_DESC: '1860 HOUSE CONDO UNIT 1' }),
-    vtCamp: k('VT', { USE_CODE: 'S1' }), vtLand: k('VT', { USE_CODE: 'R2', BLDG_VAL: 0 }), vtShop: k('VT', { USE_CODE: 'C' }), vtFarm: k('VT', { USE_CODE: 'F' }), vtMobile: k('VT', { USE_CODE: 'MHU' }),
+    vtCamp: k('VT', { USE_CODE: 'S1' }), vtLand: k('VT', { USE_CODE: 'R2', BLDG_VAL: 0, LAND_VAL: 300000 }), vtNoValues: k('VT', { USE_CODE: 'R1', BLDG_VAL: null, LAND_VAL: null }),
+    vtTwoUnit: k('VT', { USE_CODE: 'R1', PROP_DESC: '2 UNIT DWL & .3 AC' }), vtAptBldg: k('VT', { USE_CODE: 'R1', PROP_DESC: 'APARTMENT BUILDING 8 UNIT/LAND' }), vtShop: k('VT', { USE_CODE: 'C' }), vtFarm: k('VT', { USE_CODE: 'F' }), vtMobile: k('VT', { USE_CODE: 'MHU' }),
     mtImproved: k('MT', { USE_CODE: 'Improved Property' }), mtRanch: k('MT', { USE_CODE: 'Improved Property', AG_ACRES: 300 }), mtLand: k('MT', { USE_CODE: 'Vacant Land', BLDG_VAL: 0 }),
     mtCondo: k('MT', { USE_CODE: 'Condominium' }), mtApts: k('MT', { USE_CODE: 'Apartment' }), mtExempt: k('MT', { USE_CODE: 'Exempt Property' }),
     arHouse: k('AR', { USE_CODE: 'RI' }), arLot: k('AR', { USE_CODE: 'RV' }), arFarm: k('AR', { USE_CODE: 'AI' }), arShop: k('AR', { USE_CODE: 'CI' }), arExempt: k('AR', { USE_CODE: 'EX' }), arMobile: k('AR', { USE_CODE: 'MH' }),
@@ -158,22 +160,24 @@ const kinds = await page.evaluate(() => {
     coHouse: k('CO', { USE_DESC: 'SFR Grade C' }), coRow: k('CO', { USE_DESC: 'RESIDENTIAL-ROWHOUSE' }), coCondo: k('CO', { USE_DESC: 'RESIDENTIAL-CONDOMINIUM' }),
     coComCondo: k('CO', { USE_DESC: 'COMMERCIAL CONDO- IMP' }), coDuplex: k('CO', { USE_DESC: 'RESIDENTIAL-DUPLEX' }), coApts: k('CO', { USE_DESC: 'Multi 9 - Up' }),
     coOffice: k('CO', { USE_DESC: 'COMMERCIAL-OFFICE' }), coExempt: k('CO', { USE_DESC: 'EXEMPT-COUNTY-LAND' }), coHoa: k('CO', { USE_DESC: 'HOA LAND' }), coCode: k('CO', { USE_DESC: '70QA' }),
-    coLarimer: k('CO', { USE_DESC: 'Residential' }), coMulti: k('CO', { USE_DESC: 'Multiple Unit' }),
+    coLarimer: k('CO', { USE_DESC: 'Residential' }), coMulti: k('CO', { USE_DESC: 'Multiple Unit' }), coBig: k('CO', { USE_DESC: 'MULTI-UNIT (9 AND UP)' }),
+    coMixedUse: k('CO', { USE_DESC: 'MULTI-USE' }), coStorage: k('CO', { USE_DESC: 'VACANT STORAGE' }), coRowUnit: k('CO', { USE_DESC: 'SFR Grade B', SITE_ADDR: '1550 N BROADWAY UNIT 4' }),
     wy: k('WY', {}), utHouse: k('UT', { USE_CODE: 'Residential', UNITS: 1 }), utDuplex: k('UT', { USE_CODE: 'Residential', UNITS: 2 }), utCondo: k('UT', { USE_CODE: 'Commercial - Apartment & Condo', UNITS: 1 }),
     utApts: k('UT', { USE_CODE: 'Commercial - Apartment & Condo', UNITS: 28 }), utOffice: k('UT', { USE_CODE: 'Commercial - Office Space' }), utExempt: k('UT', { USE_CODE: 'Tax Exempt - Government' }),
     utGreen: k('UT', { USE_CODE: 'Greenbelt' }), utAg: k('UT', { USE_CODE: 'Agricultural' }), utMixed: k('UT', { USE_CODE: 'Mixed Use' }), utBlank: k('UT', { USE_CODE: '' }), utLand: k('UT', { USE_CODE: 'Residential', BLDG_VAL: 0 }),
     akHouse: k('AK', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'Residential 1 Family' }), akFour: k('AK', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'Fourplex' }), akCondo: k('AK', { USE_CODE: 'CONDO', USE_DESC: 'Condo (Fee simple)' }),
     akShop: k('AK', { USE_CODE: 'COMMERCIAL', USE_DESC: 'Retail single occupancy' }), akLand: k('AK', { USE_CODE: 'VACANT LAND', USE_DESC: 'Residential Vacant Land' }), akJuneau: k('AK', { USE_CODE: 'PARCEL' }),
-    akAssembled: k('AK', { USE_CODE: 'Lot', USE_DESC: 'Assembled' }) };
+    akAssembled: k('AK', { USE_CODE: 'Lot', USE_DESC: 'Assembled' }), akEstate: k('AK', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'Estate Lot Residential' }),
+    akLot: k('AK', { USE_CODE: 'Lot', USE_DESC: 'Residential', BLDG_VAL: 0 }), utUnit: k('UT', { USE_CODE: 'Residential', UNITS: 1, SITE_ADDR: '55 E CENTER UNIT 201' }) };
 });
-const wantK = { vtHouse: 'single', vtDuplex: 'multi', vtCondo: 'resCondo', vtCamp: 'single', vtLand: 'vacant', vtShop: 'commercial', vtFarm: 'farmForest', vtMobile: 'mobile',
+const wantK = { vtHouse: 'single', vtDuplex: 'multi', vtCondo: 'resCondo', vtCamp: 'single', vtLand: 'vacant', vtNoValues: 'single', vtTwoUnit: 'multi', vtAptBldg: 'apartments', vtShop: 'commercial', vtFarm: 'farmForest', vtMobile: 'mobile',
   mtImproved: 'unknown', mtRanch: 'farmForest', mtLand: 'vacant', mtCondo: 'resCondo', mtApts: 'apartments', mtExempt: 'exempt',
   arHouse: 'single', arLot: 'vacant', arFarm: 'farmForest', arShop: 'commercial', arExempt: 'exempt', arMobile: 'mobile',
   ilHouse: 'single', ilFlat: 'multi', ilCondoBldg: 'condoMaster', ilCondo: 'resCondo', ilApts: 'apartments', ilShop: 'commercial', ilPlant: 'industrial', ilExempt: 'exempt', ilLand: 'vacant',
   coHouse: 'single', coRow: 'single', coCondo: 'resCondo', coComCondo: 'comCondo', coDuplex: 'multi', coApts: 'apartments', coOffice: 'commercial', coExempt: 'exempt', coHoa: 'other',
-  coCode: 'unknown', coLarimer: 'single', coMulti: 'multi', wy: 'unknown', utHouse: 'single', utDuplex: 'multi', utCondo: 'resCondo', utApts: 'apartments', utOffice: 'commercial',
+  coCode: 'unknown', coLarimer: 'single', coMulti: 'multi', coBig: 'apartments', coMixedUse: 'mixed', coStorage: 'vacant', coRowUnit: 'resCondo', wy: 'unknown', utHouse: 'single', utDuplex: 'multi', utCondo: 'resCondo', utApts: 'apartments', utOffice: 'commercial',
   utExempt: 'exempt', utGreen: 'farmForest', utAg: 'farmForest', utMixed: 'mixed', utBlank: 'unknown', utLand: 'vacant', akHouse: 'single', akFour: 'multi', akCondo: 'resCondo', akShop: 'commercial', akLand: 'vacant', akJuneau: 'unknown',
-  akAssembled: 'other' };
+  akAssembled: 'other', akEstate: 'single', akLot: 'vacant', utUnit: 'resCondo' };
 const badK = Object.entries(wantK).filter(([k, v]) => kinds[k] !== v).map(([k, v]) => `${k}: ${kinds[k]} (want ${v})`);
 check(!badK.length, 'property types read as the right kind' + (badK.length ? ': ' + badK.join(', ') : ''));
 
