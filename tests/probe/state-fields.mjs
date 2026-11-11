@@ -59,6 +59,9 @@ for (const [st, cfg] of Object.entries(STATES)) {
     const have = new Set(fields.map((f) => f.name));
     const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f)) : cfg.want).filter((f) => have.has(f) && !BAD.test(f));
     res.asked = want.join(',');
+    // auto: the property-type fields (use, class or type, not zoning), grouped statewide and near each spot
+    const codeF = cfg.want === 'auto' ? want.filter((f) => /use|class|type|cls/i.test(f) && !/zon|exempt|const|area|acre/i.test(f)).slice(0, 3) : cfg.codes || [];
+    if (cfg.want === 'auto') { cfg.codes = codeF; cfg.group = codeF.map((f) => [f]); }
     const countyF = (cfg.county || []).find((f) => have.has(f));
     // statewide: records per county, and the property-type groups
     const stat = async (where, groupBy, ms) => {
@@ -101,7 +104,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
   log(`max ${out.max}  sr ${JSON.stringify(out.sr)}`);
   log('fields:', out.fields.join('  '));
   log('asked:', out.asked);
-  log('by county:', JSON.stringify(out.byCounty).slice(0, 4000));
+  log('by county:', JSON.stringify(out.byCounty || null).slice(0, 4000));
   for (const [k, v] of Object.entries(out.groups)) log(`group ${k}:`, JSON.stringify(v).slice(0, 6000));
   for (const s of out.spots) {
     log(`-- ${s.name}: ${s.err || `${s.n} records in ${s.ms} ms`}`);
