@@ -28,17 +28,12 @@ jobs:
       # fields and use codes), probe/nc-tax-rates.py and probe/wa-tax-rates.py (North Carolina's and Washington's tax rate tables;
       # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings), probe/mn-codes.mjs (Minnesota's numbered property classes), probe/md-speed.mjs (Maryland's parcel sources timed), probe/dc-condos.mjs (DC's condo tables), probe/md-records.mjs (Maryland's records),
       # probe/ny-records.mjs (New York's records), probe/borders.mjs (the Census Bureau's state lines; plain Node),
-      # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services).
-      - name: The Tier 2 services' other layers and tables
+      # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services),
+      # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers).
+      - name: Parcel services to add (servers and ArcGIS Online)
         working-directory: tests
         continue-on-error: true
-        run: node probe/layers.mjs
-      - name: The slow Tier 2 layers timed
-        working-directory: tests
-        continue-on-error: true
-        env:
-          CHROME: /usr/bin/google-chrome
-        run: node probe/tier2-speed.mjs
+        run: node probe/find-services.mjs
       - name: The next states' fields and property types
         working-directory: tests
         continue-on-error: true

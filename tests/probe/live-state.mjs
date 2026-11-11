@@ -19,17 +19,7 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin through New York and the review fixes: in git history (November 11, 2026). Tier 2:
-  VT: { spots: [[44.4800, -73.2100, null, 'Burlington'], [44.4650, -72.6850, null, 'Stowe'], [42.8510, -72.5580, null, 'Brattleboro']], searches: ['Montpelier, VT'] },
-  MT: { spots: [[45.7800, -108.5300, null, 'Billings'], [46.8650, -113.9950, null, 'Missoula'], [45.6770, -111.0400, null, 'Bozeman']], searches: ['724 Gerald Ave, Missoula, MT'] },
-  AR: { spots: [[34.7600, -92.3100, null, 'Little Rock Hillcrest'], [36.0700, -94.1600, null, 'Fayetteville'], [34.5000, -93.0550, null, 'Hot Springs']], searches: ['21 Oakwood Rd, Little Rock, AR'] },
-  IL: { spots: [[41.8850, -87.7850, null, 'Oak Park'], [42.0450, -87.6900, null, 'Evanston'], [41.8920, -87.6250, null, 'Chicago downtown condos']], searches: ['204 S Elmwood Ave, Oak Park, IL'] },
-  CO: { spots: [[39.7000, -104.9700, null, 'Denver Washington Park'], [40.5730, -105.0790, null, 'Fort Collins'], [38.8600, -104.8200, null, 'Colorado Springs (no values)'],
-    [40.0150, -105.2700, null, 'Boulder']], searches: ['1060 S Gaylord St, Denver, CO'] },
-  WY: { spots: [[41.1400, -104.8100, null, 'Cheyenne'], [43.4800, -110.7600, null, 'Jackson']], searches: ['606 E 21st St, Cheyenne, WY'] },
-  UT: { spots: [[40.7500, -111.8700, null, 'Salt Lake City Sugar House'], [40.2338, -111.6585, null, 'Provo'], [41.0350, -111.9380, null, 'Kaysville (Davis)'],
-    [37.1000, -113.5700, null, 'St. George']], searches: ['745 E 900 S, Salt Lake City, UT'] },
-  AK: { spots: [[61.1900, -149.8800, null, 'Anchorage'], [64.8400, -147.7300, null, 'Fairbanks'], [58.3000, -134.4200, null, 'Juneau (no values)']], searches: ['Fairbanks, AK'] },
+const STATES = {   // Wisconsin through Tier 2: in git history (November 11, 2026)
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);

@@ -20,7 +20,28 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {   // Tier 2 rounds (all of them, want 'auto'; Utah's counties' classes) are in git history (November 11, 2026)
+const STATES = {   // Tier 2 rounds are in git history (November 11, 2026). The lot-line states, Texas, Idaho, North Dakota, Alabama:
+  NV: { layer: 'https://arcgis.water.nv.gov/arcgis/rest/services/BaseLayers/County_Parcels_in_Nevada/MapServer/0', want: 'auto',
+    spots: [[39.5300, -119.8100, 'Reno'], [36.1500, -115.1700, 'Las Vegas']] },
+  HI: { layer: 'https://geodata.hawaii.gov/arcgis/rest/services/ParcelsZoning/MapServer/25', want: 'auto', spots: [[21.2850, -157.8150, 'Honolulu Kaimuki'], [20.8900, -156.4700, 'Kahului']] },
+  CA: { layer: 'https://bz1uwWPKUInZBK94.svcs5.arcgis.com/bz1uwWPKUInZBK94/arcgis/rest/services/CA_Statewide_Parcels_Public_view/FeatureServer/0', want: 'auto',
+    spots: [[37.7600, -122.4400, 'San Francisco'], [34.1000, -118.3300, 'Los Angeles'], [38.5800, -121.4900, 'Sacramento']] },
+  IN: { layer: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', want: 'auto',
+    spots: [[39.7700, -86.1500, 'Indianapolis'], [41.0800, -85.1400, 'Fort Wayne']] },
+  OH: { layer: 'https://services2.arcgis.com/MlJ0G8iWUyC7jAmu/arcgis/rest/services/OhioStatewidePacels_full_view/FeatureServer/0', want: 'auto',
+    spots: [[39.9600, -83.0000, 'Columbus'], [41.4800, -81.6900, 'Cleveland']] },
+  WV: { layer: 'https://services.wvgis.wvu.edu/arcgis/rest/services/Planning_Cadastre/WV_Parcels/MapServer/0', want: 'auto', spots: [[38.3500, -81.6300, 'Charleston'], [39.6300, -79.9600, 'Morgantown']] },
+  NH: { layer: 'https://nhgeodata.unh.edu/hosting/rest/services/Hosted/CAD_ParcelMosaic/FeatureServer/1', want: 'auto', spots: [[43.2080, -71.5380, 'Concord'], [42.9950, -71.4600, 'Manchester']] },
+  VA: { layer: 'https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', want: 'auto', spots: [[37.5400, -77.4600, 'Richmond'], [38.8800, -77.1000, 'Arlington']] },
+  DE: { layer: 'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/PlanningCadastre/DE_StateParcels/FeatureServer/0', want: 'auto', spots: [[39.7400, -75.5500, 'Wilmington'], [39.1580, -75.5240, 'Dover']] },
+  ME: { layer: 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/0', want: 'auto', spots: [[43.6600, -70.2600, 'Portland'], [44.8000, -68.7800, 'Bangor']] },
+  XX: { layer: 'https://services1.arcgis.com/XxHmL09eFqJWI0gE/arcgis/rest/services/ParcelsPublic/FeatureServer/0', want: 'auto', spots: [[41.5900, -93.6200, 'Des Moines'], [46.8100, -100.7800, 'Bismarck']] },
+  TX: { layer: 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/FeatureServer/0', want: 'auto',
+    spots: [[30.2900, -97.7400, 'Austin'], [29.7400, -95.3900, 'Houston'], [32.8000, -96.8000, 'Dallas']] },
+  TXM: { layer: 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/0', want: 'auto', spots: [[30.2900, -97.7400, 'Austin']] },
+  ID: { layer: 'https://services1.arcgis.com/CNPdEkvnGl65jCX8/arcgis/rest/services/Public_Idaho_Parcels_/FeatureServer/0', want: 'auto',
+    spots: [[43.6150, -116.2000, 'Boise'], [47.6800, -116.7800, 'Coeur d’Alene'], [43.4900, -112.0300, 'Idaho Falls']] },
+  AL: { layer: 'https://services6.arcgis.com/VUsVQlvugJlIRS3I/arcgis/rest/services/Alabama_Parcel_Data/FeatureServer/0', want: 'auto', spots: [[33.5200, -86.8000, 'Birmingham'], [32.0000, -87.3000, 'Wilcox County']] },
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;
