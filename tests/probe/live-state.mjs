@@ -19,14 +19,7 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin, Washington, Nebraska, Minnesota, DC, Maryland and New York: in git history (November 11, 2026)
-  // After Fable's review: places along the state lines that moved, condo units joined from other tables, and Lake City
-  FIXES: { spots: [[41.0018, -73.6657, null, 'Port Chester NY (was Connecticut)'], [41.9537, -73.5107, null, 'Millerton NY (was Connecticut)'],
-    [42.1784, -73.5268, null, 'Hillsdale NY (was Massachusetts)'], [41.2615, -71.9967, null, 'Fishers Island NY'], [40.7600, -73.9990, null, 'Hell’s Kitchen by the Javits Center NY'],
-    [40.5365, -74.2301, null, 'Charleston, Staten Island NY'], [38.5418, -75.7213, null, 'Sharptown MD'], [39.3887, -79.1817, null, 'Kitzmiller MD'],
-    [38.9095, -77.0295, null, 'Logan Circle condos DC'], [38.8760, -77.0020, null, 'Navy Yard condos DC'], [38.3600, -75.0800, null, 'Ocean City condos MD'],
-    [44.4497, -92.2668, null, 'Lake City MN']],
-    searches: ['Lake City, MN', 'Millerton, NY', '6400 Baltimore National Pike, Baltimore, MD'] },
+const STATES = {   // Wisconsin, Washington, Nebraska, Minnesota, DC, Maryland, New York and the review fixes: in git history (November 11, 2026)
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);

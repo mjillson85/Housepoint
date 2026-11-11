@@ -16,29 +16,33 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8799/');
 
-// Wisconsin and Washington are in git history (November 11, 2026).
-// Wisconsin, Washington, Nebraska, Minnesota, New York and DC are in git history (November 11, 2026).
+// Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
+// Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
+// except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
 const STATES = {
-  MD: {
-    layer: 'https://mdgeodata.md.gov/imap/rest/services/PlanningCadastre/MD_ParcelBoundaries/MapServer/0',
-    want: ['OBJECTID', 'JURSCODE', 'ACCTID', 'OOI', 'RESITYP', 'ADDRESS', 'STRTNUM', 'STRTDIR', 'STRTNAM', 'STRTTYP', 'STRTSFX', 'STRTUNT', 'ADDRTYP', 'CITY', 'ZIPCODE',
-      'PREMSNUM', 'PREMSDIR', 'PREMSNAM', 'PREMSTYP', 'PREMCITY', 'PREMZIP', 'TOWNCODE', 'DESCTOWN', 'ZONING', 'CIUSE', 'DESCCIUSE', 'EXCLASS', 'DESCEXCL', 'LU',
-      'DESCLU', 'ACRES', 'LANDAREA', 'LUOM', 'PFLW', 'YEARBLT', 'SQFTSTRC', 'STRUGRAD', 'DESCGRAD', 'STRUCNST', 'DESCCNST', 'STRUSTYL', 'DESCSTYL', 'STRUBLDG',
-      'DESCBLDG', 'LASTASSD', 'CONVEY1', 'TRADATE', 'CONSIDR1', 'NFMLNDVL', 'NFMIMPVL', 'NFMTTLVL', 'HOMQLCOD', 'BLDG_STORY', 'BLDG_UNITS', 'RESIDENT', 'APRTMENT',
-      'TRAILER', 'SPECIAL', 'OTHER', 'PTYPE', 'SDATWEBADR', 'MDPVDATE', 'SDATDATE', 'POLYDATE', 'POLYID'],
-    group: [['JURSCODE'], ['LU', 'DESCLU'], ['DESCBLDG'], ['CONVEY1'], ['PTYPE']],
-    codes: ['LU', 'DESCBLDG', 'DESCSTYL'],
-    county: ['JURSCODE'],
-    spots: [[38.9950, -77.0300, 'Silver Spring'], [39.2780, -76.6100, 'Baltimore Federal Hill'], [39.2840, -76.6060, 'Baltimore Inner Harbor condos'],
-      [38.9784, -76.4922, 'Annapolis'], [38.3600, -75.0800, 'Ocean City condos'], [39.4143, -77.4105, 'Frederick'], [38.9847, -77.0947, 'Bethesda'],
-      [39.6418, -77.7200, 'Hagerstown'], [39.5000, -79.3000, 'Garrett County (rural)']],
-  },
+  CO: { layer: 'https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', want: 'auto',
+    spots: [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [38.8600, -104.8200, 'Colorado Springs'], [39.7420, -104.9880, 'Denver condos']] },
+  AR: { layer: 'https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Planning_Cadastre/FeatureServer/6', want: 'auto',
+    spots: [[34.7600, -92.3100, 'Little Rock Hillcrest'], [36.0700, -94.1600, 'Fayetteville'], [34.5000, -93.0550, 'Hot Springs']] },
+  VT: { layer: 'https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services/FS_VCGI_OPENDATA_Cadastral_VTPARCELS_poly_standardized_parcels_SP_v1/FeatureServer/0', want: 'auto',
+    spots: [[44.4800, -73.2100, 'Burlington'], [44.2600, -72.5750, 'Montpelier'], [44.4650, -72.6850, 'Stowe']] },
+  MT: { layer: 'https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1', want: 'auto',
+    spots: [[45.7800, -108.5300, 'Billings'], [46.8650, -113.9950, 'Missoula'], [45.6770, -111.0400, 'Bozeman']] },
+  WY: { layer: 'https://services3.arcgis.com/r0iJ85SKZ4zAzz3P/arcgis/rest/services/Wyoming_Parcels_for_2026/FeatureServer/0', want: 'auto',
+    spots: [[41.1400, -104.8100, 'Cheyenne'], [42.8500, -106.3200, 'Casper'], [43.4800, -110.7600, 'Jackson']] },
+  AK: { layer: 'https://services1.arcgis.com/7HDiw78fcUiM2BWn/arcgis/rest/services/AK_Parcels/FeatureServer/0', want: 'auto',
+    spots: [[61.1900, -149.8800, 'Anchorage'], [64.8400, -147.7300, 'Fairbanks'], [58.3000, -134.4200, 'Juneau']] },
+  UT: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_SaltLake_LIR/FeatureServer/0', want: 'auto',
+    spots: [[40.7500, -111.8700, 'Salt Lake City Sugar House'], [40.6200, -111.8500, 'Cottonwood Heights']] },
+  IL: { layer: 'https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer/44', want: 'auto',
+    spots: [[41.9200, -87.6500, 'Chicago Lincoln Park'], [42.0450, -87.6900, 'Evanston'], [41.8850, -87.7850, 'Oak Park']] },
 };
-
-const BAD = /own|mail|madd|^m(unit|city|state|zip|addr|stname)|legdec|legal|careof|grantee|grantor|grntnam|namekey|mortg|po_box|tax_name|tax_add|^address\d|citystzip|asrname|nys_name|buyer|seller|taxpayer/i;
+// In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
+const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;
+const BAD = /(?<!t)own|mail|madd|^m(unit|city|state|zip|addr|stname)|legdec|legal|careof|grantee|grantor|grntnam|namekey|mortg|po_box|tax_name|tax_add|^address\d|citystzip|asrname|nys_name|buyer|seller|taxpayer/i;
 
 for (const [st, cfg] of Object.entries(STATES)) {
-  const out = await page.evaluate(async (cfg, BADsrc) => {
+  const out = await page.evaluate(async (cfg, BADsrc, AUTOsrc) => {
     const BAD = new RegExp(BADsrc, 'i');
     const get = async (u, ms = 30000, body) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); const t0 = performance.now();
       try { const r = await fetch(u, body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, signal: c.signal } : { signal: c.signal });
@@ -51,9 +55,11 @@ for (const [st, cfg] of Object.entries(STATES)) {
     const oidF = m.j.objectIdField || (fields.find((f) => f.type === 'esriFieldTypeOID') || {}).name || 'objectid';
     res.fields = fields.map((f) => `${f.name}:${f.type.replace('esriFieldType', '')}${f.alias && f.alias !== f.name ? `(${f.alias})` : ''}`);
     res.max = m.j.maxRecordCount; res.sr = m.j.extent && m.j.extent.spatialReference; res.adv = m.j.advancedQueryCapabilities;
-    const have = new Set(fields.map((f) => f.name)), want = cfg.want.filter((f) => have.has(f) && !BAD.test(f));
+    const AUTO = new RegExp(AUTOsrc, 'i');
+    const have = new Set(fields.map((f) => f.name));
+    const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f)) : cfg.want).filter((f) => have.has(f) && !BAD.test(f));
     res.asked = want.join(',');
-    const countyF = cfg.county.find((f) => have.has(f));
+    const countyF = (cfg.county || []).find((f) => have.has(f));
     // statewide: records per county, and the property-type groups
     const stat = async (where, groupBy, ms) => {
       const q = new URLSearchParams({ where, f: 'json', returnGeometry: 'false', groupByFieldsForStatistics: groupBy.join(','), orderByFields: 'n DESC',
@@ -64,12 +70,12 @@ for (const [st, cfg] of Object.entries(STATES)) {
     };
     if (countyF) res.byCounty = await stat('1=1', [countyF], 90000);
     res.groups = {};
-    for (const g of cfg.group) if (g.every((f) => have.has(f))) res.groups[g.join('+')] = await stat('1=1', g, 90000);
+    for (const g of cfg.group || []) if (g.every((f) => have.has(f))) res.groups[g.join('+')] = await stat('1=1', g, 90000);
     res.spots = [];
     for (const [lat, lon, name] of cfg.spots) {
       const spot = { name };
       const base = { geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', units: 'esriSRUnit_Meter', f: 'json' };
-      const near = await get(cfg.layer + '/query', 30000, new URLSearchParams({ ...base, distance: '90', outFields: want.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '40' }).toString());
+      const near = await get(cfg.layer + '/query', 30000, new URLSearchParams({ ...base, distance: '90', outFields: want.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: cfg.want === 'auto' ? '12' : '40' }).toString());
       if (!near.j || near.j.error) { spot.err = near.err || JSON.stringify(near.j.error).slice(0, 200); res.spots.push(spot); continue; }
       spot.ms = near.ms;
       const feats = near.j.features || [];
@@ -82,13 +88,14 @@ for (const [st, cfg] of Object.entries(STATES)) {
       res.spots.push(spot);
       // codes used within ~1.5 km
       const env = { geometry: `${lon - 0.018},${lat - 0.0135},${lon + 0.018},${lat + 0.0135}`, geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', returnGeometry: 'false',
-        groupByFieldsForStatistics: cfg.codes.filter((f) => have.has(f)).join(','), orderByFields: 'n DESC',
+        groupByFieldsForStatistics: (cfg.codes || []).filter((f) => have.has(f)).join(','), orderByFields: 'n DESC',
         outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: oidF, outStatisticFieldName: 'n' }]) };
+      if (!(cfg.codes || []).some((f) => have.has(f))) continue;
       const codes = await get(cfg.layer + '/query', 30000, new URLSearchParams(env).toString());
       spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || JSON.stringify(codes.j && codes.j.error).slice(0, 200));
     }
     return res;
-  }, cfg, BAD.source);
+  }, cfg, BAD.source, AUTO_SKIP.source);
   log(`==== ${st}  ${cfg.layer}`);
   if (out.metaErr) { log('meta error', out.metaErr); continue; }
   log(`max ${out.max}  sr ${JSON.stringify(out.sr)}`);
