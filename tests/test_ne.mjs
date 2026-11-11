@@ -41,7 +41,7 @@ page.on('request', (req) => {
     asked.outFields = q.get('outFields');
     if (q.get('where') && !q.get('geometry')) {
       asked.where.push(q.get('where'));
-      return json({ features: /4745 CAPITOL AV/.test(q.get('where')) ? [{ geometry: { rings: [ring(15, -12, 40, 12, [lon0, lat0])] }, attributes: { ...DOUG, OBJECTID: 1, Situs_Address: '4745  CAPITOL AV' } }] : [] });
+      return json({ features: /'4745  CAPITOL AV%'/.test(q.get('where')) ? [{ geometry: { rings: [ring(15, -12, 40, 12, [lon0, lat0])] }, attributes: { ...DOUG, OBJECTID: 1, Situs_Address: '4745  CAPITOL AV' } }] : [] });
     }
     const b = q.get('geometry').split(',').map(Number);
     const feats = [];
@@ -176,6 +176,8 @@ check(await page.$$eval('#samples button', (els) => els.some((e) => /Dundee/.tes
 await page.evaluate(() => { document.querySelector('#q').value = '4745 Capitol Ave, Omaha, NE'; document.querySelector('#search').requestSubmit(); }); await sleep(1500);
 console.log('search where:', asked.where.join(' || '));
 check(asked.where.some((w) => /Situs_Address/i.test(w) && /4745 CAPITOL AVE?%/.test(w) && /Ph_City\) LIKE 'OMAHA%'/i.test(w)), 'search goes to Nebraska and uses the city');
+const found = await page.evaluate(() => document.body.innerText);
+check(/4745 Capitol Av/i.test(found), 'Omaha’s “4745  CAPITOL AV” is found from “4745 Capitol Ave”');
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASSED');
 await browser.close(); srv.close();

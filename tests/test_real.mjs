@@ -17,7 +17,7 @@ const FIX = `${HP_ROOT}/tests/fixtures`;
 const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}\.json$/.test(f)) : [];
 const sets = files.map((f) => JSON.parse(fs.readFileSync(`${FIX}/${f}`, 'utf8')));
 if (!sets.length) { console.log('no fixtures yet: ALL PASSED'); process.exit(0); }
-const OWNERISH = /(^|_)OWN(?!ERSHIP_TYPE)|OWNER|MAIL|PSTL|TAXPAYER/i;     // Nebraska's Ownership_Type is Private, Exempt, State…
+const OWNERISH = /(^|_)OWN(?!ERSHIP_TYPE)|OWNER(?!SHIP_TYPE)|MAIL|PSTL|TAXPAYER/i;     // Nebraska's Ownership_Type is Private, Exempt, State…
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();

@@ -1467,6 +1467,8 @@ const REGIONS = {
     },
     derive: (o) => neDerive(o),
     mergeTwins: (p) => neMergeTwins(p),
+    // Douglas County (Omaha) writes "4611  DAVENPORT ST", with two spaces after the number, and AV for avenue.
+    searchForms: (a) => [a, a.replace(/ AVE\b/, ' AV')].flatMap((x) => [x, x.replace(/^(\d+[A-Z]?) /, '$1  ')]),
     stackedUnits: true,
     valueLabel: 'County assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
     yearLabel: () => '',
@@ -1924,7 +1926,11 @@ async function searchIn(region, alts, town, street, near) {
   const T = inTown(town);
   const tries = [];
   if (street) { if (!T) return null; tries.push(`(${like(`% ${sqlq(street)}`)} OR ${like(`% ${sqlq(street)} %`)})${T}`); }
-  else tries.push(alts.map((a) => `(${like(`${sqlq(a.addr)}%`)}${near ? '' : inTown(a.town)})`).join(' OR '));
+  else {
+    // Some counties write the address their own way (Omaha: "4611  DAVENPORT ST", two spaces, and AV for avenue).
+    const forms = region.searchForms ? alts.flatMap((a) => [...new Set([a.addr, ...region.searchForms(a.addr)])].map((f) => ({ ...a, addr: f }))) : alts;
+    tries.push(forms.map((a) => `(${like(`${sqlq(a.addr)}%`)}${near ? '' : inTown(a.town)})`).join(' OR '));
+  }
   const towns = new Set(near ? [] : (alts || []).map((a) => cityUp(a.town)).filter(Boolean)), ref = near || refPoint();
   for (const where of tries) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '10', f: 'json' });
