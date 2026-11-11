@@ -655,7 +655,8 @@ function njUseLabel(code, r) {
    exempt, institutional, accessory, other, unknown. Unknown is never treated as a home. */
 const RESIDENTIAL_KINDS = new Set(['single', 'multi', 'apartments', 'resCondo', 'mobile', 'mixedRes', 'otherRes']);
 const HOME_KINDS = new Set(['single', 'multi', 'resCondo', 'mobile', 'mixedRes']);       // what a family buys to live in
-const HOUSE_KINDS = new Set(['single', 'multi', 'mobile', 'mixedRes']);                  // comparable as "houses nearby"
+const HOUSE_KINDS = new Set(['single', 'multi', 'mobile', 'mixedRes']);
+const BUILT_KINDS = new Set(['single', 'multi', 'apartments', 'resCondo', 'comCondo', 'mobile', 'mixedRes', 'mixed', 'otherRes', 'commercial', 'industrial', 'institutional', 'accessory']);                  // comparable as "houses nearby"
 const UNIT_TAIL_RE = /\s(UNIT|APT|STE|SUITE)\s*[\w-]+\s*$|#\s*[\w-]+\s*$/i;
 // "333 WASHINGTON ST 408", "400 N FLAGLER DR PH-D2": Boston and Florida write the unit right after the street, with no word for it.
 function hasUnitNo(addr) {
@@ -1968,7 +1969,7 @@ function ilKind(r) {
   if (n < 900) return 'commercial';
   return 'apartments';
 }
-function ilUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(), k = ilKind(r); if (k === 'condoMaster') return 'Condo building'; return IL_LABEL[c] || IL_LABEL[parseInt(c, 10)] || (c ? KIND_LABEL[k] : null) || null; }
+function ilUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(), k = ilKind(r); if (k === 'condoMaster') return 'Condominium'; return IL_LABEL[c] || IL_LABEL[parseInt(c, 10)] || (c ? KIND_LABEL[k] : null) || null; }
 function ilDerive(o) {
   const lv = ilLevel(o.USE_CODE), sc = (v) => (lv && num(v) > 0 ? Math.round(num(v) / lv) : num(v) === 0 ? 0 : null);
   o.ASSESSED = num(o.TOTAL_VAL);
@@ -2003,7 +2004,7 @@ function coKind(r) {
   if (/MIXED/.test(t)) return 'mixed';
   if (/INDUS|WAREHOUSE|MANUFACT/.test(t)) return 'industrial';
   if (/COMM|RETAIL|OFFICE|RESTAURANT|HOTEL|MOTEL|MERCHAND|SHOPPING|STORE|BANK|SERVICE|PARKING|MEDICAL|CONVENIENCE|FAST FOOD|THEATER|GARAGE/.test(t)) return 'commercial';
-  if (/RESID|\bSFR\b|SINGLE|S-F|HOUSE|\bRES\b/.test(t)) return 'single';
+  if (/RESID|\bSFR\b|SINGLE|S-F|HOUSE|\bRES\b/.test(t)) return hasUnitNo(String(r.SITE_ADDR || '')) ? 'resCondo' : 'single';
   return 'unknown';
 }
 function coUseLabel(r) {
@@ -2058,7 +2059,7 @@ function utLayersFor(lat, lon, m) {
 function utKind(r) {
   const c = t2clean(r.USE_CODE).toUpperCase(), units = num(r.UNITS) || 0, built = hasBuilding(r);
   if (!c || c === 'UNKNOWN') return 'unknown';
-  if (c === 'RESIDENTIAL') return !built ? 'vacant' : units >= 5 ? 'apartments' : units >= 2 ? 'multi' : 'single';
+  if (c === 'RESIDENTIAL') return hasUnitNo(String(r.SITE_ADDR || '')) ? 'resCondo' : !built ? 'vacant' : units >= 5 ? 'apartments' : units >= 2 ? 'multi' : 'single';
   if (/APARTMENT & CONDO/.test(c)) return units >= 2 ? 'apartments' : 'resCondo';
   if (/INDUSTRIAL/.test(c)) return 'industrial';
   if (/^COMMERCIAL/.test(c)) return 'commercial';
@@ -2735,6 +2736,8 @@ const REGIONS = {
       LAND_VAL: ['landvalue'], BLDG_VAL: ['impvalue'],
     },
     derive: (o) => arDerive(o),
+    // Pulaski County writes "25  OAKWOOD RD", two spaces after the number.
+    searchForms: (a) => [a, a.replace(/^(\d+[A-Z]?) /, '$1  ')],
     stackedUnits: true, noSales: true,
     valueLabel: 'County appraised value', deltaWord: 'value', valueWord: 'Appraised', valueTitle: 'Appraised value',
     yearLabel: () => '',
@@ -2788,7 +2791,7 @@ const REGIONS = {
       SALE_DATE: ['saleDate'], LS_PRICE: ['salePrice'], TOTAL_VAL: ['apprValTot'], ASSESSED: ['asedValTot'], RECORD_URL: ['URL'],
     },
     derive: (o) => coDerive(o),
-    stackedUnits: true,
+    stackedUnits: true, builtByKind: true, builtByOutline: true,
     valueLabel: 'County actual value', deltaWord: 'value', valueWord: 'Actual value', valueTitle: 'Actual value',
     yearLabel: () => '',
     source: () => 'Source: county assessors via the State of Colorado’s public parcels (OIT). Actual value is Colorado’s term for the county’s market value for taxes.',
@@ -2862,7 +2865,7 @@ const REGIONS = {
     detect: ['PARCEL_ID', 'TOTAL_VALUE', 'PROPERTY_USE'],
     fields: { PROP_ID: ['parcel_id'], USE_CODE: ['property_type'], USE_DESC: ['property_use'], TOTAL_VAL: ['total_value'], LAND_VAL: ['land_value'], BLDG_VAL: ['building_value'], COUNTY: ['local_gov'] },
     derive: (o) => akDerive(o),
-    stackedUnits: true, noSales: true, addrByPosition: true,
+    stackedUnits: true, noSales: true, addrByPosition: true, builtByOutline: true,
     valueLabel: 'Assessed value', deltaWord: 'value', valueWord: 'Assessed', valueTitle: 'Assessed value',
     yearLabel: () => '',
     source: () => 'Source: borough and city assessors via the State of Alaska’s parcels. The assessed value is the local government’s market value for taxes.',
@@ -3047,7 +3050,9 @@ function buildParcels(features, rid = 'MA') {
     if (REGIONS[rid] && REGIONS[rid].mergeTwins) REGIONS[rid].mergeTwins(p);
     const recs = p.records;
     const built = recs.some((r) => (num(r.RES_AREA) || 0) > 0 || (num(r.BLD_AREA) || 0) > 0 || (num(r.YEAR_BUILT) || 0) > 1600 || (num(r.BLDG_VAL) || 0) > 0
-      || (num(r.EFF_YEAR) || 0) > 1600 || (flCondoCode(r.USE_CODE) && ((num(r.BLDGS) || 0) > 0 || (num(r.UNITS) || 0) > 0)));
+      || (num(r.EFF_YEAR) || 0) > 1600 || (flCondoCode(r.USE_CODE) && ((num(r.BLDGS) || 0) > 0 || (num(r.UNITS) || 0) > 0)))
+      // Colorado: one value for land and building together, so a house or a store says it's built (and a building outline does, later)
+      || (REGIONS[rid] && REGIONS[rid].builtByKind && recs.some((r) => BUILT_KINDS.has(useKind(r, rid))));
     return { ...p, built };
   });
 }

@@ -43,6 +43,8 @@ for (const [st, cfg] of Object.entries(STATES)) {
         : S.local.filter((l) => l.p.built).sort((a, b) => near(a) - near(b))[0];
       if (!L) return { ms, lots: S.local.length, err: 'lot not found', help: document.querySelector('#mapHelpTxt').textContent };
       hp.selectLot(L); await new Promise((r) => setTimeout(r, 50));
+      // Vermont and Alaska: the nearest address arrives a moment later
+      if (/Address not listed/.test(document.querySelector('#cardBody').innerText)) await new Promise((r) => setTimeout(r, 2500));
       const kinds = {}; for (const l of S.local) { const k = hp.summarize(l.p).kind; kinds[k] = (kinds[k] || 0) + 1; }
       return { ms, rid: (hp.regionFor(lat, lon) || {}).id || null, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
     }, lat, lon, addr);

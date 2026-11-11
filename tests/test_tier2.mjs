@@ -204,7 +204,7 @@ for (const [st, c] of Object.entries(STATES)) {
 }
 // Cook County's condo building: one lot, its units' values added up
 const condo = await cardAt(STATES.IL.spot[0], STATES.IL.spot[1], [['PROP_ID', '16074110100000']]);
-check(/Oak Park · Condo building/.test(condo.card) && /24 units/.test(condo.card) && /added up/.test(condo.card), 'Cook County condo building: units and the note: ' + condo.card.slice(0, 300));
+check(/Oak Park · Condominium/.test(condo.card) && /CONDO BUILDING/i.test(condo.card) && /24 units/.test(condo.card) && /added up/.test(condo.card), 'Cook County condo building: units and the note: ' + condo.card.slice(0, 300));
 // Montana: "Improved Property" says what it can; a ranch says ranch
 const mtImp = await cardAt(STATES.MT.spot[0], STATES.MT.spot[1], [['PROP_ID', '04220022308110000']]);
 check(/Improved property \(home or business\)/.test(mtImp.card), 'Montana: improved property without a use says so');
