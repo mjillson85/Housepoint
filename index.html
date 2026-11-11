@@ -7347,8 +7347,8 @@ async function runHealth() {
     const rec = lots.flatMap((p) => p.records).find((r) => /^\d+[A-Z]?\s+[A-Z]/i.test(String(r.SITE_ADDR || '').trim()) && r.CITY);
     const r4 = row(`${rg.name}: search by address`);
     if (!rec && rg.addrByPosition) { r4.ok('found by position: the records don’t list street addresses'); continue; }
+    if (rg.slowSearch) { r4.ok('found by position: the layer’s own address search is too slow to ask'); continue; }   // before the address check: these never search the layer
     if (!rec) { r4.warn('no address on those lots to try'); continue; }
-    if (rg.slowSearch) { r4.ok('found by position: the layer’s own address search is too slow to ask'); continue; }
     const addr = String(rec.SITE_ADDR).trim().toUpperCase().replace(/\s+/g, ' ');
     try {
       // Massachusetts searches its records on the state's own server (indexed by town); the others search the layer itself
