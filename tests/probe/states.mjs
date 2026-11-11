@@ -16,28 +16,15 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8798/');
 
-// [state, label, layer url, test spots [lat, lon, name]]. Round 1 (MD, DC, NY, VT, WI, NC, UT, MT, WV, MN, TX, WA, AR, CO) is in
-// git history; this is round 2: services found by round 1's listings and searches, and other addresses for ones that failed.
+// [state, label, layer url, test spots [lat, lon, name]]. Rounds 1 and 2 are in git history;
+// this is round 3: Wisconsin's new address, California's statewide view, Texas's feature service.
 const LAYERS = [
-  ['MD', 'SDAT parcel points (mdgeodata host)', 'https://mdgeodata.md.gov/imap/rest/services/PlanningCadastre/MD_PropertyData/MapServer/0', [[38.9784, -76.4922, 'Annapolis'], [38.9907, -77.0261, 'Silver Spring']]],
-  ['TX', 'StratMap 2025 (tnris host)', 'https://feature.tnris.org/arcgis/rest/services/Parcels/stratmap25_land_parcels_48/MapServer/0', [[30.2672, -97.7431, 'Austin']]],
-  ['TX', 'StratMap 2025', 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap25_land_parcels_48/MapServer/0', [[30.2672, -97.7431, 'Austin']]],
-  ['OH', 'statewide parcels public view', 'https://services2.arcgis.com/MlJ0G8iWUyC7jAmu/arcgis/rest/services/OhioStatewidePacels_full_view/FeatureServer/0', [[39.9612, -82.9988, 'Columbus'], [41.4993, -81.6944, 'Cleveland'], [39.1031, -84.5120, 'Cincinnati']]],
-  ['AL', 'Alabama parcel data', 'https://services6.arcgis.com/VUsVQlvugJlIRS3I/arcgis/rest/services/Alabama_Parcel_Data/FeatureServer/0', [[33.5186, -86.8104, 'Birmingham'], [34.7304, -86.5861, 'Huntsville']]],
-  ['WY', 'Wyoming parcels 2026', 'https://services3.arcgis.com/r0iJ85SKZ4zAzz3P/arcgis/rest/services/Wyoming_Parcels_for_2026/FeatureServer/0', [[41.1400, -104.8202, 'Cheyenne'], [42.8666, -106.3131, 'Casper']]],
-  ['ID', 'public Idaho parcels', 'https://services1.arcgis.com/CNPdEkvnGl65jCX8/arcgis/rest/services/Public_Idaho_Parcels_/FeatureServer/0', [[43.6150, -116.2023, 'Boise']]],
-  ['ND', 'public parcels', 'https://services1.arcgis.com/XxHmL09eFqJWI0gE/arcgis/rest/services/ParcelsPublic/FeatureServer/0', [[46.8772, -96.7898, 'Fargo'], [46.8083, -100.7837, 'Bismarck']]],
-  ['NV', 'county parcels in Nevada', 'https://arcgis.water.nv.gov/arcgis/rest/services/BaseLayers/County_Parcels_in_Nevada/MapServer/0', [[39.5296, -119.8138, 'Reno'], [36.1699, -115.1398, 'Las Vegas']]],
-  ['IN', 'parcel boundaries current', 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', [[39.7684, -86.1581, 'Indianapolis']]],
-  ['VA', 'VGIN parcels', 'https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', [[37.5407, -77.4360, 'Richmond']]],
-  ['DE', 'state parcels', 'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/PlanningCadastre/DE_StateParcels/FeatureServer/0', [[39.7391, -75.5398, 'Wilmington'], [39.1582, -75.5244, 'Dover']]],
-  ['HI', 'parcels and zoning', 'https://geodata.hawaii.gov/arcgis/rest/services/ParcelsZoning/MapServer/0', [[21.3069, -157.8583, 'Honolulu']]],
-  ['NH', 'parcel mosaic', 'https://nhgeodata.unh.edu/hosting/rest/services/Hosted/CAD_ParcelMosaic/FeatureServer/1', [[43.2081, -71.5376, 'Concord']]],
-  ['ME', 'parcels organized towns', 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer/0', [[43.6591, -70.2568, 'Portland']]],
-  ['IL', 'Cook County parcels with assessment', 'https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer/44', [[41.8781, -87.6298, 'Chicago']]],
+  ['WI', 'statewide parcels DB', 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0', [[43.0731, -89.4012, 'Madison'], [43.0389, -87.9065, 'Milwaukee']]],
+  ['CA', 'statewide parcels public view', 'https://bz1uwWPKUInZBK94.svcs5.arcgis.com/bz1uwWPKUInZBK94/arcgis/rest/services/CA_Statewide_Parcels_Public_view/FeatureServer/0', [[34.0522, -118.2437, 'Los Angeles'], [37.7749, -122.4194, 'San Francisco'], [38.5816, -121.4944, 'Sacramento']]],
+  ['TX', 'StratMap most recent (FeatureServer)', 'https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/FeatureServer/0', [[30.2672, -97.7431, 'Austin']]],
 ];
 const DIRS = ['https://hawaii.maps.arcgis.com/sharing/rest/search?f=json&q=parcels'].slice(0, 0);
-const AGOL = ['Wisconsin', 'Texas', 'Rhode Island', 'Oregon', 'California', 'New Mexico', 'Pennsylvania', 'Kentucky', 'Iowa', 'Georgia'];
+const AGOL = [];
 
 const res = await page.evaluate(async (LAYERS, DIRS, AGOL) => {
   const HIDE = /(^|_)OWN|OWNER|MAIL|^NAME|_NAME|NAME_|NAME\d|TAXPAYER|CARE|GRANT|BUYER|SELLER|ADDRESSEE|PSTLADR|DEED_?NAME/i;
