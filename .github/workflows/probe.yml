@@ -1,5 +1,5 @@
 # Tries the services behind "Thinking of buying?" (tests/probe/services.mjs) and other states' parcel services
-# (tests/probe/states.mjs) from a browser on GitHub, and logs the answers.
+# (tests/probe/states.mjs, state-fields.mjs) from a browser on GitHub, and logs the answers.
 # Runs when the probe changes, or by hand from the Actions tab. Nothing is saved or committed.
 name: probe services
 on:
@@ -24,9 +24,10 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/services.mjs
-      - name: Probe other states' parcel services
+      # probe/states.mjs (which states have free parcel services) is run by hand when needed.
+      - name: Probe the next state's fields and property types
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/states.mjs
+        run: node probe/state-fields.mjs
