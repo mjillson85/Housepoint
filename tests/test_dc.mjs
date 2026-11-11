@@ -124,7 +124,7 @@ check(/ASSESSED VALUE/i.test(card) && /\$1,630,810/.test(card) && /Built 1890/.t
 check(/Last sold \$1,750,000 · Apr 2025/.test(card), 'last sale');
 check(/PROPERTY TAX · THIS TAX YEAR/i.test(card) && /\$13,862 per year/.test(card) && /\$0\.85 per \$100/.test(card) && /homestead deduction/.test(card), 'DC’s tax for this tax year');
 check(/Office of Tax and Revenue/.test(card) && !/SECRET/.test(card), 'source line; no owner or mailing address on the card');
-check(asked.outFields.every((f) => !/OWNERNAME|CAREOFNAME|ADDRESS1|ADDRESS2|CITYSTZIP|ASRNAME/.test(f || '')) && asked.tables.every((t) => !/OWNERNAME|CAREOFNAME|ADDRESS1|CITYSTZIP/.test(t)),
+check(asked.outFields.every((f) => !/OWNERNAME|CAREOFNAME|ADDRESS1|ADDRESS2|CITYSTZIP|ASRNAME/.test(f || '')) && asked.tables.every((t) => !/OWNERNAME|CAREOFNAME|ADDRESS1|CITYSTZIP|(: |,)NAME(,| where)/.test(t)),
   'owner and mailing fields are never asked for, on the lots or the other tables');
 
 const open = async (k) => { await page.evaluate((key) => { const S = window.__hp.S; const L = S.local.find((l) => l.p.records.some((r) => String(r.SITE_ADDR || '').startsWith(key)));

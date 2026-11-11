@@ -19,11 +19,14 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin, Washington, Nebraska, Minnesota, DC and Maryland: in git history (November 11, 2026)
-  NY: { spots: [[40.6720, -73.9780, null, 'Brooklyn Park Slope'], [40.7870, -73.9750, null, 'Manhattan Upper West Side'], [40.7640, -73.9230, null, 'Queens Astoria'],
-    [41.0310, -73.7650, null, 'White Plains condo towers (stacked units)'], [41.1220, -73.7950, null, 'Mount Pleasant (fractional assessment)'], [42.9180, -78.8770, null, 'Buffalo Elmwood'],
-    [43.0400, -76.1350, null, 'Syracuse'], [42.4430, -76.5020, null, 'Ithaca'], [40.8680, -73.4260, null, 'Huntington (Suffolk)'], [43.1566, -77.6088, null, 'Rochester (Monroe doesn’t share)']],
-    searches: ['174 Garfield Pl, Brooklyn, NY', '33 Paulding St, White Plains, NY', '337 Onondaga St E, Syracuse, NY', 'Ithaca, NY'] },
+const STATES = {   // Wisconsin, Washington, Nebraska, Minnesota, DC, Maryland and New York: in git history (November 11, 2026)
+  // After Fable's review: places along the state lines that moved, condo units joined from other tables, and Lake City
+  FIXES: { spots: [[41.0018, -73.6657, null, 'Port Chester NY (was Connecticut)'], [41.9537, -73.5107, null, 'Millerton NY (was Connecticut)'],
+    [42.1784, -73.5268, null, 'Hillsdale NY (was Massachusetts)'], [41.2615, -71.9967, null, 'Fishers Island NY'], [40.7600, -73.9990, null, 'Hell’s Kitchen by the Javits Center NY'],
+    [40.5365, -74.2301, null, 'Charleston, Staten Island NY'], [38.5418, -75.7213, null, 'Sharptown MD'], [39.3887, -79.1817, null, 'Kitzmiller MD'],
+    [38.9095, -77.0295, null, 'Logan Circle condos DC'], [38.8760, -77.0020, null, 'Navy Yard condos DC'], [38.3600, -75.0800, null, 'Ocean City condos MD'],
+    [44.4497, -92.2668, null, 'Lake City MN']],
+    searches: ['Lake City, MN', 'Millerton, NY', '6400 Baltimore National Pike, Baltimore, MD'] },
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
@@ -38,9 +41,9 @@ for (const [st, cfg] of Object.entries(STATES)) {
       if (!L) return { ms, lots: S.local.length, err: 'lot not found', help: document.querySelector('#mapHelpTxt').textContent };
       hp.selectLot(L); await new Promise((r) => setTimeout(r, 50));
       const kinds = {}; for (const l of S.local) { const k = hp.summarize(l.p).kind; kinds[k] = (kinds[k] || 0) + 1; }
-      return { ms, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
+      return { ms, rid: (hp.regionFor(lat, lon) || {}).id || null, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
     }, lat, lon, addr);
-    log(`== ${what}: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}${r.help ? ' · ' + r.help : ''}`);
+    log(`== ${what} [${r.rid}]: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}${r.help ? ' · ' + r.help : ''}`);
     if (r.card) log('   ' + r.card);
   }
   for (const q of cfg.searches) {
@@ -54,5 +57,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/New York|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/New York|Maryland|Minnesota|DC|Census|Schools/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();

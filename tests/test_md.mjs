@@ -90,13 +90,17 @@ const rg = await page.evaluate(() => {
     cumberland: f(39.6528, -78.7625), hagerstown: f(39.6418, -77.72), oakland: f(39.4079, -79.4067), elkton: f(39.6068, -75.8333), salisbury: f(38.3607, -75.5994),
     stMarys: f(38.1868, -76.4311), sharpsburg: f(39.4576, -77.7489), brunswick: f(39.3143, -77.6278), crisfield: f(37.9835, -75.8538), dc: f(38.8977, -77.0365),
     harpersFerry: f(39.3254, -77.7389), shepherdstown: f(39.4318, -77.8047), leesburg: f(39.1157, -77.5636), arlington: f(38.88, -77.1), wilmington: f(39.7391, -75.5398),
-    newark: f(39.6837, -75.7497), york: f(39.9626, -76.7277), chincoteague: f(37.9332, -75.3788), martinsburg: f(39.4562, -77.9639) };
+    newark: f(39.6837, -75.7497), york: f(39.9626, -76.7277), chincoteague: f(37.9332, -75.3788), martinsburg: f(39.4562, -77.9639),
+    sharptown: f(38.5418, -75.7213), galestown: f(38.564, -75.7146), marydel: f(39.1129, -75.748), federalsburg: f(38.6943, -75.7727), delmarMD: f(38.456, -75.5774),
+    kitzmiller: f(39.3887, -79.1817), gorman: f(39.3065, -79.3115), westernport: f(39.4851, -79.0447), delmarDE: f(38.464, -75.5774), seaford: f(38.6412, -75.611),
+    dover: f(39.1582, -75.5244), keyser: f(39.4409, -78.9817) };
 });
 console.log('regions:', JSON.stringify(rg));
-check(['annapolis', 'baltimore', 'bethesda', 'silverSpring', 'oceanCity', 'cumberland', 'hagerstown', 'oakland', 'elkton', 'salisbury', 'stMarys', 'sharpsburg', 'brunswick', 'crisfield']
-  .every((k) => rg[k] === 'MD'), 'Maryland places land in Maryland');
+check(['annapolis', 'baltimore', 'bethesda', 'silverSpring', 'oceanCity', 'cumberland', 'hagerstown', 'oakland', 'elkton', 'salisbury', 'stMarys', 'sharpsburg', 'brunswick', 'crisfield',
+  'sharptown', 'galestown', 'marydel', 'federalsburg', 'delmarMD', 'kitzmiller', 'gorman', 'westernport'].every((k) => rg[k] === 'MD'),
+  'Maryland places land in Maryland, along the Delaware line and the North Branch too');
 check(rg.dc === 'DC', 'DC stays DC');
-check(['harpersFerry', 'shepherdstown', 'leesburg', 'arlington', 'wilmington', 'newark', 'york', 'chincoteague', 'martinsburg'].every((k) => rg[k] === null),
+check(['harpersFerry', 'shepherdstown', 'leesburg', 'arlington', 'wilmington', 'newark', 'york', 'chincoteague', 'martinsburg', 'delmarDE', 'seaford', 'dover', 'keyser'].every((k) => rg[k] === null),
   'Virginia, West Virginia, Delaware and Pennsylvania stay out');
 const decl = await page.evaluate(() => [[39.29, -76.61], [39.41, -79.41], [38.34, -75.08]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 11.0) < 0.4 && Math.abs(decl[1] + 9.5) < 0.4 && Math.abs(decl[2] + 11.6) < 0.4, 'compass declination: Baltimore, Oakland, Ocean City ' + decl.join(', '));
@@ -155,10 +159,13 @@ const norm = await page.evaluate(() => {
   const fr = n({ JURSCODE: 'FRED', DESCTOWN: 'FRED Frederick City', ADDRESS: '7 E PATRICK ST', STRTUNT: '7-9', LU: 'C' });
   const th = n({ JURSCODE: 'BACI', ADDRESS: '223 LANASA LN', LU: 'R', DESCSTYL: 'STRY Townhouse-Center Unit 3 Story With Basem', CITY: 'MORRELL PARK' });
   const cg = n({ JURSCODE: 'WORC', ACCTID: 'CONDO', __COMMON_GROUNDS: true });
-  return { oc: [oc.CITY, oc.SITE_ADDR, oc.STYLE], fr: [fr.CITY, fr.SITE_ADDR], th: [th.CITY, th.STYLE], cg: [window.__hp.useKind(cg, 'MD'), window.__hp.REGIONS.MD.useLabel(null, cg)] };
+  const odd = [n({ JURSCODE: 'ANNE', ADDRESS: '0 MAIN ST', LU: 'R' }).SITE_ADDR, n({ JURSCODE: 'ANNE', ADDRESS: '3 MAIN ST', STRTUNT: '3-1', LU: 'U' }).SITE_ADDR,
+    window.__hp.mdTownKey('Saint Michaels') === window.__hp.mdTownKey('St. Michaels'), window.__hp.mdTownKey("Martin's Additions") === window.__hp.mdTownKey('Martins Addition')];
+  return { odd, oc: [oc.CITY, oc.SITE_ADDR, oc.STYLE], fr: [fr.CITY, fr.SITE_ADDR], th: [th.CITY, th.STYLE], cg: [window.__hp.useKind(cg, 'MD'), window.__hp.REGIONS.MD.useLabel(null, cg)] };
 });
 check(norm.oc.join('|') === 'Ocean City|2815 TERN DR UNIT 117|' && norm.fr.join('|') === 'Frederick|7-9 E PATRICK ST' && norm.th.join('|') === 'Baltimore|3 Story with basement'
   && norm.cg.join('|') === 'other|Condo common grounds', 'Ocean City keeps its name, Frederick City is Frederick, a number range isn’t a unit, styles tidied, common grounds: ' + JSON.stringify(norm));
+check(norm.odd.join('|') === '|3 MAIN ST UNIT 3-1|true|true', 'no “0 MAIN ST”, unit 3-1 stays a unit, town names spelled two ways match: ' + JSON.stringify(norm.odd));
 const pq = await page.evaluate(() => ['Annapolis, MD', '100 Main St, Frederick, Maryland'].map((t) => window.__hp.parseQuery(t)));
 check(pq[0].state === 'MD' && pq[1].state === 'MD', 'Maryland typed as MD or in full');
 await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(300);

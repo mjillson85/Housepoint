@@ -79,13 +79,18 @@ const rg = await page.evaluate(() => {
     montauk: f(41.0359, -71.9545), albany: f(42.6526, -73.7562), buffalo: f(42.8864, -78.8784), rochester: f(43.1566, -77.6088), syracuse: f(43.0481, -76.1474),
     plattsburgh: f(44.6995, -73.4529), watertown: f(43.9748, -75.9108), binghamton: f(42.0987, -75.918), portJervis: f(41.3751, -74.6927), whitePlains: f(41.034, -73.7629),
     jerseyCity: f(40.7178, -74.0431), hoboken: f(40.744, -74.0324), greenwich: f(41.0262, -73.6282), stamford: f(41.0534, -73.5387), pittsfield: f(42.4501, -73.2454),
+    portChester: f(41.0018, -73.6657), armonk: f(41.1265, -73.714), poundRidge: f(41.2087, -73.5751), millerton: f(41.9537, -73.5107), hillsdale: f(42.1784, -73.5268),
+    newLebanon: f(42.4659, -73.3926), berlin: f(42.6926, -73.3729), fishersIsland: f(41.2615, -71.9967), javits: f(40.7578, -74.0021), chelseaPiers: f(40.7465, -74.0084),
+    charleston: f(40.5365, -74.2301), ridgefield: f(41.2815, -73.4982), stonington: f(41.3359, -71.9059), greatBarrington: f(42.1959, -73.362),
     bennington: f(42.8781, -73.1968), erie: f(42.1292, -80.0851), scranton: f(41.4090, -75.6624), kingston: f(44.2312, -76.486), montreal: f(45.5017, -73.5673) };
 });
 console.log('regions:', JSON.stringify(rg));
-check(['brooklyn', 'manhattan', 'bronx', 'statenIsland', 'queens', 'montauk', 'albany', 'buffalo', 'rochester', 'syracuse', 'plattsburgh', 'watertown', 'binghamton', 'portJervis', 'whitePlains']
-  .every((k) => rg[k] === 'NY'), 'New York places land in New York');
-check(rg.jerseyCity === 'NJ' && rg.hoboken === 'NJ' && rg.greenwich === 'CT' && rg.stamford === 'CT' && rg.pittsfield === 'MA', 'New Jersey, Connecticut and Massachusetts keep their side');
-check(rg.bennington !== 'NY' && ['erie', 'scranton', 'kingston', 'montreal'].every((k) => rg[k] === null), 'Vermont, Pennsylvania and Canada stay out of New York');
+check(['brooklyn', 'manhattan', 'bronx', 'statenIsland', 'queens', 'montauk', 'albany', 'buffalo', 'rochester', 'syracuse', 'plattsburgh', 'watertown', 'binghamton', 'portJervis', 'whitePlains',
+  'portChester', 'armonk', 'poundRidge', 'millerton', 'hillsdale', 'newLebanon', 'berlin', 'fishersIsland', 'javits', 'chelseaPiers', 'charleston'].every((k) => rg[k] === 'NY'),
+  'New York places land in New York, along the Connecticut, Massachusetts and New Jersey lines too');
+check(rg.jerseyCity === 'NJ' && rg.hoboken === 'NJ' && rg.greenwich === 'CT' && rg.stamford === 'CT' && rg.ridgefield === 'CT' && rg.stonington === 'CT' && rg.pittsfield === 'MA'
+  && rg.greatBarrington === 'MA', 'New Jersey, Connecticut and Massachusetts keep their side');
+check(['bennington', 'erie', 'scranton', 'kingston', 'montreal'].every((k) => rg[k] === null), 'Vermont, Pennsylvania and Canada stay out of New York');
 const decl = await page.evaluate(() => [[40.78, -73.97], [42.89, -78.88], [42.65, -73.76]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 12.6) < 0.5 && Math.abs(decl[1] + 10.2) < 0.5 && Math.abs(decl[2] + 13.1) < 0.5, 'compass declination: Manhattan, Buffalo, Albany ' + decl.join(', '));
 
