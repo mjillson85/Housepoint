@@ -17,7 +17,7 @@ const FIX = `${HP_ROOT}/tests/fixtures`;
 const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}\.json$/.test(f)) : [];
 const sets = files.map((f) => JSON.parse(fs.readFileSync(`${FIX}/${f}`, 'utf8')));
 if (!sets.length) { console.log('no fixtures yet: ALL PASSED'); process.exit(0); }
-const OWNERISH = /(^|_)OWN(?!ERSHIP(_TYPE)?$)|OWNER(?!SHIP(_TYPE)?$)|MAIL|PSTL|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|LEGAL|LIBER|FOLIO/i;     // Nebraska's Ownership_Type and Minnesota's ownership are Private, Exempt, State…
+const OWNERISH = /(^|_)OWN(?!ERSHIP(_TYPE)?$)|OWNER(?!SHIP(_TYPE)?$)|MAIL|PSTL|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i;     // Nebraska's Ownership_Type and Minnesota's ownership are Private, Exempt, State…
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
@@ -63,6 +63,7 @@ function rawNonHome(st, recs) {
   if (st === 'MN') return codes.every((c) => /^(3A|5E) /.test(c));                     // the state classes 3a (commercial, industrial) and 5e (exempt)
   if (st === 'DC') return codes.every((c) => /^0?(3[1-57-9]|[4-8]\d)$/.test(c));        // hotels, stores, offices, industry, churches, schools, embassies
   if (st === 'MD') return codes.every((c) => /^(C|I|E|EC|A|MA|CA)$/.test(c));           // land use: commercial, industrial, exempt, farm, marsh, country club
+  if (st === 'NY') return codes.every((c) => /^(05|06|07|08|09|10|11)$/.test(c) || (/^\d{3}$/.test(c) && +c >= 300 && ![411, 481, 483, 485].includes(+c)));   // businesses, land, institutions
   return false;
 }
 const KNOWN = new Set(['single', 'multi', 'apartments', 'resCondo', 'comCondo', 'condoMaster', 'mobile', 'mixedRes', 'mixed', 'otherRes', 'commercial',
@@ -128,7 +129,7 @@ for (const set of sets) {
     for (const m of st.share.matchAll(new RegExp('Last sold ' + AMT, 'g'))) check(dollars(m) >= 10000, `share text: nominal deed as a sale: ${name}`);
     // An address in any of the states' address fields shows on the card
     const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1', 'siteadd', 'SITEADRESS', 'SITUS_ADDRESS', 'Situs_Address'].some((k) => String(f.attributes[k] ?? '').trim())
-      || /^\d/.test(String(f.attributes.PREMISEADD ?? f.attributes.ADDRESS ?? '').trim())   // DC's address (a reservation's is just "NW"), Maryland's
+      || /^\d/.test(String(f.attributes.PREMISEADD ?? f.attributes.ADDRESS ?? f.attributes.PARCEL_ADDR ?? '').trim())   // DC's address (a reservation's is just "NW"), Maryland's, New York's
       || (f.attributes.anumber > 0 && String(f.attributes.st_name ?? '').trim()));     // Minnesota's address comes in parts
     if (rawAddr) check(st.addr !== 'Address not listed', `the records have an address but the card says "Address not listed": ${name}`);
     // A real sale in the records shows on the card
@@ -165,7 +166,7 @@ for (let i = 0; i < 120 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.te
 const health = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
 console.log('health:', health.join('\n        '));
 for (const st of sets.map((x) => x.state)) {
-  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland' }[st];
+  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland', NY: 'New York' }[st];
   const mine = health.filter((h) => h.includes(`${name}:`));
   check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^(ok|warn)\|.* \d+ lots/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
 }

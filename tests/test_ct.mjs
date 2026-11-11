@@ -93,7 +93,7 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(rg.hartford === 'CT' && rg.enfield === 'CT' && rg.greenwich === 'CT' && rg.stonington === 'CT', 'Connecticut towns land in Connecticut');
 check(rg.boston === 'MA' && rg.springfield === 'MA' && rg.jog === 'MA', 'Massachusetts stays Massachusetts, including the Southwick jog');
-check(rg.longIsland === null && rg.stAug === 'FL', 'Long Island is not covered; Florida unchanged');
+check(rg.longIsland === 'NY' && rg.stAug === 'FL', 'Long Island is New York; Florida unchanged');
 check(rg.nearLine === 'CT+MA' && rg.nearHartford === 'CT', 'near the state line both states load; mid-state only one');
 
 // 2. Point at the house in Old Wethersfield

@@ -19,15 +19,11 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin, Washington, Nebraska and Minnesota: in git history (November 11, 2026)
-  DC: { spots: [[38.88634, -76.99531, '239 8TH ST SE', 'Capitol Hill row house'], [38.90901, -77.02916, null, 'Logan Circle condo (units from the other tables)'],
-    [38.88673, -76.99577, '218 7TH ST SE', 'Eastern Market store'], [38.9070, -77.0626, null, 'Georgetown'], [38.8760, -77.0020, null, 'Navy Yard condos'],
-    [38.9650, -77.0750, null, 'Chevy Chase DC'], [38.8625, -76.9886, null, 'Anacostia']],
-    searches: ['239 8th St SE, Washington, DC', '1300 Rhode Island Ave NW, Washington, DC', 'Georgetown, DC'] },
-  MD: { spots: [[39.2780, -76.6100, null, 'Baltimore Federal Hill'], [39.2840, -76.6060, null, 'Baltimore Inner Harbor condos'], [38.9784, -76.4922, null, 'Annapolis'],
-    [38.3600, -75.0800, null, 'Ocean City condos (units as points)'], [38.9847, -77.0947, null, 'Bethesda condos'], [38.9950, -77.0300, null, 'Silver Spring'],
-    [39.4143, -77.4105, null, 'Frederick'], [38.9000, -76.9000, null, 'Prince George’s'], [39.5000, -79.3000, null, 'Garrett (rural)']],
-    searches: ['1200 Light St, Baltimore, MD', '57 Maryland Ave, Annapolis, MD', 'Silver Spring, MD'] },
+const STATES = {   // Wisconsin, Washington, Nebraska, Minnesota, DC and Maryland: in git history (November 11, 2026)
+  NY: { spots: [[40.6720, -73.9780, null, 'Brooklyn Park Slope'], [40.7870, -73.9750, null, 'Manhattan Upper West Side'], [40.7640, -73.9230, null, 'Queens Astoria'],
+    [41.0310, -73.7650, null, 'White Plains condo towers (stacked units)'], [41.1220, -73.7950, null, 'Mount Pleasant (fractional assessment)'], [42.9180, -78.8770, null, 'Buffalo Elmwood'],
+    [43.0400, -76.1350, null, 'Syracuse'], [42.4430, -76.5020, null, 'Ithaca'], [40.8680, -73.4260, null, 'Huntington (Suffolk)'], [43.1566, -77.6088, null, 'Rochester (Monroe doesn’t share)']],
+    searches: ['174 Garfield Pl, Brooklyn, NY', '33 Paulding St, White Plains, NY', '337 Onondaga St E, Syracuse, NY', 'Ithaca, NY'] },
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
@@ -58,5 +54,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/District of Columbia|Maryland|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/New York|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();

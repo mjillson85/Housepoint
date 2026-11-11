@@ -62,7 +62,7 @@ const rg = await page.evaluate(() => {
 });
 console.log('regions:', JSON.stringify(rg));
 check(['capeMay', 'hoboken', 'newark', 'trenton', 'camden', 'princeton', 'sandyHook'].every((k) => rg[k] === 'NJ'), 'New Jersey places land in New Jersey');
-check(rg.manhattan === null && rg.statenIsland === null && rg.philly === null, 'Manhattan, Staten Island and Philadelphia stay out');
+check(rg.manhattan === 'NY' && rg.statenIsland === 'NY' && rg.philly === null, 'Manhattan and Staten Island are New York; Philadelphia stays out');
 check(rg.greenwich === 'CT' && rg.boston === 'MA', 'Connecticut and Massachusetts unchanged');
 
 await page.click('#goPoint'); await sleep(1500);

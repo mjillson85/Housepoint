@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD NY]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -57,6 +57,10 @@ const SPOTS = {
   MD: [['Annapolis', 38.9784, -76.4922, 200], ['Baltimore Federal Hill', 39.2780, -76.6100, 150], ['Baltimore Inner Harbor condos', 39.2840, -76.6060, 200],
     ['Silver Spring', 38.9950, -77.0300, 200], ['Bethesda condos', 38.9847, -77.0947, 200], ['Ocean City condos', 38.3600, -75.0800, 150], ['Frederick', 39.4143, -77.4105, 200],
     ['Columbia (Howard)', 39.1500, -76.8500, 250], ['Prince George’s', 38.9000, -76.9000, 250], ['Hagerstown', 39.6418, -77.7200, 200], ['Garrett (rural)', 39.5000, -79.3000, 800]],
+  NY: [['Brooklyn Park Slope', 40.6720, -73.9780, 150], ['Manhattan Upper West Side', 40.7870, -73.9750, 120], ['Queens Astoria', 40.7640, -73.9230, 150],
+    ['Staten Island St George', 40.6400, -74.0760, 200], ['Bronx', 40.8370, -73.8650, 150], ['White Plains condo towers', 41.0310, -73.7650, 150], ['Buffalo Elmwood', 42.9180, -78.8770, 200],
+    ['Syracuse', 43.0400, -76.1350, 200], ['Albany Center Square', 42.6620, -73.7700, 150], ['Ithaca', 42.4430, -76.5020, 200], ['Westchester (Mount Pleasant)', 41.1220, -73.7950, 250],
+    ['Suffolk (Huntington)', 40.8680, -73.4260, 250], ['Adirondacks (Hamilton)', 43.7700, -74.2700, 1500]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
@@ -84,7 +88,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)
@@ -139,6 +143,7 @@ async function captureState(page, st) {
       : st === 'MN' ? `${useCode(a).slice(0, 40) || '-'}/${field(a, 'DWELL').slice(0, 24) || '-'}/${field(a, 'COUNTY')}`   // the county's class words, dwelling type, county
       : st === 'DC' ? `${useCode(a) || '-'}${field(a, 'CONDO_LOT') === 'Y' ? '/condo lot' : ''}`
       : st === 'MD' ? `${useCode(a) || '-'}/${field(a, 'BLDG_DESC').split(' ')[0] || '-'}/${field(a, 'COUNTY')}`     // land use, building type, county
+      : st === 'NY' ? `${useCode(a) || '-'}/${field(a, 'STYLE').split(/[ ,(]/)[0] || '-'}${field(a, 'DUP_GEO') === 'Y' ? '/stacked' : ''}/${field(a, 'COUNTY')}`
       : String(parseInt(String(useCode(a)).replace(/\D/g, '') || 'x', 10));
     const signature = (feats) => { const ks = [...new Set(feats.map((f) => kindOf(f.attributes)))].sort();
       const n = feats.length; return `${ks.join('+')}|${n === 1 ? '1' : n <= 4 ? '2-4' : n <= 20 ? '5-20' : '21+'}`; };
