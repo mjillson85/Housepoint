@@ -93,8 +93,8 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(['madison', 'milwaukee', 'greenBay', 'eauClaire', 'laCrosse', 'superior', 'wiPoint', 'hurley', 'prairie', 'kenosha', 'hudson', 'washIsland', 'fishCreek', 'bayfield'].every((k) => rg[k] === 'WI'),
   'Wisconsin places land in Wisconsin');
-check(['minneapolis', 'duluth', 'parkPoint', 'stillwater', 'laCrescent', 'marquetteIA', 'dubuque', 'chicago', 'ironwood', 'escanaba', 'ludington'].every((k) => rg[k] === null),
-  'Minnesota, Iowa, Illinois and Michigan stay out');
+check(['marquetteIA', 'dubuque', 'chicago', 'ironwood', 'escanaba', 'ludington'].every((k) => rg[k] === null), 'Iowa, Illinois and Michigan stay out');
+check(['minneapolis', 'duluth', 'parkPoint', 'stillwater', 'laCrescent'].every((k) => rg[k] === 'MN'), 'Minnesota’s side of the rivers is Minnesota');
 check(rg.boston === 'MA' && rg.raleigh === 'NC', 'other states unchanged');
 const decl = await page.evaluate(() => [[43.07, -89.40], [44.97, -92.75], [45.05, -87.2]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 3.0) < 0.4 && Math.abs(decl[1] + 0.6) < 0.4 && Math.abs(decl[2] + 4.9) < 0.4, 'compass declination: Madison, Hudson, Door County ' + decl.join(', '));

@@ -26,19 +26,19 @@ jobs:
         run: node probe/services.mjs
       # Run by hand when needed: probe/states.mjs (which states have free parcel services), probe/state-fields.mjs (a new state's
       # fields and use codes), probe/nc-tax-rates.py and probe/wa-tax-rates.py (North Carolina's and Washington's tax rate tables;
-      # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings).
+      # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings), probe/mn-codes.mjs (Minnesota's numbered property classes).
       - name: The next state's fields and property types
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/state-fields.mjs
-      - name: Minnesota's numbered property classes and address search
+      - name: Maryland's quickest parcel source
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/mn-codes.mjs
+        run: node probe/md-speed.mjs
       - name: The newest state against its real service
         working-directory: tests
         continue-on-error: true

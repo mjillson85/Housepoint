@@ -19,12 +19,14 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Wisconsin and Washington: in git history (November 11, 2026)
-  NE: { spots: [[41.26024, -95.98456, '4745 CAPITOL AV', 'Omaha Dundee house'], [41.25577, -95.93515, '1412 HOWARD ST', 'Omaha tax-increment financing twins'],
-    [41.25726, -95.93507, '1403 FARNAM ST', 'Omaha downtown condos'], [40.79927, -96.68582, '2420 A ST', 'Lincoln condo (no parcel types)'],
-    [40.79928, -96.68444, '2534 A ST', 'Lincoln house'], [41.13612, -95.89012, '307 E MISSION AVE', 'Bellevue house (Sarpy)'],
-    [40.9250, -98.3420, null, 'Grand Island'], [40.6993, -99.0832, null, 'Kearney'], [41.8666, -103.6672, null, 'Scottsbluff'], [41.4000, -99.6400, null, 'Broken Bow (rural)']],
-    searches: ['4745 Capitol Ave, Omaha, NE', '2534 A St, Lincoln, NE', '307 E Mission Ave, Bellevue, NE', 'Kearney, NE'] },
+const STATES = {   // Wisconsin, Washington and Nebraska: in git history (November 11, 2026)
+  MN: { spots: [[44.92415, -93.31931, '4332 XERXES AVE S', 'Minneapolis Linden Hills double bungalow'], [44.92488, -93.31962, '3115 43RD ST W', 'Minneapolis stacked condos'],
+    [44.97889, -93.26972, '415 NICOLLET MALL', 'Minneapolis apartments over shops'], [44.93813, -93.14504, '1061 GOODRICH AVE', 'St Paul Summit Hill house'],
+    [44.93972, -93.14467, '1060 GRAND AVE', 'St Paul condo units'], [44.94885, -93.08974, '168 6TH ST', 'St Paul condo tower with garage stalls'],
+    [44.0234, -92.4630, null, 'Rochester'], [46.7867, -92.1005, null, 'Duluth'], [44.9239, -92.9594, null, 'Woodbury (Washington County numbers)'],
+    [47.2372, -93.5302, null, 'Grand Rapids (Itasca numbers)'], [46.3580, -94.2000, null, 'Brainerd lakes (Crow Wing numbers)'], [48.6011, -93.4108, null, 'International Falls'],
+    [44.1636, -93.9994, null, 'Mankato (a county that doesn’t share)']],
+    searches: ['4332 Xerxes Ave S, Minneapolis, MN', '1061 Goodrich Ave, St Paul, MN', '3005 W 43rd St, Minneapolis, MN', '803 N Pokegama Ave, Grand Rapids, MN', 'Duluth, MN'] },
 };
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
@@ -36,16 +38,18 @@ for (const [st, cfg] of Object.entries(STATES)) {
       const near = (l) => { const [x, y] = S.proj.fwd(lat, lon); return Math.hypot(l.c[0] - x, l.c[1] - y); };
       const L = addr ? S.local.find((l) => l.p.records.some((x) => String(x.SITE_ADDR || '').toUpperCase().startsWith(addr)))
         : S.local.filter((l) => l.p.built).sort((a, b) => near(a) - near(b))[0];
-      if (!L) return { ms, lots: S.local.length, err: 'lot not found' };
+      if (!L) return { ms, lots: S.local.length, err: 'lot not found', help: document.querySelector('#mapHelpTxt').textContent };
       hp.selectLot(L); await new Promise((r) => setTimeout(r, 50));
       const kinds = {}; for (const l of S.local) { const k = hp.summarize(l.p).kind; kinds[k] = (kinds[k] || 0) + 1; }
       return { ms, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
     }, lat, lon, addr);
-    log(`== ${what}: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}`);
+    log(`== ${what}: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}${r.help ? ' · ' + r.help : ''}`);
     if (r.card) log('   ' + r.card);
   }
   for (const q of cfg.searches) {
-    const r = await page.evaluate(async (q) => { const t0 = performance.now(); try { const x = await window.__hp.searchAddress(q); return { ms: Math.round(performance.now() - t0), x }; }
+    const r = await page.evaluate(async (q) => { const t0 = performance.now(); try { const x = await window.__hp.searchAddress(q);
+      if (x && x.lot && x.lot.then) x.lot = await x.lot.catch(() => null);
+      return { ms: Math.round(performance.now() - t0), x }; }
       catch (e) { return { ms: Math.round(performance.now() - t0), err: String(e && e.message || e) }; } }, q);
     log(`== search "${q}": ${r.ms} ms ${JSON.stringify(r.x || r.err).slice(0, 300)}`);
   }
@@ -53,5 +57,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Nebraska|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/Minnesota|Census|Geoapify|Schools|Neighborhood|Safety|Nearby/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();

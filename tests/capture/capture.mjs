@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -48,6 +48,10 @@ const SPOTS = {
     ['Lincoln near south', 40.7990, -96.6850, 300], ['Lincoln downtown', 40.8136, -96.7026, 250], ['Bellevue (Sarpy)', 41.1370, -95.8908, 300],
     ['Grand Island', 40.9250, -98.3420, 300], ['Kearney', 40.6993, -99.0832, 300], ['North Platte', 41.1239, -100.7654, 300],
     ['Scottsbluff', 41.8666, -103.6672, 300], ['Custer County (rural)', 41.4000, -99.6400, 1500]],
+  MN: [['Minneapolis Linden Hills', 44.9244, -93.3195, 300], ['Minneapolis downtown condos', 44.9790, -93.2700, 250], ['St Paul Summit Hill', 44.9386, -93.1450, 300],
+    ['St Paul downtown', 44.9488, -93.0897, 250], ['Rochester', 44.0234, -92.4630, 300], ['Duluth', 46.7867, -92.1005, 300], ['St Cloud', 45.5579, -94.1632, 300],
+    ['Woodbury (Washington County)', 44.9239, -92.9594, 400], ['Grand Rapids (Itasca)', 47.2372, -93.5302, 300], ['Brainerd lakes (Crow Wing)', 46.3580, -94.2000, 800],
+    ['Moorhead', 46.8738, -96.7678, 300], ['International Falls', 48.6011, -93.4108, 400]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
@@ -73,7 +77,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type)$/i;   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)
@@ -124,6 +128,7 @@ async function captureState(page, st) {
       : st === 'WI' ? `${useCode(a) || '-'}/${field(a, 'AUX') || '-'}${field(a, 'UNIT') ? '/unit' : ''}`       // classes, exempt or forest, condo unit
       : st === 'WA' ? `${useCode(a) || '-'}/${field(a, 'USE_CODE2').split('-')[0] || '-'}`                      // land use code, by county
       : st === 'NE' ? `${useCode(a) || '-'}/${field(a, 'STATUS') || '-'}/${field(a, 'OWN_TYPE').slice(0, 12) || '-'}/${field(a, 'COUNTY')}`   // type, status, ownership, county
+      : st === 'MN' ? `${useCode(a).slice(0, 40) || '-'}/${field(a, 'DWELL').slice(0, 24) || '-'}/${field(a, 'COUNTY')}`   // the county's class words, dwelling type, county
       : String(parseInt(String(useCode(a)).replace(/\D/g, '') || 'x', 10));
     const signature = (feats) => { const ks = [...new Set(feats.map((f) => kindOf(f.attributes)))].sort();
       const n = feats.length; return `${ks.join('+')}|${n === 1 ? '1' : n <= 4 ? '2-4' : n <= 20 ? '5-20' : '21+'}`; };
