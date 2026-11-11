@@ -67,7 +67,7 @@ page.on('request', (req) => {
     // Durham: units share the building's parcel number and write the unit after the house number
     for (let i = 1; i <= 3; i++) feats.push({ geometry: { rings: [ring(-90, 40, -60, 80, b)] }, attributes: { ...secret, objectid: 70 + i, parno: '0821972317',
       siteadd: `110 210${i} N CORCORAN ST`, scity: 'DURHAM', cntyname: 'Durham', parval: 500000 + (i % 2) * 1000, parusedesc: 'RES/ CONDOMINIUM', saledatetx: `3/${i}/2019 12:00:00 AM` } });
-    feats.push({ geometry: { rings: [ring(-90, 40, -60, 80, b)] }, attributes: { ...secret, objectid: 79, parno: '0821972317', siteadd: '110 N CORCORAN ST', scity: 'DURHAM', cntyname: 'Durham',
+    feats.push({ geometry: { rings: [ring(-90, 40, -60, 80, b)] }, attributes: { ...secret, objectid: 79, parno: '0821972317', siteadd: '0 N CORCORAN ST', scity: 'DURHAM', cntyname: 'Durham',
       parval: 1, parusedesc: 'COM/ HOMEOWNERS ASSO', saledatetx: '12/30/1899 12:00:00 AM' } });
     // Mecklenburg: one apartment tower listed once per building section, the same value each time
     for (const [i, use, addr] of [[81, 'PARKING GARAGE', null], [82, 'APARTMENT-HIRISE >=7 STORIES', '225 S POPLAR ST CHARLOTTE NC'], [83, 'RETAIL FREESTANDING', null]])
@@ -171,9 +171,9 @@ const noAddr = await page.evaluate(() => { const S = window.__hp.S; const L = S.
 console.log('no address:', noAddr.slice(0, 300));
 check(/Address not listed/.test(noAddr) && /Single-family home/.test(noAddr) && /No recorded sale on file/.test(noAddr), 'no address on the state layer; 1899 isn’t a sale');
 
-const durham = await open('110 N CORCORAN ST');
+const durham = await open('N CORCORAN ST');
 console.log('durham:', durham.slice(0, 500));
-check(/110 N Corcoran St/.test(durham) && /3 units/i.test(durham), 'units sharing a parcel number stay separate units');
+check(/North Carolina \| 110 N Corcoran St \|/.test(durham) && /3 units/i.test(durham), 'units sharing a parcel number stay separate units; the building takes the units’ house number');
 const durhamUnits = await page.$$eval('#cardBody .units .unit', (els) => els.map((e) => e.innerText.replace(/\n/g, ' ')));
 check(durhamUnits.some((u) => /Unit 2101/.test(u)) && !durhamUnits.some((u) => /110 2101/.test(u)), 'unit number moved after the street: ' + durhamUnits.join(' / '));
 const tower = await open('225 S POPLAR ST');

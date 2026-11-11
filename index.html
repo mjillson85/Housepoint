@@ -2085,6 +2085,8 @@ function summarize(p) {
   const vals = unitRecs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
   let rawAddr = r0.SITE_ADDR || [r0.ADDR_NUM, r0.FULL_STR].filter(Boolean).join(' ') || r0.LOCATION || '';
   if (!String(rawAddr).trim()) { const u = (lot.condo ? unitRecs : recs).find((x) => String(x.SITE_ADDR || '').trim()); if (u) rawAddr = u.SITE_ADDR; }   // a master (or main) record without an address
+  // A condo's master record with only the street ("N CORCORAN ST") and units with the house number: the units' address.
+  if (lot.condo && !/^\d/.test(String(rawAddr).trim())) { const u = unitRecs.find((x) => /^\d/.test(String(x.SITE_ADDR || '').trim())); if (u) rawAddr = u.SITE_ADDR; }
   if (lot.condo) rawAddr = stripUnitNo(rawAddr);
   const addr = titleCase(rawAddr) || 'Address not listed';
   const town = titleCase(r0.CITY || '');
@@ -2560,7 +2562,7 @@ function estimateTax(s) {
       ? `${c.n} County’s rate (<b>${per(c.r)}</b>) plus ${town.n}’s (<b>${per(town.r)}</b>) per $100 of value, FY${NC_TAX_FY}.`
       : `${c.n} County’s FY${NC_TAX_FY} rate is <b>${per(c.r)}</b> per $100 of value.`];
     if (town) notes.push(`Outside ${town.n}’s town limits (the mailing town can be a neighbor’s), it’s about ${moneyFull(round10(Math.max(...v) * c.r / 100))}${v.length > 1 ? ' a unit at most' : ''}.`);
-    else if (r0.CITY) notes.push('Inside a town’s limits, the town’s tax comes on top.');
+    else notes.push('Inside a town’s limits, the town’s tax comes on top.');
     notes.push('Doesn’t include fire or other special district taxes, or exemptions (seniors, veterans and others).');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
