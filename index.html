@@ -3258,9 +3258,10 @@ const REGIONS = {
     services: ['https://cagisonline.hamilton-co.org/arcgis/rest/services/COUNTYWIDE/Cadastral/MapServer/0'],
     detect: ['PARCELID', 'MKT_TOTAL_VAL', 'ADDRST'],
     fields: { PROP_ID: ['PARCELID'], STNUM: ['ADDRNO'], STNAME: ['ADDRST'], STSUF: ['ADDRSF'], UNIT: ['UNIT', 'UNIT_1'], USE_CODE: ['CLASS'], UNITS: ['NUM_UNITS'],
-      SALE_DATE: ['SALDAT'], LS_PRICE: ['SALAMT'], TOTAL_VAL: ['MKT_TOTAL_VAL'], LAND_VAL: ['MKTLND'], BLDG_VAL: ['MKTIMP'], TAX_LAST: ['ANNUAL_TAXES'] },
+      SALE_DATE: ['SALDAT'], LS_PRICE: ['SALAMT'], SALE_LOTS: ['NUMPCL'], TOTAL_VAL: ['MKT_TOTAL_VAL'], LAND_VAL: ['MKTLND'], BLDG_VAL: ['MKTIMP'], TAX_LAST: ['ANNUAL_TAXES'] },
     derive: (o) => { const u = t2clean(o.UNIT); o.SITE_ADDR = [o.STNUM, o.STNAME, o.STSUF].map(t2clean).filter(Boolean).join(' ') + (u && !/^0+$/.test(u) ? ` UNIT ${u}` : '');
-      delete o.STNUM; delete o.STNAME; delete o.STSUF; delete o.UNIT; },
+      delete o.STNUM; delete o.STNAME; delete o.STSUF; delete o.UNIT;
+      o.MULTI_SALE = num(o.SALE_LOTS) > 1 ? 'Y' : null; delete o.SALE_LOTS; },   // a sale of several lots at once: its price isn't this lot's
     addrWhere: partsAddrWhere, slowSearch: true,    // no town on the records: a typed address is found by position
     noSales: false, actualTax: true, kindOf: (r) => ohKind(r), labelOf: (r) => ohLabel(r),
     taxNote: 'The annual tax on the Hamilton County Auditor’s records. A sale, reassessment or new levy can change it.',
@@ -3416,7 +3417,7 @@ const REGIONS = {
       USE_DESC: ['PropertyUseDescription'], TOTAL_VAL: ['FullCashValue'], LAND_VAL: ['LandFullCashValue'], BLDG_VAL: ['ImprovementFullCashValue'],
       ASSESSED: ['LimitedPropertyValue'], FY: ['ParcelValuationYear'], SALE_DATE: ['SaleDate'], LS_PRICE: ['SalePrice'], YEAR_BUILT: ['ConstructionYear'],
       RES_AREA: ['LivableArea_SqFt'], STORIES: ['Stories'], RECORD_URL: ['AssessorWebLink'] },
-    noSales: false,
+    noSales: false, slowSearch: true,    // the layer's address search takes over 15 s: addresses are found by position
     kindOf: (r) => kindFromWords(String(r.USE_DESC || '').replace(/\bCOM AREA\b/i, 'COMMON AREA'), r),
     labelOf: (r) => wordsLabel(REGIONS.AZ_MARICOPA.kindOf(r), r.USE_DESC),
     recordLinkText: 'Maricopa County Assessor’s page for this property',
