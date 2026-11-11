@@ -17,17 +17,17 @@ Set `CHROME=/path/to/chrome` if Chrome isn't at `/usr/bin/google-chrome`. Run on
 | test_features, test_fixes | Card, map, flood zone, share, earlier bug fixes |
 | test_more | Monthly cost calculator, save & compare, nearby map |
 | test_buy, test_buy2 | "Thinking of buying?": schools, Census, FBI, nearby places, backups when a service fails |
-| test_ct, test_nj, test_regions | Connecticut, New Jersey, state borders |
+| test_ct, test_nj, test_nc, test_regions | Connecticut, New Jersey, North Carolina, state borders |
 | test_extras | Screen kept awake while pointing, feet and miles, price per square foot |
 | test_tax, test_park, test_condo | Tax estimates, mobile home parks, condos |
 | test_camera | Camera on only while pointing: off on the map and in the background, back on when you return, never asked for by map-only users, no stray or doubled camera requests |
-| test_search | Map search: exact lot, Census geocoder, a town on its own (TIGERweb), Geoapify with the Census as backup, outside the four states, no match, slow services, escaping |
+| test_search | Map search: exact lot, Census geocoder, a town on its own (TIGERweb), Geoapify with the Census as backup, outside the covered states, no match, slow services, escaping |
 | test_compass | Compass accuracy warning (iPhone): hint, heading-pill dot, one toast per episode, value on the `?debug=1` overlay |
-| test_real | Every real lot in `fixtures/` (captured from the four states' services) gets a card that follows the rules: stores, offices and land aren't homes, a condo's master record isn't a unit, a nominal deed isn't a price, a real sale shows, no broken values; plus "copy this lot's records" and the `?health=1` service check |
+| test_real | Every real lot in `fixtures/` (captured from the covered states' services) gets a card that follows the rules: stores, offices and land aren't homes, a condo's master record isn't a unit, a nominal deed isn't a price, a real sale shows, no broken values; plus "copy this lot's records" and the `?health=1` service check |
 
 ## Real records
 
-`fixtures/real-*.json` hold a few hundred real lots from all four states: every kind of lot around sample spots
+`fixtures/real-*.json` hold a few hundred real lots from all the covered states: every kind of lot around sample spots
 (downtowns, suburbs, the countryside, the shore), plus lots that showed problems. Only the fields the app asks for
 are kept, so there are no owner names. They're captured on GitHub by `capture/capture.mjs` (the "capture real
 records" workflow; run it from the Actions tab to refresh them), because the public services can't be reached

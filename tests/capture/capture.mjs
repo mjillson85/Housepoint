@@ -1,4 +1,4 @@
-// Captures real parcel records from the four states' public services into tests/fixtures/real-<state>.json, for
+// Captures real parcel records from each covered state's public service into tests/fixtures/real-<state>.json, for
 // test_real.mjs. It runs on GitHub (the capture workflow), which can reach the services; nothing here runs in the normal tests.
 //
 // What it takes: around a set of sample spots in each state (downtowns, suburbs, the countryside, the shore), every lot,
@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -32,6 +32,10 @@ const SPOTS = {
     ['Cape May', 38.9351, -74.9060, 400], ['Sussex County (rural)', 41.1590, -74.7380, 1500], ['Hammonton (farms)', 39.6365, -74.8024, 1200]],
   FL: [['Miami Brickell', 25.7617, -80.1918, 250], ['West Palm Beach', 26.7153, -80.0534, 350], ['Tequesta', 26.9662, -80.1040, 500],
     ['Tampa downtown', 27.9506, -82.4572, 300], ['Okeechobee (rural)', 27.2439, -80.8298, 1500], ['The Villages', 28.9005, -81.9750, 500]],
+  NC: [['Raleigh Five Points', 35.8085, -78.6430, 300], ['Raleigh downtown', 35.7790, -78.6400, 300], ['Charlotte Dilworth', 35.2050, -80.8500, 300],
+    ['Charlotte uptown condos', 35.2270, -80.8440, 250], ['Durham', 35.9940, -78.8986, 350], ['Greensboro', 36.0726, -79.7920, 300],
+    ['Asheville downtown', 35.5951, -82.5515, 300], ['Wilmington', 34.2257, -77.9447, 300], ['Chapel Hill (no use codes)', 35.9132, -79.0558, 300],
+    ['Nags Head', 35.9574, -75.6241, 600], ['Boone', 36.2168, -81.6746, 400], ['Johnston County (rural)', 35.5000, -78.3500, 1500]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
@@ -60,7 +64,7 @@ function shapeHash(rings) {
 const OWNERISH = /(^|_)OWN|OWNER|MAIL|^NAME|_NAME1|TAXPAYER/i, KEEP_NAME = /^(MUN_NAME|Town_Name)$/i;   // TOWN_ID is fine
 
 async function main() {
-  const states = process.argv.slice(2).length ? process.argv.slice(2) : ['MA', 'CT', 'NJ', 'FL'];
+  const states = process.argv.slice(2).filter(Boolean).length ? process.argv.slice(2).filter(Boolean) : Object.keys(SPOTS);
   const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
   const page = await browser.newPage();
   await page.goto(`http://localhost:${PORT}/`);

@@ -444,6 +444,7 @@
     <button data-lat="41.71156" data-lon="-72.65372" data-name="Main St, Wethersfield, CT">Old Wethersfield, CT</button>
     <button data-lat="38.93389" data-lon="-74.91889" data-name="Hughes St, Cape May, NJ">Cape May, NJ</button>
     <button data-lat="29.89340" data-lon="-81.31330" data-name="St. Augustine, FL">St. Augustine, FL</button>
+    <button data-lat="35.80810" data-lon="-78.64290" data-name="Five Points, Raleigh, NC">Raleigh, NC</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
   </div>
@@ -672,6 +673,7 @@ function useKind(r, rid) {
     return 'unknown';
   }
   if (rid === 'CT') return ctKind(String(r.USE_DESC || '').toUpperCase().replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim());
+  if (rid === 'NC') return ncKind(r);
   // Massachusetts (MassGIS / Department of Revenue classes): the first three digits; towns may add a fourth character.
   const d = code.replace(/\D/g, ''), c3 = d.slice(0, 3), style = String(r.STYLE || '').toUpperCase();
   if (c3.length < 3) return 'unknown';
@@ -714,6 +716,65 @@ function ctKind(d) {
   if (/\bIND|MANUF|WAREH|FACTORY|\bMILL\b|STORAGE/.test(d)) return 'industrial';
   if (/COMM|\bCOM\b|RETAIL|OFFICE|STORE|SHOP|CONVENIEN|DEPART|DEALER|BARBER|BEAUTY|DINER|LUNCH|REST|BANK|HOTEL|MOTEL|\bINN\b|GAS|SERVICE|AUTO|GARAGE|MALL|PLAZA|THEAT|CLUB|FRAT|DAY ?CARE|NURSING|MED|DENT|FUNERAL|MORTU|PARKING|PARK LOT|NURSERY|GARDEN|MARINA|\bBUS/.test(d)) return 'commercial';
   return model === '01' ? 'single' : model === '94' ? 'commercial' : 'unknown';
+}
+// North Carolina: each county keeps its own use codes (Wake's RHS with 01 SINGLFAM, Mecklenburg's R100, Buncombe's 120 CONDOMINIUM,
+// Durham's RES/ 1-FAMILY, Guilford's 04-CONDO), and a few send none. The state layer carries each county's two codes with their
+// descriptions; they're read together, by their words. Read from the real records in tests/fixtures/real-NC.json.
+const ncText = (r) => [r.USE_CODE, r.USE_DESC, r.USE_CODE2, r.USE_DESC2].map((x) => String(x ?? '').trim()).filter(Boolean).join(' | ').toUpperCase();
+function ncKind(r) {
+  const d = ncText(r);
+  if (!d) return 'unknown';
+  const built = hasBuilding(r);
+  if (/\bUTIL|RAILROAD|\bRR\b|TELECOM|CELL TOWER|PIPELINE/.test(d)) return 'other';
+  if (/\bXMT\b|EXEMPT|\bEXMT|\bEX\b|GOVERN|\bGOVT?\b|GOV OWNED|\bMUNC|MUNICIP|STATE OF NC|FEDERAL|CMNTY SVC|CHURCH|RELIG|CEMET|SCHOOL|COLLEGE|UNIVERS|HOSPITAL|LIBRARY|\bPUBLIC\b|INSTITUT/.test(d)) return 'exempt';
+  if (/\bHOA\b|COMMON AREA|OWNERS ASSOC|\bOAC\b/.test(d)) return /CONDO|ELEV APT|\bAPT\b/.test(d) ? 'condoMaster' : 'other';
+  if (/CONDO|\bCND\b/.test(d)) return /OFFICE|\bOFC\b|COMM|RETAIL|\bCOM\b|INDUST|WAREH|MEDICAL|BOAT/.test(d) ? 'comCondo' : 'resCondo';
+  if (/SECONDARY IMPROVEMENT|OUTBUILDING|ACCESSORY/.test(d)) return 'accessory';
+  if (/MOBILE|MANUFACTURED|MANUF\b|MANUFHM|MFGD|DOUBLE ?WIDE|SINGLE ?WIDE|\bMH\b|MOHO|MULTI-SECTION/.test(d)) return /PARK|\bLOT\b/.test(d) && !built ? 'vacant' : 'mobile';
+  if (/VACANT|\bVAC\b|UNUSED LAND|BUILDING (SITE|LOT)|NOT IMPROVED|NO ADDRESSES|UNDEV|RESIDUAL|MARSH|SEPTIC LOT|\bLOT\b/.test(d) && !(built && /SINGL|FAMILY|DWELL/.test(d))) return 'vacant';
+  if (/AGRI|FARM|TIMBER|FOREST|PRESENT USE|\bAG\b|HORTIC|CROP|PASTURE|ORCHARD/.test(d)) return 'farmForest';
+  if (/MIXED|MULTI-USE|MULTI USE|RES\/BUS|RES\/COM|COM\/RES/.test(d)) return /^(R|RES)\b/.test(d) ? 'mixedRes' : 'mixed';
+  if (/APART|\bAPTS?\b/.test(d)) return 'apartments';
+  if (/TWOFAM|THREEFAM|FOURFAM|DUPLEX|TRIPLEX|QUAD|\b[234][ -]?FAM|TWO FAM|THREE FAM|FOUR FAM|MULTI[ -]?FAM|MULTIPLE FAM/.test(d)) return 'multi';
+  if (/ROOMING|BOARDING|GROUP HOME|DORM|ASSISTED/.test(d)) return 'otherRes';
+  if (/SINGL|\bSFR\b|1[ -]FAM|ONE FAM|DWELL|RESIDENCE|TOWN ?HOUSE|TOWN ?HOME|RANCH|CONVENTIONAL|BUNGALOW|COLONIAL|CAPE COD|CONTEMPORARY|SPLIT|COTTAGE|BEACH HOUSE|CUSTOM HOME|STOR(Y|IES)\b|MODULAR|\bRHS\b|WATERFRONT|OCEANFRONT|SOUNDFRONT|CANALFRONT|\bR1\b|RESIDENTIAL/.test(d)) return built ? 'single' : 'vacant';
+  if (/\bIND\b|INDUST|WAREH|FACTORY|FLEX|PREFAB|MANUFACTUR/.test(d)) return 'industrial';
+  if (/\bCOM\b|COMM|RETAIL|OFFICE|\bOFC\b|STORE|RESTAUR|EATING|BAR\/CLUB|HOTEL|MOTEL|BANK|SERVICE|GARAGE|SHOPPING|BUSINESS|PARKING|STADIUM|\bTEN\b|CLUB|LODGE|THEAT|NURSING|MEDICAL|FUNERAL|DAY ?CARE|AUTO|\bGAS\b|CONVENIEN/.test(d)) return 'commercial';
+  return 'unknown';
+}
+const NC_BIZ = [[/OFFICE|\bOFC\b/, 'Office building'], [/RESTAUR|EATING|FAST FOOD/, 'Restaurant'], [/HOTEL|MOTEL|\bINN\b/, 'Hotel'], [/BANK/, 'Bank'],
+  [/WAREH/, 'Warehouse'], [/SHOPPING|STRIP/, 'Shopping center'], [/RETAIL|STORE/, 'Store'], [/BAR\/CLUB|\bBAR\b|NIGHT/, 'Bar or club'], [/CLUB|LODGE/, 'Club or lodge'],
+  [/\bGAS\b|SERVICE STA|CONVENIEN/, 'Gas station or store'], [/GARAGE|AUTO/, 'Auto service'], [/PARKING/, 'Parking'], [/NURSING|ASSISTED/, 'Care home'],
+  [/MEDICAL|CLINIC/, 'Medical office'], [/STADIUM|ARENA|THEAT/, 'Entertainment venue'], [/DAY ?CARE/, 'Day care'], [/FUNERAL/, 'Funeral home']];
+function ncUseLabel(r) {
+  const d = r ? ncText(r) : ''; if (!d) return null;
+  const k = ncKind(r);
+  if (k === 'single' && /TOWN ?HOUSE|TOWN ?HOME/.test(d)) return 'Townhouse';
+  if (k === 'multi') return /DUPLEX\/TRIPLEX|DUPLEX-TRIPLEX/.test(d) ? 'Multi-family home' : /TWO|\b2[ -]?FAM|DUPLEX/.test(d) ? 'Two-family' : /THREE|\b3[ -]?FAM|TRIPLEX/.test(d) ? 'Three-family'
+    : /FOUR|\b4[ -]?FAM|QUAD/.test(d) ? 'Four-family' : 'Multi-family home';
+  if (k === 'other') return /COMMON|\bHOA\b|OWNERS ASSOC|\bOAC\b/.test(d) ? 'Common area (homeowners association)' : /UTIL/.test(d) ? 'Utility property' : 'Other property';
+  if (k === 'exempt') return /CHURCH|RELIG/.test(d) ? 'Church' : /SCHOOL|COLLEGE|UNIVERS/.test(d) ? 'School' : /CEMET/.test(d) ? 'Cemetery' : /\bPARK\b|\bPRK\b/.test(d) ? 'Park'
+    : /GOV|MUNC|MUNICIP|STATE|FEDERAL|PUBLIC|CMNTY SVC/.test(d) ? 'Government property' : 'Tax-exempt property';
+  if (k === 'commercial' || k === 'industrial') { for (const [re, l] of NC_BIZ) if (re.test(d)) return l; return k === 'industrial' ? 'Industrial' : 'Commercial'; }
+  return { mobile: 'Manufactured home', accessory: 'Outbuilding' }[k] || KIND_LABEL[k] || null;
+}
+// Counties write addresses their own way: Mecklenburg adds the city and state, some pad with double spaces, and 0 or 99999 stands
+// for no house number. Sale dates: January 1 and 1899 stand for "unknown" in some counties.
+function ncDerive(o) {
+  let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim();
+  const city = String(o.CITY ?? '').replace(/\s+/g, ' ').trim();
+  if (city) a = a.replace(new RegExp(`\\s+${reEsc(city)}(\\s+NC)?$`, 'i'), '');
+  a = a.replace(/\s+NC$/i, '').replace(/^(0|99999)\s+/, '').trim();
+  if (/^0*$/.test(a)) a = '';
+  const u = String(o.UNIT ?? '').trim();
+  if (a && u && !hasUnitNo(a) && !new RegExp(`\\b${reEsc(u)}$`, 'i').test(a)) a = `${a} UNIT ${u}`;
+  o.SITE_ADDR = a || null;
+  if (!(num(o.YEAR_BUILT) > 1600)) o.YEAR_BUILT = null;
+  let d = null;
+  if (typeof o.SALE_DATE === 'number' && Math.abs(o.SALE_DATE) > 1e9) d = ymdUTC(o.SALE_DATE);
+  else if (o.SALE_TEXT) { const p = parseSaleDate(String(o.SALE_TEXT).replace(/T.*$/, '')); if (p) d = `${p.getFullYear()}${String(p.getMonth() + 1).padStart(2, '0')}${String(p.getDate()).padStart(2, '0')}`; }
+  o.LS_DATE = d && +d.slice(0, 4) > 1900 && +d.slice(0, 4) <= THIS_YEAR && d.slice(4) !== '0101' ? d : null;
+  delete o.SALE_DATE; delete o.SALE_TEXT;
 }
 const KIND_LABEL = { single: 'Single-family home', multi: 'Multi-family home', apartments: 'Apartments', resCondo: 'Condo', comCondo: 'Commercial condo',
   condoMaster: 'Condo common record', mobile: 'Mobile home', mixedRes: 'Home with a business', mixed: 'Mixed use', otherRes: 'Residential',
@@ -1054,9 +1115,39 @@ const REGIONS = {
     commonNote: 'This town’s condo units aren’t mapped one by one on the state’s lot map, so unit values and sales aren’t available here.',
     useLabel: (c, r) => njUseLabel(c, r),
   },
+  NC: {
+    id: 'NC', name: 'North Carolina',
+    bbox: [-84.33, 33.75, -75.3, 36.6],
+    // Rough outline: the Virginia line is straight, the Tennessee line follows the mountains, the South Carolina line is loose.
+    // None of the neighbors is covered, so close enough is fine.
+    poly: [[-75.4, 36.55], [-81.68, 36.59], [-81.7, 36.33], [-81.91, 36.3], [-82.03, 36.12], [-82.41, 36.07], [-82.61, 35.97], [-82.9, 35.95],
+      [-83.1, 35.78], [-83.5, 35.56], [-83.88, 35.52], [-84.02, 35.41], [-84.09, 35.26], [-84.29, 35.22], [-84.33, 34.99], [-83.11, 35.0],
+      [-82.78, 35.08], [-82.4, 35.21], [-81.04, 35.15], [-81.04, 35.04], [-80.93, 35.1], [-80.78, 34.82], [-79.67, 34.8], [-78.54, 33.85],
+      [-77.6, 33.7], [-76.2, 34.3], [-75.3, 35.2], [-75.4, 36.55]],
+    declination: (lat, lon) => -8.9 - 0.6 * (lon + 78.64),     // ~ -10.7 on the Outer Banks, ~ -7.6 in Charlotte, ~ -6.1 at Murphy
+    // NC OneMap's statewide parcels: every county's tax records in one layer with standard field names, refreshed county by county.
+    services: ['https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/FeatureServer/1',
+      'https://services.nconemap.gov/secure/rest/services/NC1Map_Parcels/MapServer/1'],
+    discover: 'type:"Feature Service" AND (title:"NC1Map Parcels" OR title:"North Carolina Parcels")',
+    detect: ['PARVAL', 'PARUSECODE', 'STRUCTYEAR', 'SITEADD'],
+    fields: {           // owner names and mailing addresses (ownname, mailadd, maddrno, mcity, mzip …) are never asked for
+      PROP_ID: ['parno'], SITE_ADDR: ['siteadd'], UNIT: ['sunit'], CITY: ['scity'], ZIP: ['szip'], COUNTY: ['cntyname'],
+      TOTAL_VAL: ['parval'], LAND_VAL: ['landval'], BLDG_VAL: ['improvval'], VAL_TYPE: ['parvaltype'],
+      USE_CODE: ['parusecode'], USE_DESC: ['parusedesc'], USE_CODE2: ['parusecd2'], USE_DESC2: ['parusedsc2'],
+      YEAR_BUILT: ['structyear'], BLDGS: ['structno'], SALE_DATE: ['saledate'], SALE_TEXT: ['saledatetx'],
+    },
+    derive: (o) => ncDerive(o),
+    noSalePrice: true,  // the state layer has the date of the last sale but not its price
+    valueLabel: 'County tax value', deltaWord: 'tax value', valueWord: 'Tax value', valueTitle: 'Tax value',
+    yearLabel: () => '',
+    source: () => 'Source: county tax offices via NC OneMap’s statewide parcels. Counties reappraise every 4 to 8 years, so the tax value can trail today’s market.',
+    shareSource: 'North Carolina county tax records via NC OneMap',
+    commonNote: 'This county doesn’t map its condo units one by one on the statewide map, so unit values and sales aren’t available here.',
+    useLabel: (c, r) => ncUseLabel(r),
+  },
 };
 const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => Object.keys(r.fields)).concat(['LS_DATE', 'TOTAL_VAL', 'FY']));
-const COVERAGE = 'Massachusetts, Connecticut, New Jersey and Florida';
+const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida and North Carolina';
 const BORDER_SLOP = 1500;   // meters: near a state line, load both states' records
 
 function inPoly(lon, lat, ring) {
@@ -1069,7 +1160,7 @@ function inPoly(lon, lat, ring) {
 }
 const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
-const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL'];
+const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC'];
 function regionFor(lat, lon) {
   if (lat == null || lon == null) return null;
   for (const id of REGION_ORDER) if (inRegion(REGIONS[id], lat, lon)) return REGIONS[id];
@@ -1159,7 +1250,9 @@ function initService(region) {
         try { if (await tryLayer(region, it.url)) return true; } catch (e) { /* keep looking */ }
       }
     } catch (e) { console.warn(region.id, 'discovery failed', e); }
-    notifyServiceDown(region);
+    // Only the state you're looking at gets a message: a search also asks the other states, and one of them being down is no news.
+    const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
+    if (!here || here === region) notifyServiceDown(region);
     throw new Error(`Could not reach the ${region.name} parcel service`);
   })();
   sv.ready.catch(() => { sv.ready = null; });
@@ -1242,7 +1335,7 @@ async function queryRegion(region, lat, lon, radius) {
 const STREET_ABBR = { STREET: 'ST', AVENUE: 'AVE', ROAD: 'RD', LANE: 'LN', DRIVE: 'DR', COURT: 'CT', PLACE: 'PL', TERRACE: 'TER', CIRCLE: 'CIR',
   BOULEVARD: 'BLVD', PARKWAY: 'PKWY', SQUARE: 'SQ', HIGHWAY: 'HWY', WAY: 'WAY' };
 const STREET_WORD = /\b(ST|STREET|AVE?|AVENUE|RD|ROAD|LN|LANE|DR|DRIVE|CT|COURT|PL|PLACE|TER|TERRACE|CIR|CIRCLE|BLVD|BOULEVARD|PKWY|PARKWAY|SQ|SQUARE|HWY|HIGHWAY|WAY|ROW|PATH|TRL|TRAIL|LOOP|PIKE|TPKE|TURNPIKE)\.?$/i;
-// Every state, so a place outside the four covered states gets a plain answer instead of a slow search that finds nothing.
+// Every state, so a place outside the covered states gets a plain answer instead of a slow search that finds nothing.
 const US_STATES = ('AL Alabama|AK Alaska|AZ Arizona|AR Arkansas|CA California|CO Colorado|CT Connecticut|DE Delaware|DC District of Columbia|FL Florida|GA Georgia|'
   + 'HI Hawaii|ID Idaho|IL Illinois|IN Indiana|IA Iowa|KS Kansas|KY Kentucky|LA Louisiana|ME Maine|MD Maryland|MA Massachusetts|MI Michigan|MN Minnesota|'
   + 'MS Mississippi|MO Missouri|MT Montana|NE Nebraska|NV Nevada|NH New Hampshire|NJ New Jersey|NM New Mexico|NY New York|NC North Carolina|ND North Dakota|'
@@ -1251,7 +1344,7 @@ const US_STATES = ('AL Alabama|AK Alaska|AZ Arizona|AR Arkansas|CA California|CO
 const STATE_BY_WORD = new Map([...US_STATES.flatMap(([c, n]) => [[c, c], [n.toUpperCase(), c]]), ['MASS', 'MA'], ['CONN', 'CT'], ['FLA', 'FL'], ['N J', 'NJ'], ['D C', 'DC']]);
 const STATE_NAME = Object.fromEntries(US_STATES);
 // Without a comma, only a two-letter code or a covered state's name counts ("Mount Washington" is a Massachusetts town).
-const STATE_TAIL = new RegExp(`(?:^|\\s)(${[...STATE_BY_WORD.keys()].filter((k) => k.length <= 4 || ['MASSACHUSETTS', 'CONNECTICUT', 'NEW JERSEY', 'FLORIDA'].includes(k))
+const STATE_TAIL = new RegExp(`(?:^|\\s)(${[...STATE_BY_WORD.keys()].filter((k) => k.length <= 4 || Object.values(REGIONS).some((r) => r.name.toUpperCase() === k))
   .sort((a, b) => b.length - a.length).join('|')})$`);
 const SEARCH_LOT_MS = 4500;      // exact-lot lookup in the state parcel services
 const SEARCH_GEO_MS = 5000;      // then the address and town lookups; together a search answers in about 10 seconds at worst
@@ -1259,7 +1352,7 @@ const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first h
 const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
 const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
 const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
-const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL' };
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC' };
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
 // Apartment and unit numbers aren't needed to find a lot.
@@ -1378,13 +1471,13 @@ function knownTown(name) {
 }
 
 // Which states to look in, most likely first: the one typed; otherwise the one the town is known to be in, the one the
-// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida.
+// map (or you) are in, then Massachusetts, Connecticut, New Jersey, Florida, North Carolina.
 function searchOrder(q, kt) {
   if (q.state) return REGIONS[q.state] ? [REGIONS[q.state]] : [];
   const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
   // The town lists cover only Massachusetts and Connecticut, so with the map in New Jersey or Florida, that state still comes first.
   const townSt = kt && (!here || here.id === 'MA' || here.id === 'CT') ? (here && kt.states.includes(here.id) ? here.id : kt.states[0]) : null;
-  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL];
+  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC];
   return order.filter((r, i) => r && order.indexOf(r) === i);
 }
 
@@ -1634,9 +1727,9 @@ async function townPlace(names, order, fix) {
       found.push({ st, kind, lat, lon, name, prio: from.prio, fix: !!from.fix });
     }
   }));
-  // Rank: how it was typed, then the state order, then (towns in New England and New Jersey, cities in Florida), then nearest:
+  // Rank: how it was typed, then the state order, then (towns in New England and New Jersey, cities in Florida and North Carolina), then nearest:
   // New Jersey has five Washington townships.
-  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
   const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
@@ -1779,6 +1872,7 @@ const BLDG_SOURCES = {
     more: ['https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/FloridaStatewideBuildingFootprints/FeatureServer/0'] },
   CT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   NJ: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  NC: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
 };
 const BSVC = {};
 function bldgLayer(rid) {
@@ -1979,7 +2073,8 @@ function summarize(p) {
   // Connecticut can do the same where a town's units didn't link to the lot.
   const commonOnly = (region.id === 'FL' ? flCondoCode(r0.USE_CODE)
     : region.id === 'CT' ? recs.length === 1 && /CONDO|COMMON/i.test(String(r0.USE_DESC || ''))
-    : region.id === 'NJ' ? recs.length === 1 && /CONDO|COMMON|C\/E/i.test(`${r0.BLDG_DESC || ''} ${r0.LAND_DESC || ''}`) : false) && !vals.some((v) => v > 1000);
+    : region.id === 'NJ' ? recs.length === 1 && /CONDO|COMMON|C\/E/i.test(`${r0.BLDG_DESC || ''} ${r0.LAND_DESC || ''}`)
+    : region.id === 'NC' ? recs.length === 1 && ncKind(r0) === 'condoMaster' : false) && !vals.some((v) => v > 1000);
   // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
   // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
   const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
@@ -2073,6 +2168,7 @@ function renderCard(cand, total, idx) {
   const condoSaleLine = (s) => {
     const m = s.sales.find((q) => q.p >= 10000);
     if (m) return `Latest unit sale <b>${money(m.p)}</b> · ${fmtMonth(m.d)}`;
+    if (s.region.noSalePrice && s.sales[0]) return `Latest unit sale ${fmtMonth(s.sales[0].d)} · the state’s records don’t list prices`;
     return s.sales[0] ? `No market sales on record (latest transfer ${fmtMonth(s.sales[0].d)} was for a nominal amount)` : 'No recorded sales';
   };
   let valueBlock = '';
@@ -2094,6 +2190,8 @@ function renderCard(cand, total, idx) {
         const ch = ratio && !s.multiSale && !s.unqualified && !s.region.noDelta && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
         saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
+      } else if (s.region.noSalePrice) {
+        saleLine = `Last sold ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''} · the state’s records don’t list the price`;
       } else {
         saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
       }
@@ -2290,6 +2388,81 @@ function maTown(r0) {
   const i = MA_BY_NAME.get(String(r0.CITY || '').toUpperCase().replace(/[^A-Z]/g, ''));
   return i == null ? null : MA_TOWNS[i];
 }
+// North Carolina: the county's rate, plus the town's inside town limits, per $100 of value, from the NC Department of Revenue's
+// FY2026–27 table of county and municipal rates (fire and other special districts are extra). Town names as the state lists them.
+const NC_TAX_FY = '2026–27';
+const NC_TAX_RAW = ['Alamance:.494;Alamance=.145,Burlington=.5636,Elon=.4,Gibsonville=.53,Graham=.3399,Green Level=.26,Haw River=.44,Mebane=.37,Ossipee=.08|Alexander:.6;Taylorsville=.41|Alleghany:.597;Sparta=.39',
+  'Anson:.777;Ansonville=.6,Lilesville=.48,Mcfarlan=.29,Morven=.7,Peachland=.39,Polkton=.33,Wadesboro=.706|Ashe:.44;Jefferson=.35,Lansing=.36,West Jefferson=.35',
+  'Avery:.4;Banner Elk=.46,Beech Mountain=.65,Crossnore=.3,Elk Park=.3,Newland=.5,Seven Devils=.47,Sugar Mountain=.28',
+  'Beaufort:.445;Aurora=.44,Bath=.22,Belhaven=.36,Chocowinity=.51,Pantego=.11,Washington=.465,Washington Park=.15',
+  'Bertie:.93;Askewville=.2,Aulander=.78,Colerain=.49,Kelford=.4,Lewiston Woodville=.6,Powellsville=.35,Roxobel=.25,Windsor=.25',
+  'Bladen:.785;Bladenboro=.66,Clarkton=.61,Dublin=.55,East Arcadia=.36,Elizabethtown=.645,Tar Heel=.36,White Lake=.3',
+  'Brunswick:.342;Bald Head Island=.586,Belville=.15,Boiling Spring Lakes=.27,Bolivia=.05,Calabash=.098,Carolina Shores=.1,Caswell Beach=.22,Holden Beach=.14,Leland=.25,Navassa=.27,Northwest=.27,Oak Island=.2,Ocean Isle Beach=.13,Sandy Creek=.25,Shallotte=.31,Southport=.31,St. James=.05,Sunset Beach=.16,Varnamtown=.05',
+  'Buncombe:.6154;Asheville=.5078,Biltmore Forest=.515,Black Mountain=.355,Montreat=.535,Weaverville=.455,Woodfin=.33',
+  'Burke:.555;Connelly Springs=.05,Drexel=.39,Glen Alpine=.26,Hickory=.46,Hildebran=.15,Long View=.49,Morganton=.5,Rhodhiss=.525,Rutherford College=.12,Valdese=.545',
+  'Cabarrus:.576;Concord=.42,Harrisburg=.41,Huntersville=.2275,Kannapolis=.5595,Locust=.29,Midland=.21,Mount Pleasant=.405',
+  'Caldwell:.4666;Blowing Rock=.44,Cedar Rock=.2,Granite Falls=.4585,Hickory=.46,Hudson=.4,Lenoir=.46,Rhodhiss=.525,Rutherford College=.12,Sawmills=.2|Camden:.71;Elizabeth City=.59',
+  'Carteret:.225;Atlantic Beach=.1525,Beaufort=.2875,Bogue=.05,Cape Carteret=.14,Cedar Point=.1175,Emerald Isle=.11,Indian Beach=.24,Morehead City=.3425,Newport=.455,Peletier=.055,Pine Knoll Shores=.165',
+  'Caswell:.627;Milton=.45,Yanceyville=.3|Catawba:.3985;Brookford=.4,Catawba=.5,Claremont=.4175,Conover=.395,Hickory=.46,Long View=.49,Maiden=.38,Newton=.45',
+  'Chatham:.6;Apex=.3735,Cary=.3675,Goldston=.29,Pittsboro=.44,Siler City=.54|Cherokee:.61;Andrews=.52,Murphy=.42|Chowan:.72;Edenton=.48|Clay:.27;Hayesville=.215',
+  'Cleveland:.545;Belwood=.05,Boiling Springs=.4,Casar=.1,Earl=.18,Fallston=.05,Grover=.49,Kings Mountain=.48,Kingstown=.35,Lattimore=.22,Lawndale=.4375,Patterson Springs=.15,Polkville=.08,Shelby=.45,Waco=.23',
+  'Columbus:.805;Boardman=.05,Bolton=.6,Brunswick=.42,Cerro Gordo=.2,Chadbourn=.62,Fair Bluff=.65,Lake Waccamaw=.3,Sandyfield=.35,Tabor City=.6,Whiteville=.59',
+  'Craven:.4448;Bridgeton=.5,Cove City=.36,Dover=.33,Havelock=.75,New Bern=.42,River Bend=.3,Trent Woods=.17,Vanceboro=.4',
+  'Cumberland:.499;Eastover=.23,Falcon=.35,Fayetteville=.4495,Godwin=.27,Hope Mills=.525,Linden=.4,Spring Lake=.741,Stedman=.37,Wade=.32|Currituck:.6',
+  'Dare:.2632;Duck=.18,Kill Devil Hills=.28,Kitty Hawk=.235,Manteo=.2829,Nags Head=.232,Southern Shores=.188',
+  'Davidson:.54;Denton=.6,High Point=.7349,Lexington=.65,Midway=.05,Thomasville=.62,Wallburg=.05|Davie:.6486;Bermuda Run=.15,Cooleemee=.42,Mocksville=.29',
+  'Duplin:.58;Beulaville=.44,Calypso=.47,Faison=.48,Greenevers=.15,Kenansville=.5,Magnolia=.67,Mount Olive=.72,Rose Hill=.64,Teachey=.42,Wallace=.53,Warsaw=.5',
+  'Durham:.5792;Cary=.3675,Chapel Hill=.5,Durham=.4371,Morrisville=.35,Raleigh=.372',
+  'Edgecombe:.89;Conetoe=.45,Leggett=.25,Macclesfield=.37,Pinetops=.58,Princeville=.61,Rocky Mount=.69,Sharpsburg=.85,Tarboro=.475,Whitakers=.74',
+  'Forsyth:.554;Bethania=.24,Clemmons=.15,High Point=.7349,Kernersville=.527,King=.47,Lewisville=.18,Rural Hall=.28,Tobaccoville=.05,Walkertown=.16,Winston-Salem=.589',
+  'Franklin:.505;Bunn=.55,Franklinton=.71,Louisburg=.57,Wake Forest=.42,Youngsville=.54',
+  'Gaston:.599;Belmont=.455,Bessemer City=.55,Cherryville=.48,Cramerton=.43,Dallas=.44,Gastonia=.47,High Shoals=.42,Kings Mountain=.48,Lowell=.355,Mcadenville=.42,Mount Holly=.405,Ranlo=.45,Stanley=.49',
+  'Gates:.67;Gatesville=.14|Graham:.65;Fontana Dam=.554,Lake Santeetlah=.25,Robbinsville=.5|Granville:.631;Butner=.42,Creedmoor=.58,Oxford=.57,Stem=.35,Stovall=.355',
+  'Greene:.7835;Hookerton=.465,Snow Hill=.34,Walstonburg=.5',
+  'Guilford:.7895;Archdale=.31,Burlington=.5636,Gibsonville=.53,Greensboro=.7985,High Point=.7349,Jamestown=.655,Kernersville=.527,Oak Ridge=.08,Pleasant Garden=.08,Sedalia=.325,Summerfield=.05,Whitsett=.2',
+  'Halifax:.7;Enfield=.927,Halifax=.62,Hobgood=.72,Littleton=.76,Roanoke Rapids=.681,Scotland Neck=.73,Weldon=.72',
+  'Harnett:.63;Angier=.49,Benson=.61,Broadway=.49,Coats=.49,Dunn=.54,Erwin=.5,Lillington=.58|Haywood:.62;Canton=.54,Clyde=.45,Maggie Valley=.42,Waynesville=.479',
+  'Henderson:.474;Flat Rock=.119,Fletcher=.3,Hendersonville=.52,Laurel Park=.395,Mills River=.17,Saluda=.61',
+  'Hertford:.84;Ahoskie=.81,Cofield=.6,Como=.3,Harrellsville=.4,Murfreesboro=.66,Winton=.65|Hoke:.73;Raeford=.48|Hyde:.92',
+  'Iredell:.5;Davidson=.276,Harmony=.16,Love Valley=.25,Mooresville=.4836,Statesville=.5176,Troutman=.5|Jackson:.31;Dillsboro=.23,Forest Hills=.13,Highlands=.1322,Sylva=.45,Webster=.15',
+  'Johnston:.51;Archer Lodge=.275,Benson=.61,Clayton=.49,Four Oaks=.407,Kenly=.65,Micro=.44,Pine Level=.39,Princeton=.585,Selma=.6,Smithfield=.45,Wilsons Mills=.5',
+  'Jones:.74;Maysville=.5,Pollocksville=.34,Trenton=.36|Lee:.65;Broadway=.49,Sanford=.555|Lenoir:.675;Grifton=.55,Kinston=.69,La Grange=.328,Pink Hill=.4107',
+  'Lincoln:.499;Lincolnton=.5,Maiden=.38|Macon:.27;Franklin=.33,Highlands=.1322|Madison:.36;Hot Springs=.43,Mars Hill=.34,Marshall=.355',
+  'Martin:.72;Bear Grass=.27,Everetts=.5,Hamilton=.5,Hassell=.3,Jamesville=.65,Oak City=.33,Parmele=.68,Robersonville=.7,Williamston=.68|Mcdowell:.5675;Marion=.595,Old Fort=.5',
+  'Mecklenburg:.4927;Charlotte=.293,Cornelius=.1931,Davidson=.276,Huntersville=.2275,Matthews=.2795,Mint Hill=.225,Pineville=.3,Stallings=.209|Mitchell:.56;Bakersville=.44,Spruce Pine=.46',
+  'Montgomery:.615;Biscoe=.56,Candor=.65,Mount Gilead=.6,Star=.62,Troy=.48',
+  'Moore:.29;Aberdeen=.42,Cameron=.555,Carthage=.505,Foxfire Village=.29,Pinebluff=.4,Pinehurst=.22,Robbins=.68,Southern Pines=.29,Taylortown=.475,Vass=.49,Whispering Pines=.4',
+  'Nash:.63;Bailey=.87,Castalia=.34,Middlesex=.57,Momeyer=.09,Nashville=.61,Rocky Mount=.69,Sharpsburg=.85,Spring Hope=.67,Whitakers=.74',
+  'New Hanover:.306;Carolina Beach=.1712,Kure Beach=.195,Wilmington=.3315,Wrightsville Beach=.0531',
+  'Northampton:.825;Conway=.56,Garysburg=.6,Gaston=.55,Jackson=.575,Lasker=.25,Rich Square=.75,Seaboard=.5,Severn=.35,Woodland=.645',
+  'Onslow:.655;Holly Ridge=.37,Jacksonville=.63,North Topsail Beach=.43,Richlands=.41,Surf City=.475,Swansboro=.35',
+  'Orange:.6805;Carrboro=.5653,Chapel Hill=.5,Durham=.4371,Hillsborough=.513,Mebane=.37',
+  'Pamlico:.7;Alliance=.08,Bayboro=.27,Grantsboro=.05,Mesic=.23,Minnesott Beach=.11,Oriental=.23,Stonewall=.15,Vandemere=.23|Pasquotank:.67;Elizabeth City=.59',
+  'Pender:.7375;Atkinson=.38,Burgaw=.64,Saint Helena=.1,Surf City=.475,Topsail Beach=.48,Wallace=.53,Watha=.05|Perquimans:.55;Hertford=.52,Winfall=.395|Person:.62;Roxboro=.75',
+  'Pitt:.5663;Ayden=.54,Bethel=.45,Falkland=.52,Farmville=.49,Fountain=.5875,Greenville=.3954,Grifton=.55,Grimesland=.43,Simpson=.45,Winterville=.45',
+  'Polk:.4277;Columbus=.515,Saluda=.47,Tryon=.5616',
+  'Randolph:.5;Archdale=.31,Asheboro=.71,Franklinville=.495,High Point=.7349,Liberty=.72,Ramseur=.72,Randleman=.63,Seagrove=.44,Staley=.125,Thomasville=.62,Trinity=.1',
+  'Richmond:.73;Dobbins Heights=.6,Ellerbe=.65,Hamlet=.74,Hoffman=.4,Rockingham=.55',
+  'Robeson:.75;Fairmont=.73,Lumber Bridge=.35,Lumberton=.65,Maxton=.8,Mcdonald=.05,Parkton=.5,Pembroke=.64,Proctorville=.2,Raynham=.05,Red Springs=.64,Rennert=.1,Rowland=.83,St Pauls=.65',
+  'Rockingham:.569;Eden=.52,Madison=.7,Mayodan=.665,Reidsville=.66,Stoneville=.69',
+  'Rowan:.58;China Grove=.56,Cleveland=.35,East Spencer=.86,Faith=.5,Granite Quarry=.49,Kannapolis=.5595,Landis=.49,Rockwell=.55,Salisbury=.684,Spencer=.6305',
+  'Rutherford:.454;Bostic=.3,Chimney Rock Village=.205,Ellenboro=.2,Forest City=.59,Lake Lure=.377,Ruth=.33,Rutherfordton=.55,Spindale=.642',
+  'Sampson:.685;Autryville=.47,Clinton=.34,Garland=.48,Harrells=.21,Newton Grove=.4,Roseboro=.46,Salemburg=.3,Turkey=.32|Scotland:.699;Gibson=.53,Laurinburg=.38,Maxton=.8,Wagram=.385',
+  'Stanly:.51;Albemarle=.61,Badin=.4475,Locust=.29,Misenheimer=.27,New London=.16,Norwood=.38,Oakboro=.37,Red Cross=.16,Richfield=.22,Stanfield=.32',
+  'Stokes:.625;Danbury=.25,King=.47,Walnut Cove=.43|Surry:.513;Dobson=.48,Elkin=.55,Mount Airy=.58,Pilot Mountain=.57|Swain:.41;Bryson City=.45|Transylvania:.4105;Brevard=.3825,Rosman=.32',
+  'Tyrrell:.87;Columbia=.58',
+  'Union:.4342;Fairview=.04,Hemby Bridge=0,Indian Trail=.17,Lake Park=.175,Marshville=.53,Marvin=.0563,Mineral Springs=.0175,Mint Hill=.225,Monroe=.44,Stallings=.209,Unionville=.02,Waxhaw=.29,Weddington=.035,Wesley Chapel=.0225,Wingate=.25',
+  'Vance:.7129;Henderson=.65,Kittrell=.17,Middleburg=.4',
+  'Wake:.5371;Angier=.49,Apex=.3735,Cary=.3675,Clayton=.49,Durham=.4371,Fuquay-Varina=.378,Garner=.535,Holly Springs=.3435,Knightdale=.44,Morrisville=.35,Raleigh=.372,Rolesville=.4,Wake Forest=.42,Wendell=.42,Zebulon=.577',
+  'Warren:.595;Macon=.3,Norlina=.64,Warrenton=.6|Washington:.85;Creswell=.5,Plymouth=.54,Roper=.82|Watauga:.318;Beech Mountain=.65,Blowing Rock=.44,Boone=.44,Seven Devils=.47',
+  'Wayne:.6259;Eureka=.53,Fremont=.59,Goldsboro=.69,Mount Olive=.72,Pikeville=.54,Seven Springs=.59,Walnut Creek=.4|Wilkes:.42;Elkin=.55,North Wilkesboro=.41,Ronda=.26,Wilkesboro=.46',
+  'Wilson:.595;Black Creek=.42,Elm City=.54,Kenly=.65,Lucama=.38,Saratoga=.53,Sharpsburg=.85,Sims=.36,Stantonsburg=.3,Wilson=.525',
+  'Yadkin:.65;Boonville=.49,East Bend=.5,Jonesville=.5,Yadkinville=.42|Yancey:.52;Burnsville=.52'].join('|');
+const ncKey = (x) => String(x || '').toUpperCase().replace(/[^A-Z]/g, '');
+const NC_TAX = new Map(NC_TAX_RAW.split('|').map((e) => {
+  const [head, towns] = e.split(';'), [c, r] = head.split(':');
+  return [ncKey(c), { n: c, r: +r, towns: new Map((towns || '').split(',').filter(Boolean).map((t) => { const [n, x] = t.split('='); return [ncKey(n), { n, r: +x }]; })) }];
+}));
 function estimateTax(s) {
   const r0 = s.r0, digits = String(r0.USE_CODE || '').replace(/\D/g, '');
   if (s.commonOnly) return null;
@@ -2354,6 +2527,20 @@ function estimateTax(s) {
     const gl = num(r0.FY);
     if (gl && gl !== CT_TAX_GL) notes.push(`This uses the FY${CT_TAX_FY} rate on the October ${gl} value.`);
     notes.push('Doesn’t include fire or special district taxes, or exemptions (seniors, veterans and others).');
+    return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
+  }
+  if (s.region.id === 'NC') {
+    const c = NC_TAX.get(ncKey(r0.COUNTY)); if (!c) return null;
+    const town = c.towns.get(ncKey(r0.CITY)), rate = c.r + (town ? town.r : 0);
+    const v = recs.map((r) => num(r.TOTAL_VAL)).filter((x) => x > 0);
+    if (!v.length) return null;
+    const t = v.map((x) => x * rate / 100), per = (r) => `$${r.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}`;
+    const notes = [town
+      ? `${c.n} County’s rate (<b>${per(c.r)}</b>) plus ${town.n}’s (<b>${per(town.r)}</b>) per $100 of value, FY${NC_TAX_FY}.`
+      : `${c.n} County’s FY${NC_TAX_FY} rate is <b>${per(c.r)}</b> per $100 of value.`];
+    if (town) notes.push(`Outside ${town.n}’s town limits (the mailing town can be a neighbor’s), it’s about ${moneyFull(round10(Math.max(...v) * c.r / 100))}${v.length > 1 ? ' a unit at most' : ''}.`);
+    else if (r0.CITY) notes.push('Inside a town’s limits, the town’s tax comes on top.');
+    notes.push('Doesn’t include fire or other special district taxes, or exemptions (seniors, veterans and others).');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
   if (s.region.id === 'NJ') {        // New Jersey publishes the real bill, so there's nothing to estimate
@@ -2544,7 +2731,8 @@ const distM = (la1, lo1, la2, lo2) => { const a = Math.sin(rad(la2 - la1) / 2) *
 const feet = (m) => { const f = m * 3.28084; return f >= 528 ? `${(f / 5280).toFixed(1)} mi` : `${Math.max(10, Math.round(f / 10) * 10)} ft`; };   // to 10 ft: GPS is good to about 15 ft at best
 const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, Math.round(m * 3.28084 / 50) * 50)} ft` : `${x < 10 ? x.toFixed(1) : Math.round(x)} mi`; };
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
-const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/' };
+const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/',
+  NC: 'https://ncreports.ondemand.sas.com/src/' };
 
 function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
@@ -3046,7 +3234,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
    ========================================================================= */
 const CALC_KEY = 'housepoint.calc';
 const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
-const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
+const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
 const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
 let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
 try {
@@ -4298,7 +4486,8 @@ const ABOUT = `
     <li><b>Connecticut property records and lot lines:</b> town assessors via the Connecticut Office of Policy and Management GIS Office (Connecticut CAMA and Parcel Layer, public domain).</li>
     <li><b>New Jersey property records, last year’s tax and lot lines:</b> town tax assessors via the NJ Division of Taxation’s MOD-IV tax list, joined to the statewide parcel map by the NJ Office of Information Technology, Office of GIS (NJOGIS), and the counties.</li>
     <li><b>Florida property records and lot lines:</b> Florida’s county property appraisers and the Florida Department of Revenue, Property Tax Oversight, via the Florida Geographic Information Office.</li>
-    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey and Florida), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
+    <li><b>North Carolina property records and lot lines:</b> county tax offices, compiled into NC OneMap’s statewide parcels by the NC Center for Geographic Information and Analysis; property tax rates from the NC Department of Revenue.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida and North Carolina), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
@@ -4360,7 +4549,8 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
    answering a kind of search in time. Nothing is saved or sent anywhere else.
    ========================================================================= */
 const HEALTH_LOT = {};          // a lot found in each state's check, for the buying checks
-const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'] };
+const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
+  NC: [35.8085, -78.6430, 'Raleigh Five Points'] };
 async function runHealth() {
   document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
     <p class="hs">Each check runs the way the app does. Green answered, amber answered with a problem, red didn’t answer.</p><ol id="hRows"></ol>
@@ -4373,7 +4563,7 @@ async function runHealth() {
   };
   const timed = async (p) => { const t0 = performance.now(); const v = await p; return [v, Math.round(performance.now() - t0)]; };
   const secs = (ms) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
-  for (const id of ['MA', 'CT', 'NJ', 'FL']) {
+  for (const id of Object.keys(HEALTH_SPOTS)) {
     const rg = REGIONS[id], [lat, lon, spot] = HEALTH_SPOTS[id];
     const r1 = row(`${rg.name}: property records`);
     let ms;

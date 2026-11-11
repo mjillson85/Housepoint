@@ -1,4 +1,4 @@
-# Captures real parcel records from the four states' public services into tests/fixtures/ (see tests/capture/capture.mjs),
+# Captures real parcel records from the covered states' public services into tests/fixtures/ (see tests/capture/capture.mjs),
 # and commits them. Runs when the capture script changes, or by hand from the Actions tab ("Run workflow") to refresh them.
 # The normal tests never touch the network; they read these files.
 name: capture real records
@@ -7,6 +7,11 @@ on:
     branches: [main]
     paths: ['tests/capture/**', '.github/workflows/capture.yml']
   workflow_dispatch:
+    inputs:
+      states:
+        description: 'States to capture, e.g. "NC" (empty: all)'
+        required: false
+        default: ''
 permissions:
   contents: write
 concurrency: { group: capture, cancel-in-progress: false }
@@ -26,7 +31,7 @@ jobs:
         working-directory: tests
         env:
           CHROME: /usr/bin/google-chrome
-        run: node capture/capture.mjs
+        run: node capture/capture.mjs ${{ github.event.inputs.states }}
       - name: Commit the records
         if: always()
         run: |
