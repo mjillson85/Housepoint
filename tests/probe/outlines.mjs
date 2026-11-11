@@ -9,7 +9,7 @@ const WANT = [['IN', states, '18'], ['NH', states, '33'], ['WV', states, '54'], 
   ['TX_HARRIS', counties, '48201'], ['TX_TARRANT', counties, '48439'], ['CA_ALAMEDA', counties, '06001'], ['CA_SBD', counties, '06071'], ['OH_FRANKLIN', counties, '39049'],
   ['OH_HAMILTON', counties, '39061'], ['TN_DAVIDSON', counties, '47037'], ['ND_BURLEIGH', counties, '38015'], ['MI_WAYNE', counties, '26163'], ['GA_FULTON', counties, '13121'],
   ['MI_OAKLAND', counties, '26125'], ['ID_ADA', counties, '16001'], ['KS_SEDGWICK', counties, '20173'], ['AZ_MARICOPA', counties, '04013'], ['OR_MULTNOMAH', counties, '41051'],
-  ['OR_WASHINGTON', counties, '41067'], ['OR_CLACKAMAS', counties, '41005'], ['PA_ALLEGHENY', counties, '42003']];
+  ['OR_WASHINGTON', counties, '41067'], ['OR_CLACKAMAS', counties, '41005'], ['MO_STLOUIS', counties, '29189'], ['MI_MACOMB', counties, '26099'], ['ME', states, '23']];
 const out = {};
 for (const [name, layer, geoid] of WANT) {
   try {
@@ -19,4 +19,8 @@ for (const [name, layer, geoid] of WANT) {
     out[name] = rings.map((r) => r.map(([x, y]) => [+x.toFixed(4), +y.toFixed(4)]));
   } catch (e) { out[name] = 'failed ' + e.message; }
 }
-console.log('OUTLINES ' + JSON.stringify(out));
+// one line per ring, in pieces (GitHub drops very long log lines)
+for (const [name, rings] of Object.entries(out)) {
+  if (!Array.isArray(rings)) { console.log(`OUTLINE ${name} failed ${rings}`); continue; }
+  rings.forEach((r, i) => { const t = JSON.stringify(r); for (let k = 0; k * 3000 < t.length; k++) console.log(`OUTLINE ${name} ${i} ${k} ${t.slice(k * 3000, (k + 1) * 3000)}`); });
+}
