@@ -36,6 +36,12 @@ jobs:
         working-directory: tests
         continue-on-error: true
         run: node probe/utah-services.mjs
+      - name: The slow Tier 2 layers timed
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/tier2-speed.mjs
       - name: The next states' fields and property types
         working-directory: tests
         continue-on-error: true

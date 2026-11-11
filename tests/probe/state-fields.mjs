@@ -20,23 +20,7 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {
-  AR: { layer: 'https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Planning_Cadastre/FeatureServer/6', want: 'auto',
-    spots: [[34.7600, -92.3100, 'Little Rock Hillcrest'], [36.0700, -94.1600, 'Fayetteville'], [34.5000, -93.0550, 'Hot Springs']] },
-  VT: { layer: 'https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services/FS_VCGI_OPENDATA_Cadastral_VTPARCELS_poly_standardized_parcels_SP_v1/FeatureServer/0', want: 'auto',
-    spots: [[44.4800, -73.2100, 'Burlington'], [44.2600, -72.5750, 'Montpelier'], [44.4650, -72.6850, 'Stowe']] },
-  MT: { layer: 'https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1', want: 'auto',
-    spots: [[45.7800, -108.5300, 'Billings'], [46.8650, -113.9950, 'Missoula'], [45.6770, -111.0400, 'Bozeman']] },
-  WY: { layer: 'https://services3.arcgis.com/r0iJ85SKZ4zAzz3P/arcgis/rest/services/Wyoming_Parcels_for_2026/FeatureServer/0', want: 'auto',
-    spots: [[41.1400, -104.8100, 'Cheyenne'], [42.8500, -106.3200, 'Casper'], [43.4800, -110.7600, 'Jackson']] },
-  AK: { layer: 'https://services1.arcgis.com/7HDiw78fcUiM2BWn/arcgis/rest/services/AK_Parcels/FeatureServer/0', want: 'auto',
-    spots: [[61.1900, -149.8800, 'Anchorage'], [64.8400, -147.7300, 'Fairbanks'], [58.3000, -134.4200, 'Juneau']] },
-  UT: { layer: 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_SaltLake_LIR/FeatureServer/0', want: 'auto',
-    spots: [[40.7500, -111.8700, 'Salt Lake City Sugar House'], [40.6200, -111.8500, 'Cottonwood Heights']] },
-  IL: { layer: 'https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer/44', want: 'auto',
-    spots: [[41.9200, -87.6500, 'Chicago Lincoln Park'], [42.0450, -87.6900, 'Evanston'], [41.8850, -87.7850, 'Oak Park']] },
-  CO: { layer: 'https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', want: 'auto',
-    spots: [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [38.8600, -104.8200, 'Colorado Springs'], [39.7420, -104.9880, 'Denver condos']] },
+const STATES = {   // Tier 2 round 1 (all of them, want 'auto') is in git history (November 11, 2026)
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;
@@ -58,7 +42,11 @@ for (const [st, cfg] of Object.entries(STATES)) {
     res.max = m.j.maxRecordCount; res.sr = m.j.extent && m.j.extent.spatialReference; res.adv = m.j.advancedQueryCapabilities;
     const AUTO = new RegExp(AUTOsrc, 'i');
     const have = new Set(fields.map((f) => f.name));
-    const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f)) : cfg.want).filter((f) => have.has(f) && !BAD.test(f));
+    // a field is skipped when its name or its alias looks like an owner, mailing, name, deed or legal field ("ADDRGL1" is Vermont's
+    // "Mailing Address 1")
+    const alias = Object.fromEntries(fields.map((f) => [f.name, f.alias || '']));
+    const ok = (f) => !BAD.test(f) && !BAD.test(alias[f] || '') && !/mailing|owner|taxpayer|grantee|grantor/i.test(alias[f] || '');
+    const want = (cfg.want === 'auto' ? fields.map((f) => f.name).filter((f) => !AUTO.test(f) && !AUTO.test(alias[f] || '')) : cfg.want).filter((f) => have.has(f) && ok(f));
     res.asked = want.join(',');
     // auto: the property-type fields (use, class or type, not zoning), grouped statewide and near each spot
     const codeF = cfg.want === 'auto' ? want.filter((f) => /use|class|type|cls/i.test(f) && !/zon|exempt|const|area|acre/i.test(f)).slice(0, 3) : cfg.codes || [];
@@ -86,7 +74,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
       const area = (g) => { if (!g || !g.rings) return null; let a = 0; for (const ring of g.rings) { for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += (ring[j][0] - ring[i][0]) * (ring[j][1] + ring[i][1]); }
         const k = 111320 * Math.cos(lat * Math.PI / 180) * 110540; return Math.round(Math.abs(a / 2) * k); };
       const ctr = (g) => { if (!g || !g.rings) return ''; const r0 = g.rings[0]; let x = 0, y = 0; for (const p of r0) { x += p[0]; y += p[1]; } return `${(y / r0.length).toFixed(5)},${(x / r0.length).toFixed(5)}`; };
-      spot.recs = feats.map((f) => ({ c: ctr(f.geometry), m2: area(f.geometry), ...Object.fromEntries(Object.entries(f.attributes).filter(([k, v]) => !BAD.test(k) && v !== null && v !== '' && v !== ' ')) }))
+      spot.recs = feats.map((f) => ({ c: ctr(f.geometry), m2: area(f.geometry), ...Object.fromEntries(Object.entries(f.attributes).filter(([k, v]) => want.includes(k) && ok(k) && v !== null && v !== '' && v !== ' ')) }))
         .sort((p, q) => (p.c < q.c ? -1 : p.c > q.c ? 1 : 0));
       spot.n = feats.length;
       res.spots.push(spot);
