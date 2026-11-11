@@ -33,6 +33,12 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/state-fields.mjs
+      - name: Minnesota's numbered property classes and address search
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/mn-codes.mjs
       - name: The newest state against its real service
         working-directory: tests
         continue-on-error: true
