@@ -2190,6 +2190,11 @@ const REGIONS = {
     derive: (o) => nyDerive(o),
     // Searching this layer by address takes 10 to 20 seconds, so an address is found by its position instead.
     slowSearch: true,
+    // New York City writes "457 1 STREET", "169 WEST 85 STREET", "31-14 31 AVENUE": numbered streets without the -st or -th,
+    // and the direction in full.
+    searchForms: (a) => { const bare = a.replace(/\b(\d+)(ST|ND|RD|TH)\b/g, '$1');
+      const full = bare.replace(/^(\d+[A-Z]?(-\d+[A-Z]?)?) (N|S|E|W) /, (m, n, x, d) => `${n} ${{ N: 'NORTH', S: 'SOUTH', E: 'EAST', W: 'WEST' }[d]} `);
+      return [bare, full]; },
     stackedUnits: true, noSales: true, noDelta: true,
     valueLabel: 'Full market value (state estimate)', valueLabelFor: (r) => nyValueLabel(r), deltaWord: 'value', valueWord: 'Value', valueTitle: 'Value',
     yearLabel: (fy) => `${fy} roll`,
@@ -5804,6 +5809,7 @@ async function runHealth() {
     const rec = lots.flatMap((p) => p.records).find((r) => /^\d+[A-Z]?\s+[A-Z]/i.test(String(r.SITE_ADDR || '').trim()) && r.CITY);
     const r4 = row(`${rg.name}: search by address`);
     if (!rec) { r4.warn('no address on those lots to try'); continue; }
+    if (rg.slowSearch) { r4.ok('found by position: the layer’s own address search is too slow to ask'); continue; }
     const addr = String(rec.SITE_ADDR).trim().toUpperCase().replace(/\s+/g, ' ');
     try {
       // Massachusetts searches its records on the state's own server (indexed by town); the others search the layer itself

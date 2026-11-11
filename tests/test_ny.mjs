@@ -138,6 +138,8 @@ await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(300)
 check(await page.$$eval('#samples button', (els) => els.some((e) => /Park Slope/.test(e.textContent))), 'Park Slope sample spot');
 await page.evaluate(() => { document.querySelector('#q').value = '33 Paulding St, White Plains, NY'; document.querySelector('#search').requestSubmit(); }); await sleep(1500);
 check(!asked.where.length, 'the slow address search isn’t asked (the address is found by its position): ' + asked.where.join(' | '));
+const forms = await page.evaluate(() => ['457 1ST ST', '169 W 85TH ST', '31-14 31ST AVE'].map((a) => window.__hp.REGIONS.NY.searchForms(a)));
+check(forms[0].includes('457 1 ST') && forms[1].includes('169 WEST 85 ST') && forms[2].includes('31-14 31 AVE'), 'New York City’s way of writing addresses: ' + JSON.stringify(forms));
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASSED');
 await browser.close(); srv.close();
