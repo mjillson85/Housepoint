@@ -6552,11 +6552,13 @@ async function runHealth() {
     if (!lots.length) { r3.bad(`answered, but with no lots (${secs(ms)})`); continue; }
     HEALTH_LOT[id] = lots.find((p) => p.built) || lots[0];
     const recs = lots.flatMap((p) => p.records), withAddr = recs.filter((r) => String(r.SITE_ADDR || '').trim()).length;
-    if (withAddr < recs.length / 2) r3.warn(`${lots.length} lots, but only ${withAddr} of ${recs.length} records have an address: the address may have moved to another field (${secs(ms)})`);
+    if (rg.addrByPosition && withAddr < recs.length / 2) r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots; the records don’t list street addresses, so the card finds the nearest one on the map (${secs(ms)})`);
+    else if (withAddr < recs.length / 2) r3.warn(`${lots.length} lots, but only ${withAddr} of ${recs.length} records have an address: the address may have moved to another field (${secs(ms)})`);
     else r3[ms > 8000 ? 'warn' : 'ok'](`${lots.length} lots, ${withAddr} of ${recs.length} records with an address (${secs(ms)})`);
     // An address from those lots, searched for by address the way a typed search starts
     const rec = lots.flatMap((p) => p.records).find((r) => /^\d+[A-Z]?\s+[A-Z]/i.test(String(r.SITE_ADDR || '').trim()) && r.CITY);
     const r4 = row(`${rg.name}: search by address`);
+    if (!rec && rg.addrByPosition) { r4.ok('found by position: the records don’t list street addresses'); continue; }
     if (!rec) { r4.warn('no address on those lots to try'); continue; }
     if (rg.slowSearch) { r4.ok('found by position: the layer’s own address search is too slow to ask'); continue; }
     const addr = String(rec.SITE_ADDR).trim().toUpperCase().replace(/\s+/g, ' ');
