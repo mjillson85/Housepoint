@@ -39,6 +39,12 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/md-speed.mjs
+      - name: DC's condo units
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/dc-condos.mjs
       - name: The newest state against its real service
         working-directory: tests
         continue-on-error: true
