@@ -12,6 +12,7 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '')
 const html = fs.readFileSync(`${ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8799);
 const log = (...a) => console.log(...a);
+const js = (v, n) => (JSON.stringify(v ?? null) || '').slice(0, n);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.goto('http://localhost:8799/');
@@ -20,8 +21,6 @@ await page.goto('http://localhost:8799/');
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
 const STATES = {
-  CO: { layer: 'https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', want: 'auto',
-    spots: [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [38.8600, -104.8200, 'Colorado Springs'], [39.7420, -104.9880, 'Denver condos']] },
   AR: { layer: 'https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Planning_Cadastre/FeatureServer/6', want: 'auto',
     spots: [[34.7600, -92.3100, 'Little Rock Hillcrest'], [36.0700, -94.1600, 'Fayetteville'], [34.5000, -93.0550, 'Hot Springs']] },
   VT: { layer: 'https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services/FS_VCGI_OPENDATA_Cadastral_VTPARCELS_poly_standardized_parcels_SP_v1/FeatureServer/0', want: 'auto',
@@ -36,6 +35,8 @@ const STATES = {
     spots: [[40.7500, -111.8700, 'Salt Lake City Sugar House'], [40.6200, -111.8500, 'Cottonwood Heights']] },
   IL: { layer: 'https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer/44', want: 'auto',
     spots: [[41.9200, -87.6500, 'Chicago Lincoln Park'], [42.0450, -87.6900, 'Evanston'], [41.8850, -87.7850, 'Oak Park']] },
+  CO: { layer: 'https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0', want: 'auto',
+    spots: [[39.7000, -104.9700, 'Denver Washington Park'], [40.5730, -105.0790, 'Fort Collins'], [38.8600, -104.8200, 'Colorado Springs'], [39.7420, -104.9880, 'Denver condos']] },
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid/i;
@@ -95,7 +96,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
         outStatistics: JSON.stringify([{ statisticType: 'count', onStatisticField: oidF, outStatisticFieldName: 'n' }]) };
       if (!(cfg.codes || []).some((f) => have.has(f))) continue;
       const codes = await get(cfg.layer + '/query', 30000, new URLSearchParams(env).toString());
-      spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || JSON.stringify(codes.j && codes.j.error).slice(0, 200));
+      spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || js(codes.j && codes.j.error, 200));
     }
     return res;
   }, cfg, BAD.source, AUTO_SKIP.source);
@@ -104,12 +105,12 @@ for (const [st, cfg] of Object.entries(STATES)) {
   log(`max ${out.max}  sr ${JSON.stringify(out.sr)}`);
   log('fields:', out.fields.join('  '));
   log('asked:', out.asked);
-  log('by county:', JSON.stringify(out.byCounty || null).slice(0, 4000));
-  for (const [k, v] of Object.entries(out.groups)) log(`group ${k}:`, JSON.stringify(v).slice(0, 6000));
+  log('by county:', js(out.byCounty || null, 4000));
+  for (const [k, v] of Object.entries(out.groups)) log(`group ${k}:`, js(v, 6000));
   for (const s of out.spots) {
     log(`-- ${s.name}: ${s.err || `${s.n} records in ${s.ms} ms`}`);
-    for (const r of s.recs || []) log('   ', JSON.stringify(r).slice(0, 700));
-    log('   codes within ~1.5 km:', JSON.stringify(s.codes).slice(0, 2500));
+    for (const r of s.recs || []) log('   ', js(r, 700));
+    log('   codes within ~1.5 km:', js(s.codes, 2500));
   }
 }
 await browser.close(); srv.close();
