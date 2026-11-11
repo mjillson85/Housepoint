@@ -14,10 +14,10 @@ const fails = []; let passes = 0;
 const check = (ok, msg) => { if (ok) passes++; else { console.log('FAIL ' + msg); fails.push(msg); } };
 
 const FIX = `${HP_ROOT}/tests/fixtures`;
-const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}\.json$/.test(f)) : [];
+const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}(_[A-Z]+)?\.json$/.test(f)) : [];   // a state (real-NC.json) or a county's region (real-TX_HARRIS.json)
 const sets = files.map((f) => JSON.parse(fs.readFileSync(`${FIX}/${f}`, 'utf8')));
 if (!sets.length) { console.log('no fixtures yet: ALL PASSED'); process.exit(0); }
-const SITE_OK = new Set(['CityStateZip']);     // Montana's: the property's own city, state and zip
+const SITE_OK = new Set(['CityStateZip', 'OwnDate']);     // Montana's: the property's own city, state and zip; Nashville's: the last sale's date
 const OWNERISH = /(^|_)OWN(?!ERSHIP(_TYPE)?$)|OWNER(?!SHIP(_TYPE)?$)|MAIL|PSTL|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i;     // Nebraska's Ownership_Type and Minnesota's ownership are Private, Exempt, State…
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
@@ -41,14 +41,16 @@ page.on('request', (req) => {
     if (path === '' && /f=json/.test(u)) return json(/\/(FeatureServer|MapServer)$/i.test(base) ? { layers: [{ id, geometryType: 'esriGeometryPolygon' }] } : meta);
     if (/^\/\d+$/.test(path)) return json(meta);
     if (/\/query$/.test(path)) {
-      if (current === 'health') return json({ features: set.lots.find((l) => !l.named && l.features.length === 1 && /^\d/.test(String(Object.values(l.features[0].attributes).find((v) => typeof v === 'string' && /^\d+\s+[A-Z]/i.test(v)) || ''))) ? set.lots.filter((l) => !l.named).slice(0, 25).flatMap((l) => l.features) : [] });
+      if (current === 'health') return json({ features: set.lots.find((l) => !l.named && l.features.length === 1 && /^\d/.test(String(Object.values(l.features[0].attributes).find((v) => typeof v === 'string' && /^\d+\s+[A-Z]/i.test(v)) || ''))) || set.noAddress || set.state.includes('_') ? set.lots.filter((l) => !l.named).slice(0, 25).flatMap((l) => l.features) : [] });   // county regions' fixtures are small: any plain lot
       return json({ features: current && current.set === set ? current.lot.features : [] });
     }
   }
   return req.abort();            // imagery, flood maps, building outlines, schools…: not needed for the card's own facts
 });
 await page.goto(ORIGIN + '/');
+const REGION_NAMES = await page.evaluate(() => Object.fromEntries(Object.values(window.__hp.REGIONS).map((r) => [r.id, r.name])));
 svcUrls = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hp.REGIONS).map(([k, v]) => [k, [...(v.services || []), ...(v.layersFor ? v.layersFor(0, 0, 1e9) : [])].map((x) => String(x).replace(/\/+$/, ''))])));
+for (const set of sets) set.noAddress = await page.evaluate((id) => !!(window.__hp.REGIONS[id] && window.__hp.REGIONS[id].addrByPosition), set.state);
 await page.click('#goMap'); await sleep(300);
 
 // Clearly not a home, read straight from the use codes (independent of the app's own reading)
@@ -167,8 +169,8 @@ for (let i = 0; i < 120 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.te
 const health = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
 console.log('health:', health.join('\n        '));
 for (const st of sets.map((x) => x.state)) {
-  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland', NY: 'New York', VT: 'Vermont', MT: 'Montana', AR: 'Arkansas', IL: 'Cook County, Illinois', CO: 'Colorado', WY: 'Wyoming', UT: 'Utah', AK: 'Alaska' }[st];
-  const mine = health.filter((h) => h.includes(`${name}:`));
+  const name = REGION_NAMES[st] && !/^(DC|IL)$/.test(st) ? REGION_NAMES[st] : { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland', NY: 'New York', VT: 'Vermont', MT: 'Montana', AR: 'Arkansas', IL: 'Cook County, Illinois', CO: 'Colorado', WY: 'Wyoming', UT: 'Utah', AK: 'Alaska' }[st];
+  const mine = health.filter((h) => h.split('|')[1].startsWith(`${name}:`));      // "Virginia:", not "West Virginia:"
   check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^(ok|warn)\|.* \d+ lots/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
 }
 check(health.some((h) => /^bad\|Census address lookup.*Not answering/.test(h)), 'health: a service that doesn’t answer is shown as not answering');

@@ -74,7 +74,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
   }
 }
 await page.goto('http://localhost:8800/?health=1');
-for (let i = 0; i < 160 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
+for (let i = 0; i < 600 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
 log('== health rows'); for (const h of rows) if (/Texas|California|Ohio|Tennessee|North Dakota|Oregon|Idaho|Michigan|Kansas|Georgia|Arizona|Maine|Indiana|New Hampshire|West Virginia|Nevada|Hawaii|Delaware|Virginia/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();

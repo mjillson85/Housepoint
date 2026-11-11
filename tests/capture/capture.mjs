@@ -128,7 +128,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership|CityStateZip)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership|CityStateZip|OwnDate)$/i;   // Minnesota's ownership is Private; Nashville's OwnDate is the last sale's date, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)

@@ -3196,8 +3196,8 @@ const REGIONS = {
     fields: { PROP_ID: ['ACCOUNT'], SITE_ADDR: ['SITUS_ADDR'], CITY: ['CITY'], ZIP: ['ZIPCODE'], YEAR_BUILT: ['YEAR_BUILT'], RES_AREA: ['LIVING_ARE'],
       BEDS: ['BEDROOMS'], BATHS: ['BATHROOMS'], LAND_VAL: ['LAND_VALUE'], BLDG_VAL: ['IMPR_VALUE'], TOTAL_VAL: ['TOTAL_VALU'], ASSESSED: ['APPRAISEDV'], FY: ['APPRAISAL_'] },
     // No property type on the records: a record with bedrooms or living space is a home
-    kindOf: (r) => (num(r.BEDS) > 0 ? byUnits(r, 1) : 'unknown'),
-    labelOf: (r) => (num(r.BEDS) > 0 ? KIND_LABEL[byUnits(r, 1)] : null),
+    kindOf: (r) => (num(r.BEDS) > 0 || (num(r.RES_AREA) >= 300 && num(r.RES_AREA) <= 6000) ? byUnits(r, 1) : 'unknown'),
+    labelOf: (r) => { const k = REGIONS.TX_TARRANT.kindOf(r); return k === 'single' ? 'Residential' : KIND_LABEL[k] || null; },
     valueLabel: 'Market value (TAD)', valueWord: 'Market value', valueTitle: 'Market value',
     source: (fy) => `Source: the Tarrant Appraisal District’s parcels${fy ? `, ${fy} tax year` : ''}. Market value is the district’s appraisal for taxes. Texas doesn’t make sale prices public.`,
     shareSource: 'Tarrant Appraisal District records',
@@ -3243,9 +3243,9 @@ const REGIONS = {
     fields: { PROP_ID: ['PARCELID'], SITE_ADDR: ['SITEADDRESS'], ZIP: ['ZIPCD'], TOWN: ['CVTTXDSCRP'], USE_CODE: ['CLASSCD'], USE_DESC: ['CLASSDSCRP'],
       SALE_DATE: ['SALEDATE'], LS_PRICE: ['SALEPRICE'], RES_AREA: ['RESFLRAREA'], BLD_AREA: ['BLDGAREA'], YEAR_BUILT: ['RESYRBLT'], BEDS: ['BEDRMS'], BATHS: ['BATHS'],
       HALF_BATHS: ['HBATHS'], TOTAL_VAL: ['TOTVALUEBASE'], LAND_VAL: ['LNDVALUEBASE'], BLDG_VAL: ['BLDVALUEBASE'] },
-    // The taxing district names the town: "COLUMBUS CITY", "UPPER ARLINGTON CITY", "CLINTON TWP"
-    derive: (o) => { o.CITY = t2clean(o.TOWN).replace(/\s+(CITY|VILLAGE|TWP|TOWNSHIP)(\b.*)?$/i, '') || null; delete o.TOWN; },
-    townFields: ['TOWN'],
+    // The taxing district names the town: "CITY OF COLUMBUS", "UPPER ARLINGTON CITY", "VILLAGE OF OBETZ", "CLINTON TWP"
+    derive: (o) => { o.CITY = t2clean(o.TOWN).replace(/^(CITY|VILLAGE) OF\s+/i, '').replace(/\s+(CITY|VILLAGE)$/i, '').replace(/\s+TWP$/i, ' TOWNSHIP').replace(/\s*-.*$/, '') || null; delete o.TOWN; },
+    townFields: ['TOWN'], townLike: { TOWN: '%' },
     noSales: false, kindOf: (r) => ohKind(r), labelOf: (r) => ohLabel(r),
     valueLabel: 'Auditor’s value', valueWord: 'Auditor’s value', valueTitle: 'Auditor’s value',
     source: () => 'Source: the Franklin County Auditor’s parcels. The auditor’s value is the county’s market value for taxes.',
@@ -3316,7 +3316,7 @@ const REGIONS = {
       if (/^(SFR|MFR|RUR)$/i.test(t2clean(o.USE_CODE)) && num(o.BLD_AREA) > 0) o.RES_AREA = o.BLD_AREA; },
     noSales: false,
     kindOf: (r) => { const u = t2clean(r.USE_CODE).toUpperCase(), sc = t2clean(r.STATE_CLASS);
-      if (u === 'SFR') return byUnits(r, 1); if (u === 'MFR') return /^7/.test(sc) ? 'apartments' : 'multi'; if (u === 'RUR') return num(r.BLDG_VAL) > 0 ? 'single' : 'vacant';
+      if (u === 'SFR') return byUnits(r, 1); if (u === 'MFR') return /^7/.test(sc) ? 'apartments' : hasUnitNo(String(r.SITE_ADDR || '')) ? 'resCondo' : 'multi'; if (u === 'RUR') return num(r.BLDG_VAL) > 0 ? 'single' : 'vacant';
       return { VAC: 'vacant', COM: 'commercial', IND: 'industrial', AGR: 'farmForest', FOR: 'farmForest', PUB: 'exempt' }[u] || 'unknown'; },
     labelOf: (r) => { const k = REGIONS.OR_METRO.kindOf(r); return t2clean(r.USE_CODE).toUpperCase() === 'RUR' && k === 'single' ? 'Rural home' : KIND_LABEL[k] || null; },
     valueLabel: 'Real market value', valueWord: 'Market value', valueTitle: 'Real market value',
@@ -4596,7 +4596,7 @@ function summarize(p) {
     isHome: lot.condo ? lot.building !== 'comCondo' : park || commonOnly || HOME_KINDS.has(kind),
     residential: lot.condo ? lot.building !== 'comCondo' : park || commonOnly || RESIDENTIAL_KINDS.has(kind),
     houseLike: !lot.condo && !park && !commonOnly && HOUSE_KINDS.has(kind),
-    typeLabel: park ? 'Mobile home park' : lot.condo ? BUILDING_LABEL[lot.building] : kind === 'comCondo' ? 'Commercial condo' : use || KIND_LABEL[kind] || (region.noValues ? null : 'Use not listed'),   // a lot-lines state: nothing to say
+    typeLabel: park ? 'Mobile home park' : lot.condo ? BUILDING_LABEL[lot.building] : kind === 'comCondo' ? 'Commercial condo' : use || KIND_LABEL[kind] || (region.noValues ? (town ? null : (r0.COUNTY ? titleCase(String(r0.COUNTY)) : 'Parcel')) : 'Use not listed'),   // a lot-lines state: the town, or the county
     approxYear: !year && eff.length ? Math.max(...eff) : null,
     updated: eff.length && year && Math.max(...eff) - year >= 10 ? Math.max(...eff) : null,
     multiSale: unitRecs.some((r) => r.MULTI_SALE != null && !/^\s*(N|0|)\s*$/i.test(String(r.MULTI_SALE))),
