@@ -137,7 +137,7 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 const wantR = { burlington: 'VT', brattleboro: 'VT', whitehall: 'NY', plattsburgh: 'NY', williamstown: 'MA', hanover: 'NH', billings: 'MT', gardiner: 'MT', sheridan: 'WY', jackson: 'WY',
   pineBluffs: 'WY', kimball: 'NE', julesburg: 'CO', denver: 'CO', dinosaur: 'CO', vernal: 'UT', wendover: 'UT', westWendover: 'NV', littleRock: 'AR', texarkanaAR: 'AR',
-  memphis: null, chicago: 'IL', naperville: null, hammond: 'IN', anchorage: 'AK', juneau: 'AK', hyder: 'AK', stewart: null, whitehorse: null };
+  memphis: 'US_TN', chicago: 'IL', naperville: 'US_IL', hammond: 'IN', anchorage: 'AK', juneau: 'AK', hyder: 'AK', stewart: null, whitehorse: null };
 const badR = Object.entries(wantR).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
 check(!badR.length, 'places land in the right state, along the shared state lines too' + (badR.length ? ': ' + badR.join(', ') : ''));
 const decl = await page.evaluate(() => [[44.48, -73.21, 'VT'], [45.78, -108.5, 'MT'], [34.75, -92.29, 'AR'], [41.88, -87.63, 'IL'], [39.74, -104.99, 'CO'], [41.14, -104.82, 'WY'],

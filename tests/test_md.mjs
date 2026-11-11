@@ -101,7 +101,7 @@ check(['annapolis', 'baltimore', 'bethesda', 'silverSpring', 'oceanCity', 'cumbe
   'Maryland places land in Maryland, along the Delaware line and the North Branch too');
 check(rg.dc === 'DC', 'DC stays DC');
 // Virginia, West Virginia and Delaware are regions of their own now (lot lines); Pennsylvania isn't covered
-const outMD = { harpersFerry: 'WV', shepherdstown: 'WV', leesburg: 'VA', arlington: 'VA', wilmington: 'DE', newark: 'DE', york: null, chincoteague: 'VA', martinsburg: 'WV',
+const outMD = { harpersFerry: 'WV', shepherdstown: 'WV', leesburg: 'VA', arlington: 'VA', wilmington: 'DE', newark: 'DE', york: 'US_PA', chincoteague: 'VA', martinsburg: 'WV',
   delmarDE: 'DE', seaford: 'DE', dover: 'DE', keyser: 'WV' };
 const badOut = Object.entries(outMD).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
 check(!badOut.length, 'Virginia, West Virginia, Delaware and Pennsylvania places stay out of Maryland' + (badOut.length ? ': ' + badOut.join(', ') : ''));

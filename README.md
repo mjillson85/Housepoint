@@ -5,6 +5,7 @@ Point your phone at a house and see its story: when it was built, what it last s
 - **Property records and lot lines:** Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska and Maine.
 - **Big counties and cities:** Cook County (Chicago); Harris (Houston) and Tarrant (Fort Worth), Texas; Alameda and San Bernardino, California; Franklin (Columbus) and Hamilton (Cincinnati), Ohio; Nashville; Bismarck; the Portland area (Multnomah, Washington and Clackamas); Ada County (Boise); Oakland and Macomb, Michigan; Sedgwick County (Wichita); Atlanta; Maricopa County (Phoenix).
 - **Lot lines and addresses only** (values are on the county's or town's site, linked where the state's map has the link): Indiana, New Hampshire, West Virginia, Nevada, Hawaii, Delaware and Virginia.
+- **Everywhere else in the US, the basic card:** the building's use, footprint and height from the national building outlines (USA Structures), the nearest address on OpenStreetMap, flood zone, schools, neighborhood, safety, nearby places and a search for the county's own record.
 
 **Live:** https://mjillson85.github.io/Housepoint/
 
@@ -38,6 +39,8 @@ Point your phone at a house and see its story: when it was built, what it last s
   - Nashville (Metro assessor), Bismarck (city assessor), the Portland area (Metro's tax lots with the three county assessors' real market value), Ada County, Idaho, Sedgwick County, Kansas (Wichita's layer), Atlanta (the city's tax parcels) and Maricopa County, Arizona (full cash value, last sale, a link to the assessor's page).
   - Oakland and Macomb counties, Michigan: Michigan assesses at half of market value, so the value shown is twice the assessed value; Macomb links each lot to its community's BS&A page.
 - Indiana, New Hampshire, West Virginia, Nevada, Hawaii, Delaware and Virginia: the state's lot lines (and in Indiana, New Hampshire and West Virginia the address; Indiana adds the DLGF property class). The card says values are on the county's or town's site; Nevada and Hawaii link each lot to it. Nevada, Hawaii, Delaware and Virginia have no street addresses (nearest one from OpenStreetMap).
+- The basic card: each building in the national outlines (FEMA and ORNL's USA Structures) is a "lot" of its own, with what the outlines say (residential or commercial and the kind, footprint, height, sometimes the address); the nearest address, town and county come from Geoapify (OpenStreetMap) by position. A region per state ("US_SC") is made when first needed; the state comes from the Census Bureau's cartographic state lines. A covered state's county that shares no records (in Minnesota, say) gets the basic card too.
+- The compass correction is the World Magnetic Model (WMM2025) itself wherever no region has its own fit.
 - Region outlines are the Census Bureau's state, county and city lines, about 400 m outside and cut back where a covered neighbour begins; near a line both sides' lots load.
 - No tax estimate yet in the Tier 2 states or the newer regions (Hamilton County shows its actual tax).
 - Owner names are never requested or shown, in any state. No accounts, ads or tracking; fonts are served from this site. See [privacy.html](privacy.html).

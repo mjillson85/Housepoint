@@ -128,7 +128,7 @@ async function newPage(url) {
       if (/100 Warren St, Roxbury, MA$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '100 WARREN ST, ROXBURY, MA, 02119', coordinates: { x: -71.0832, y: 42.3266 } }] } });
       if (/12 Oak St/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '12 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: ll(-30, 3).lon, y: ll(-30, 3).lat } }] } });   // in front of 12 ELM ST
       if (/44 Oak St, Clifton, NJ$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '44 OAK ST, CLIFTON, NJ, 07011', coordinates: { x: -74.1576, y: 40.863 } }] } });
-      if (/Broad/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '500 BROAD ST, AUGUSTA, GA, 30901', coordinates: { x: -81.965, y: 33.475 } }] } });
+      if (/Loiza/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '500 CALLE LOIZA, SAN JUAN, PR, 00911', coordinates: { x: -66.0489, y: 18.4489 } }] } });
       return script(cb, { result: { addressMatches: [] } });
     }
     // TIGERweb
@@ -283,10 +283,10 @@ check(/^Showing Elm St, Holbrook\. Tap a house, or add a house number\.$/.test(r
 
 // 5. Outside the covered states
 reset();
-r = await search(page, '100 Main St, Columbia, SC');
-check(/^South Carolina is outside Housepoint’s area\. It covers 26 states, DC and big counties in 12 more \(listed in About\) for now\.$/.test(r.help), 'typed state outside coverage: said plainly, with what’s covered');
+r = await search(page, '100 Calle Fortaleza, San Juan, PR');
+check(/^Puerto Rico is outside Housepoint’s area\. It covers the 50 states and DC for now\.$/.test(r.help), 'typed state outside coverage: said plainly, with what’s covered');
 check(!seen.census.length && !seen.where.length && !seen.tiger.length, 'typed state outside coverage: nothing sent anywhere');
-r = await search(page, '500 Broad St, Augusta');
+r = await search(page, '500 Calle Loiza, San Juan');
 check(/^That place is outside Housepoint’s area/.test(r.help), 'geocoded point outside coverage: said plainly');
 
 // 6. Nothing found
@@ -495,8 +495,8 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
   check(st.mode === 'map' && !st.start && st.open && /^12 Elm St$/i.test(st.card), 'opening the link: straight to that house’s card on the map ' + JSON.stringify(st));
   st = await open(u.search.replace(/&k=.*$/, '&k=REDRAWN'));
   check(st.open && /^12 Elm St$/i.test(st.card), 'a link whose record key changed still opens the house by its location');
-  st = await open('?h=39.047300,-95.675200');      // Topeka
-  check(st.start && st.mode !== 'map', 'a link outside the covered states: the start screen, as usual');
+  st = await open('?h=43.653200,-79.383200');      // Toronto
+  check(st.start && st.mode !== 'map', 'a link outside the US: the start screen, as usual');
   st = await open('?h=12,abc&k=x');
   check(st.start && !st.errors.length, 'a mangled link: the start screen, no errors');
   await sp.close();

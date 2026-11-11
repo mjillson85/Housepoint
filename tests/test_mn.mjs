@@ -106,7 +106,7 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(['minneapolis', 'stPaul', 'duluth', 'rochester', 'stCloud', 'moorhead', 'grandMarais', 'intlFalls', 'stillwater', 'redWing', 'winona', 'worthington', 'angle', 'ely', 'grandRapids']
   .every((k) => rg[k] === 'MN'), 'Minnesota places land in Minnesota');
-check(['fargo', 'grandForks', 'siouxFalls', 'masonCity', 'thunderBay', 'winnipeg'].every((k) => rg[k] === null), 'North Dakota, South Dakota, Iowa and Canada stay out');
+check(rg.fargo === 'US_ND' && rg.grandForks === 'US_ND' && rg.siouxFalls === 'US_SD' && rg.masonCity === 'US_IA' && rg.thunderBay === null && rg.winnipeg === null, 'North Dakota, South Dakota and Iowa stay out (their own basic card); Canada is nowhere');
 check(rg.superior === 'WI' && rg.hudson === 'WI' && rg.laCrosse === 'WI' && rg.madison === 'WI' && rg.omaha === 'NE', 'Wisconsin keeps Superior, Hudson and La Crosse');
 const decl = await page.evaluate(() => [[44.98, -93.27], [46.87, -96.77], [47.96, -89.68]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 0.3) < 0.6 && Math.abs(decl[1] - 2.4) < 0.6 && Math.abs(decl[2] + 3.4) < 0.8, 'compass declination: Minneapolis, Moorhead, Grand Portage ' + decl.join(', '));

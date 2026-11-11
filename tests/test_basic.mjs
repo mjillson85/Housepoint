@@ -1,0 +1,112 @@
+// The basic card: anywhere in the US without state or county records in Housepoint. The state from its outline, the compass from
+// the World Magnetic Model, the national building outlines (faked here with their real field names) as the lots, the card for a
+// building (its use, footprint and height, the nearest address and its town from OpenStreetMap, a search for the county's own record),
+// and address search that lands there instead of saying "outside".
+import puppeteer from 'puppeteer-core';
+import http from 'http';
+import fs from 'fs';
+import { fileURLToPath } from 'node:url';
+const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+const html = fs.readFileSync(`${HP_ROOT}/index.html`);
+const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8787);
+const ORIGIN = 'http://localhost:8787';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
+const ring = (x0, y0, x1, y1, b) => { const kx = Math.cos(b[1] * Math.PI / 180) * 111320, ky = 110540;
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => [b[0] + x / kx, b[1] + y / ky]); };
+
+const ITEM = 'https://www.arcgis.com/sharing/rest/content/items/0ec8512ad21e4bb987d7e848d14e7e24';
+const LAYER = 'https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/USA_Structures_View/FeatureServer/0';
+const FIELDS = ['OBJECTID', 'BUILD_ID', 'OCC_CLS', 'PRIM_OCC', 'SEC_OCC', 'PROP_ADDR', 'PROP_CITY', 'PROP_ST', 'PROP_ZIP', 'PROP_CNTY', 'OUTBLDG', 'HEIGHT', 'SQMETERS',
+  'SQFEET', 'H_ADJ_ELEV', 'L_ADJ_ELEV', 'FIPS', 'CENSUSCODE', 'PROD_DATE', 'SOURCE', 'USNG', 'LONGITUDE', 'LATITUDE', 'UUID', 'POP_MEDIAN', 'STATE_FIPS'];
+const COLUMBIA = [33.9980, -81.0300];
+// Buildings around the spot (offsets in meters): a house (no address on the outline), a house with one, a shed, apartments
+const BLDGS = [[[15, -8, 30, 8], { BUILD_ID: 101, OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', PROP_CNTY: 'Richland', OUTBLDG: 'N', HEIGHT: 7.2, SQFEET: 1650 }],
+  [[-35, -8, -18, 8], { BUILD_ID: 102, OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', PROP_ADDR: '1712 PICKENS ST', PROP_CITY: 'COLUMBIA', PROP_ZIP: '29201',
+    PROP_CNTY: 'Richland', HEIGHT: 8.1, SQFEET: 2100 }],
+  [[40, 15, 43, 18], { BUILD_ID: 103, OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', OUTBLDG: 'Y', SQFEET: 100 }],
+  [[-10, 30, 25, 60], { BUILD_ID: 104, OCC_CLS: 'Residential', PRIM_OCC: 'Multi - Family Dwelling', PROP_CNTY: 'Richland', HEIGHT: 12.5, SQFEET: 11200 }]];
+
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+const seen = { layer: [], reverse: [], census: [], agol: [] };
+await page.setRequestInterception(true);
+page.on('request', (req) => {
+  const u = req.url();
+  const json = (o) => req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) });
+  if (u.startsWith(ORIGIN)) return req.continue();
+  if (u.startsWith(ITEM)) return json({ title: 'USA Structures', url: LAYER });
+  if (u.startsWith('https://www.arcgis.com/sharing/rest/search')) { seen.agol.push(u); return json({ results: [] }); }
+  if (u.startsWith(LAYER + '?f=json')) return json({ geometryType: 'esriGeometryPolygon', maxRecordCount: 2000, fields: FIELDS.map((name) => ({ name })) });
+  if (u.startsWith(LAYER + '/query')) {
+    const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]); seen.layer.push(q.get('outFields') || '');
+    const g = (q.get('geometry') || '').split(',').map(Number);
+    return json({ features: BLDGS.map(([box, a], i) => ({ geometry: { rings: [ring(...box, [g[0], g[1]])] }, attributes: { OBJECTID: i + 1, ...a } })) });
+  }
+  if (u.startsWith('https://api.geoapify.com/v1/geocode/reverse')) { seen.reverse.push(u); const q = new URL(u).searchParams;
+    return json({ results: [{ housenumber: '1720', street: 'Pickens Street', distance: 9, lat: +q.get('lat'), lon: +q.get('lon'), city: 'Columbia', county: 'Richland County', state_code: 'SC' }] }); }
+  if (u.startsWith('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress')) {
+    const q = new URL(u).searchParams, cb = q.get('callback'); seen.census.push(q.get('address'));
+    const body = /Pickens/i.test(q.get('address') || '') ? { result: { addressMatches: [{ matchedAddress: '1712 PICKENS ST, COLUMBIA, SC, 29201', coordinates: { x: COLUMBIA[1] - 0.0003, y: COLUMBIA[0] } }] } } : { result: { addressMatches: [] } };
+    return req.respond({ status: 200, contentType: 'application/javascript', headers: { 'access-control-allow-origin': '*' }, body: `${cb}(${JSON.stringify(body)})` });
+  }
+  return req.abort();
+});
+await page.goto(ORIGIN + '/');
+await page.click('#goMap'); await sleep(300);
+
+// Which region: the covered ones as before; elsewhere in the US the basic one for its state; nothing outside the US
+const rg = await page.evaluate(() => {
+  const f = (la, lo) => { const r = window.__hp.regionFor(la, lo); return r ? r.id : null; };
+  return { columbia: f(33.998, -81.03), philly: f(39.952, -75.18), albuquerque: f(35.09, -106.63), austin: f(30.27, -97.74), houston: f(29.76, -95.37),
+    losAngeles: f(34.06, -118.3), cleveland: f(41.49, -81.69), boston: f(42.36, -71.06), charlotte: f(35.227, -80.843), toronto: f(43.65, -79.38), mexicali: f(32.62, -115.45),
+    gulf: f(28.5, -90.0), keyWest: f(24.555, -81.78), valdosta: f(30.83, -83.28), orangeBeach: f(30.28, -87.6), bellevueNE: f(41.137, -95.8908), lambertvilleNJ: f(40.3657, -74.9429), newOrleans: f(29.95, -90.07), providence: f(41.82, -71.41), siouxFalls: f(43.545, -96.73), memphis: f(35.1495, -90.049) };
+});
+console.log('regions:', JSON.stringify(rg));
+const want = { columbia: 'US_SC', philly: 'US_PA', albuquerque: 'US_NM', austin: 'US_TX', houston: 'TX_HARRIS', losAngeles: 'US_CA', cleveland: 'US_OH', boston: 'MA',
+  charlotte: 'NC', toronto: null, mexicali: null, gulf: null, keyWest: 'FL', valdosta: 'US_GA', orangeBeach: 'US_AL', bellevueNE: 'NE', lambertvilleNJ: 'NJ', newOrleans: 'US_LA', providence: 'US_RI', siouxFalls: 'US_SD', memphis: 'US_TN' };
+const bad = Object.entries(want).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
+check(!bad.length, 'places land in their state’s basic region, covered places in theirs, other countries in none' + (bad.length ? ': ' + bad.join(', ') : ''));
+
+// Compass: the World Magnetic Model where no region has its own fit
+const decl = await page.evaluate(() => [[33.998, -81.03], [39.952, -75.18], [35.09, -106.63], [30.27, -97.74], [47.6, -122.3]].map(([a, o]) => +window.__hp.declinationAt({ lat: a, lon: o }).toFixed(1)));
+check([-7.8, -11.8, 7.8, 3.1, 14.9].every((w, i) => Math.abs(decl[i] - w) < 0.4), `compass correction from the World Magnetic Model: ${decl.join(', ')}`);
+
+// The lots are the buildings (no shed, no outbuilding), and the card for each
+const card = async (pickId) => page.evaluate(async (pickId) => {
+  const hp = window.__hp, S = hp.S;
+  await hp.centerMap(33.998, -81.03);
+  const L = S.local.find((l) => l.p.records.some((r) => String(r.PROP_ID) === pickId));
+  if (!L) return { err: 'no lot', lots: S.local.map((l) => l.p.records[0].PROP_ID) };
+  hp.selectLot(L); await new Promise((r) => setTimeout(r, 600));
+  const a = document.querySelector('#cardBody .rec-link');
+  return { lots: S.local.length, ids: S.local.map((l) => l.p.records[0].PROP_ID).sort(), card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | '), link: a ? a.href : null };
+}, pickId);
+const h1 = await card('101');
+console.log('house:', JSON.stringify(h1).slice(0, 900));
+check(h1.lots === 3 && JSON.stringify(h1.ids.map(String)) === '["101","102","104"]', `the buildings are the lots, without the shed and the outbuilding: ${JSON.stringify(h1.ids)}`);
+check(/South Carolina/.test(h1.card) && /1720 Pickens Street/.test(h1.card) && /Columbia · House/.test(h1.card), 'house: state, the nearest address and its town from the map, “House”');
+check(/PROPERTY RECORD \| Not in Housepoint yet/i.test(h1.card) && /doesn’t have South Carolina’s property records yet/.test(h1.card), 'house: says there’s no property record here yet');
+check(/FOOTPRINT \| 1,650 ft²/i.test(h1.card) && /HEIGHT \| ≈ 24 ft/i.test(h1.card) && !/\bLOT\b \|/i.test(h1.card), 'house: footprint and height, not a lot size');
+check(/^https:\/\/www\.google\.com\/search\?q=Richland%20County%20South%20Carolina%20property%20assessor%20parcel%20search$/.test(h1.link || ''), `house: a search for the county’s record: ${h1.link}`);
+check(/Thinking of buying\?/.test(h1.card), 'house: the buyer’s box (schools, neighborhood, safety, nearby) is there');
+const h2 = await card('102');
+check(/1712 Pickens St \|/.test(h2.card) && /Columbia · House/.test(h2.card) && !/nearest one on OpenStreetMap/.test(h2.card), `an outline with its own address uses it: ${h2.card.slice(0, 200)}`);
+const ap = await card('104');
+check(/Multi-family building/.test(ap.card) && /FOOTPRINT \| 11,200 ft²/i.test(ap.card), 'apartments: “Multi-family building”, its footprint');
+check(seen.layer.length && seen.layer.every((f) => f === 'BUILD_ID,OCC_CLS,PRIM_OCC,PROP_ADDR,PROP_CITY,PROP_ZIP,PROP_CNTY,OUTBLDG,HEIGHT,SQFEET'), `the outlines are asked for building facts only: ${seen.layer[0]}`);
+
+// Search: a basic state isn't "outside"; the address lands on its building
+const sr = await page.evaluate(async () => { const x = await window.__hp.searchAddress('1712 Pickens St, Columbia, SC'); if (x && x.lot && x.lot.then) x.lot = await x.lot.catch(() => null); return x; });
+console.log('search:', JSON.stringify(sr).slice(0, 300));
+check(sr && sr.kind === 'address' && Math.abs(sr.lat - 33.998) < 0.001, 'search: a South Carolina address is found (not “outside”)');
+check(seen.census.some((a) => /Pickens St, Columbia, SC/.test(a)), 'search: asked the Census geocoder');
+check(!seen.agol.length, 'search: no parcel service is looked for in a basic state');
+const out = await page.evaluate(async () => window.__hp.searchAddress('10 Main St, Toronto, ON'));
+check(!out || out.kind !== 'lot', 'search: a place outside the US doesn’t land on a lot');
+check(!errors.length, 'no page errors: ' + errors.join(' | '));
+await browser.close(); srv.close();
+console.log(fails.length ? `\n${fails.length} failed` : '\nAll passed');
+process.exit(fails.length ? 1 : 0);

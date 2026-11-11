@@ -93,7 +93,7 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(['madison', 'milwaukee', 'greenBay', 'eauClaire', 'laCrosse', 'superior', 'wiPoint', 'hurley', 'prairie', 'kenosha', 'hudson', 'washIsland', 'fishCreek', 'bayfield'].every((k) => rg[k] === 'WI'),
   'Wisconsin places land in Wisconsin');
-check(['marquetteIA', 'dubuque', 'ironwood', 'escanaba', 'ludington'].every((k) => rg[k] === null) && rg.chicago === 'IL', 'Iowa and Michigan stay out; Chicago is Cook County');
+check(['marquetteIA', 'dubuque'].every((k) => rg[k] === 'US_IA') && ['ironwood', 'escanaba', 'ludington'].every((k) => rg[k] === 'US_MI') && rg.chicago === 'IL', 'Iowa and Michigan stay out (their own basic card); Chicago is Cook County');
 check(['minneapolis', 'duluth', 'parkPoint', 'stillwater', 'laCrescent'].every((k) => rg[k] === 'MN'), 'Minnesota’s side of the rivers is Minnesota');
 check(rg.boston === 'MA' && rg.raleigh === 'NC', 'other states unchanged');
 const decl = await page.evaluate(() => [[43.07, -89.40], [44.97, -92.75], [45.05, -87.2]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));

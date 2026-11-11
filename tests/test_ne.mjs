@@ -100,7 +100,7 @@ const rg = await page.evaluate(() => {
 console.log('regions:', JSON.stringify(rg));
 check(['omaha', 'dundee', 'lincoln', 'grandIsland', 'kearney', 'northPlatte', 'scottsbluff', 'valentine', 'chadron', 'southSioux', 'nebraskaCity', 'fallsCity']
   .every((k) => rg[k] === 'NE'), 'Nebraska places land in Nebraska');
-check(['councilBluffs', 'siouxCity', 'yankton', 'topeka', 'hamburg'].every((k) => rg[k] === null), 'Iowa, South Dakota and Kansas stay out');
+check(rg.councilBluffs === 'US_IA' && rg.siouxCity === 'US_IA' && rg.yankton === 'US_SD' && rg.topeka === 'US_KS' && rg.hamburg === 'US_IA', 'Iowa, South Dakota and Kansas stay out (their own basic card)');
 check(rg.denver === 'CO' && rg.julesburg === 'CO' && rg.cheyenne === 'WY', 'Colorado and Wyoming are their own states');
 check(rg.madison === 'WI' && rg.boston === 'MA', 'other states unchanged');
 const decl = await page.evaluate(() => [[41.26, -95.94], [41.87, -103.67]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));

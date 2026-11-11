@@ -202,15 +202,15 @@ const rg = await page.evaluate(() => {
   return Object.fromEntries(Object.entries(P).map(([k, [a, o]]) => [k, f(a, o)]));
 });
 console.log('regions:', JSON.stringify(rg));
-const wantR = { houston: 'TX_HARRIS', katy: 'TX_HARRIS', fortWorth: 'TX_TARRANT', dallas: null, austin: null, oakland: 'CA_ALAMEDA', sanFrancisco: null, redlands: 'CA_SBD',
-  needles: 'CA_SBD', laughlinNV: 'NV', columbus: 'OH_FRANKLIN', cincinnati: 'OH_HAMILTON', lawrenceburgIN: 'IN', covingtonKY: null, nashville: 'TN_DAVIDSON',
-  bismarck: 'ND_BISMARCK', mandan: null, portland: 'OR_METRO', vancouverWA: 'WA', beaverton: 'OR_METRO', boise: 'ID_ADA', royalOak: 'MI_OAKLAND', detroit: null,
-  mountClemens: 'MI_MACOMB', wichita: 'KS_SEDGWICK', atlanta: 'GA_ATLANTA', decatur: null, phoenix: 'AZ_MARICOPA', tucson: null, indianapolis: 'IN', concord: 'NH',
+const wantR = { houston: 'TX_HARRIS', katy: 'TX_HARRIS', fortWorth: 'TX_TARRANT', dallas: 'US_TX', austin: 'US_TX', oakland: 'CA_ALAMEDA', sanFrancisco: 'US_CA', redlands: 'CA_SBD',
+  needles: 'CA_SBD', laughlinNV: 'NV', columbus: 'OH_FRANKLIN', cincinnati: 'OH_HAMILTON', lawrenceburgIN: 'IN', covingtonKY: 'US_KY', nashville: 'TN_DAVIDSON',
+  bismarck: 'ND_BISMARCK', mandan: 'US_ND', portland: 'OR_METRO', vancouverWA: 'WA', beaverton: 'OR_METRO', boise: 'ID_ADA', royalOak: 'MI_OAKLAND', detroit: 'US_MI',
+  mountClemens: 'MI_MACOMB', wichita: 'KS_SEDGWICK', atlanta: 'GA_ATLANTA', decatur: 'US_GA', phoenix: 'AZ_MARICOPA', tucson: 'US_AZ', indianapolis: 'IN', concord: 'NH',
   hanover: 'NH', whiteRiverVT: 'VT', charleston: 'WV', harpersFerry: 'WV', reno: 'NV', lasVegas: 'NV', honolulu: 'HI', hilo: 'HI', wilmington: 'DE', richmond: 'VA',
   arlington: 'VA', georgetownDC: 'DC', bristolVA: 'VA', virginiaBeach: 'VA', currituckNC: 'NC', portlandME: 'ME', kitteryME: 'ME', portsmouthNH: 'NH', bangor: 'ME',
-  salisburyMD: 'MD', cumberlandMD: 'MD', keyserWV: 'WV', keyWestFL: 'FL', memphis: null };
+  salisburyMD: 'MD', cumberlandMD: 'MD', keyserWV: 'WV', keyWestFL: 'FL', memphis: 'US_TN' };
 const badR = Object.entries(wantR).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
-check(!badR.length, 'places land in the right state or county, along the lines too' + (badR.length ? ': ' + badR.join(', ') : ''));
+check(!badR.length, 'places land in the right state or county, along the lines too (outside the counties, the state’s basic card)' + (badR.length ? ': ' + badR.join(', ') : ''));
 
 // Compass: near the World Magnetic Model (2026.9) at a place in each
 const decl = await page.evaluate(() => [[29.76, -95.37], [32.76, -97.33], [37.8, -122.27], [34.06, -117.18], [39.96, -83.0], [39.1, -84.51], [36.16, -86.78], [46.81, -100.78],
