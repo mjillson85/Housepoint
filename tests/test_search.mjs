@@ -284,7 +284,7 @@ check(/^Showing Elm St, Holbrook\. Tap a house, or add a house number\.$/.test(r
 // 5. Outside the covered states
 reset();
 r = await search(page, '100 Congress Ave, Austin, TX');
-check(/^Texas is outside Housepoint’s area\. It covers Massachusetts, Connecticut, New Jersey, Florida, North Carolina(, [A-Z][a-z]+( [A-Z][a-z]+)?(, DC)?)* and [A-Z][a-z]+( [A-Z][a-z]+)?(, DC)? for now\.$/.test(r.help), 'typed state outside coverage: said plainly');
+check(/^Texas is outside Housepoint’s area\. It covers Massachusetts, Connecticut, New Jersey, Florida, North Carolina(, [A-Z][a-z]+( [A-Z][a-z]+)?(, (DC|Illinois))?)* and [A-Z][a-z]+( [A-Z][a-z]+)?(, (DC|Illinois))? for now\.$/.test(r.help), 'typed state outside coverage: said plainly');
 check(!seen.census.length && !seen.where.length && !seen.tiger.length, 'typed state outside coverage: nothing sent anywhere');
 r = await search(page, '500 Broad St, Columbus');
 check(/^That place is outside Housepoint’s area/.test(r.help), 'geocoded point outside coverage: said plainly');
@@ -495,7 +495,7 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
   check(st.mode === 'map' && !st.start && st.open && /^12 Elm St$/i.test(st.card), 'opening the link: straight to that house’s card on the map ' + JSON.stringify(st));
   st = await open(u.search.replace(/&k=.*$/, '&k=REDRAWN'));
   check(st.open && /^12 Elm St$/i.test(st.card), 'a link whose record key changed still opens the house by its location');
-  st = await open('?h=39.739200,-104.990300');     // Denver
+  st = await open('?h=39.047300,-95.675200');      // Topeka
   check(st.start && st.mode !== 'map', 'a link outside the covered states: the start screen, as usual');
   st = await open('?h=12,abc&k=x');
   check(st.start && !st.errors.length, 'a mangled link: the start screen, no errors');

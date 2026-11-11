@@ -17,6 +17,7 @@ const FIX = `${HP_ROOT}/tests/fixtures`;
 const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}\.json$/.test(f)) : [];
 const sets = files.map((f) => JSON.parse(fs.readFileSync(`${FIX}/${f}`, 'utf8')));
 if (!sets.length) { console.log('no fixtures yet: ALL PASSED'); process.exit(0); }
+const SITE_OK = new Set(['CityStateZip']);     // Montana's: the property's own city, state and zip
 const OWNERISH = /(^|_)OWN(?!ERSHIP(_TYPE)?$)|OWNER(?!SHIP(_TYPE)?$)|MAIL|PSTL|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i;     // Nebraska's Ownership_Type and Minnesota's ownership are Private, Exempt, State…
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
@@ -47,7 +48,7 @@ page.on('request', (req) => {
   return req.abort();            // imagery, flood maps, building outlines, schools…: not needed for the card's own facts
 });
 await page.goto(ORIGIN + '/');
-svcUrls = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hp.REGIONS).map(([k, v]) => [k, (v.services || []).map((x) => String(x).replace(/\/+$/, ''))])));
+svcUrls = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hp.REGIONS).map(([k, v]) => [k, [...(v.services || []), ...(v.layersFor ? v.layersFor(0, 0, 1e9) : [])].map((x) => String(x).replace(/\/+$/, ''))])));
 await page.click('#goMap'); await sleep(300);
 
 // Clearly not a home, read straight from the use codes (independent of the app's own reading)
@@ -74,7 +75,7 @@ let shown = 0, skipped = 0;
 for (const set of sets) {
   for (const lot of set.lots) {
     const name = `${set.state} ${lot.spot} ${lot.kind} (${lot.key})`;
-    for (const f of lot.features) for (const k of Object.keys(f.attributes)) if (OWNERISH.test(k)) check(false, `owner field ${k} in the fixture: ${name}`);
+    for (const f of lot.features) for (const k of Object.keys(f.attributes)) if (OWNERISH.test(k) && !SITE_OK.has(k)) check(false, `owner field ${k} in the fixture: ${name}`);
     current = { set, lot };
     const st = await page.evaluate(async (lat, lon) => {
       const hp = window.__hp, S = hp.S;
@@ -128,7 +129,7 @@ for (const set of sets) {
     for (const m of T.matchAll(new RegExp(String.raw`(?:Last sold|Latest unit sale|Sold before that for)\s+` + AMT, 'g'))) check(dollars(m) >= 10000, `a nominal deed shown as a sale (${m[0]}): ${name}`);
     for (const m of st.share.matchAll(new RegExp('Last sold ' + AMT, 'g'))) check(dollars(m) >= 10000, `share text: nominal deed as a sale: ${name}`);
     // An address in any of the states' address fields shows on the card
-    const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1', 'siteadd', 'SITEADRESS', 'SITUS_ADDRESS', 'Situs_Address'].some((k) => String(f.attributes[k] ?? '').trim())
+    const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1', 'siteadd', 'SITEADRESS', 'SITUS_ADDRESS', 'Situs_Address', 'AddressLine1', 'adrlabel', 'E911ADDR', 'Address', 'situsAdd', 'locationad', 'PARCEL_ADD'].some((k) => String(f.attributes[k] ?? '').trim())
       || /^\d/.test(String(f.attributes.PREMISEADD ?? f.attributes.ADDRESS ?? f.attributes.PARCEL_ADDR ?? '').trim())   // DC's address (a reservation's is just "NW"), Maryland's, New York's
       || (f.attributes.anumber > 0 && String(f.attributes.st_name ?? '').trim()));     // Minnesota's address comes in parts
     if (rawAddr) check(st.addr !== 'Address not listed', `the records have an address but the card says "Address not listed": ${name}`);
@@ -148,7 +149,7 @@ for (const set of sets) {
     if (/\bHouse\b/.test(st.chip)) check(st.houseLike, `tag says House for a ${st.kind}: ${name}`);
     // "Copy this lot's records": the records as the service sent them, every one, with nothing owner-like
     check(st.copied.housepoint === 'lot' && st.copied.state === set.state && st.copied.records.length >= st.recs && st.copied.rings.length >= 1
-      && st.copied.records.every((a) => Object.keys(a).every((k) => !OWNERISH.test(k))), `copied records don't match the lot: ${name}`);
+      && st.copied.records.every((a) => Object.keys(a).every((k) => !OWNERISH.test(k) || SITE_OK.has(k))), `copied records don't match the lot: ${name}`);
     // Named lots
     if (lot.key === 'id:F_751960_2913839') {
       console.log('River St:', JSON.stringify({ town: st.town, value: st.value, heads: st.heads, lists: st.lists, buy: st.buy }));
@@ -166,7 +167,7 @@ for (let i = 0; i < 120 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.te
 const health = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
 console.log('health:', health.join('\n        '));
 for (const st of sets.map((x) => x.state)) {
-  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland', NY: 'New York' }[st];
+  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina', WI: 'Wisconsin', WA: 'Washington', NE: 'Nebraska', MN: 'Minnesota', DC: 'District of Columbia', MD: 'Maryland', NY: 'New York', VT: 'Vermont', MT: 'Montana', AR: 'Arkansas', IL: 'Cook County, Illinois', CO: 'Colorado', WY: 'Wyoming', UT: 'Utah', AK: 'Alaska' }[st];
   const mine = health.filter((h) => h.includes(`${name}:`));
   check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^(ok|warn)\|.* \d+ lots/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
 }

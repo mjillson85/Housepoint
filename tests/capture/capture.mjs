@@ -6,7 +6,7 @@
 // lots that have shown problems. Only the fields the app itself asks for are requested, found the way the app finds them
 // (the app's own service lookup, in a browser), so owner names are never fetched.
 //
-//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD NY]
+//   cd tests && node capture/capture.mjs [MA CT NJ FL NC WI WA NE MN DC MD NY VT MT AR IL CO WY UT AK]
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -61,6 +61,22 @@ const SPOTS = {
     ['Staten Island St George', 40.6400, -74.0760, 200], ['Bronx', 40.8370, -73.8650, 150], ['White Plains condo towers', 41.0310, -73.7650, 150], ['Buffalo Elmwood', 42.9180, -78.8770, 200],
     ['Syracuse', 43.0400, -76.1350, 200], ['Albany Center Square', 42.6620, -73.7700, 150], ['Ithaca', 42.4430, -76.5020, 200], ['Westchester (Mount Pleasant)', 41.1220, -73.7950, 250],
     ['Suffolk (Huntington)', 40.8680, -73.4260, 250], ['Adirondacks (Hamilton)', 43.7700, -74.2700, 1500]],
+  VT: [['Burlington', 44.4800, -73.2100, 200], ['Montpelier', 44.2600, -72.5750, 200], ['Stowe', 44.4650, -72.6850, 300], ['Rutland', 43.6100, -72.9750, 200],
+    ['Brattleboro', 42.8510, -72.5580, 200], ['St. Johnsbury', 44.4190, -72.0150, 250], ['Middlebury', 44.0150, -73.1700, 250], ['Northeast Kingdom (rural)', 44.8000, -71.9000, 1500]],
+  MT: [['Billings', 45.7800, -108.5300, 200], ['Missoula', 46.8650, -113.9950, 200], ['Bozeman', 45.6770, -111.0400, 200], ['Helena', 46.5900, -112.0300, 200],
+    ['Great Falls', 47.5000, -111.3000, 200], ['Whitefish', 48.4100, -114.3400, 250], ['Kalispell condos', 48.1950, -114.3100, 250], ['Ranch country (Fergus)', 47.0500, -109.4000, 1500]],
+  AR: [['Little Rock Hillcrest', 34.7600, -92.3100, 200], ['Fayetteville', 36.0700, -94.1600, 200], ['Hot Springs', 34.5000, -93.0550, 200], ['Bentonville', 36.3700, -94.2100, 250],
+    ['Jonesboro', 35.8400, -90.7000, 250], ['Fort Smith', 35.3860, -94.4000, 250], ['Delta farmland (Phillips)', 34.5500, -90.8000, 1500]],
+  IL: [['Oak Park', 41.8850, -87.7850, 200], ['Evanston', 42.0450, -87.6900, 200], ['Chicago Lincoln Park', 41.9200, -87.6500, 150], ['Chicago downtown condos', 41.8920, -87.6250, 150],
+    ['Chicago Bungalow Belt', 41.7700, -87.7200, 200], ['Schaumburg', 42.0330, -88.0830, 250], ['Chicago Heights', 41.5060, -87.6350, 250], ['Orland Park', 41.6300, -87.8530, 250]],
+  CO: [['Denver Washington Park', 39.7000, -104.9700, 150], ['Denver condos', 39.7420, -104.9880, 150], ['Fort Collins', 40.5730, -105.0790, 200], ['Boulder', 40.0150, -105.2700, 200],
+    ['Highlands Ranch', 39.5500, -105.0000, 200], ['Grand Junction', 39.0700, -108.5600, 200], ['Durango', 37.2750, -107.8800, 200], ['Pueblo', 38.2600, -104.6100, 200]],
+  WY: [['Cheyenne', 41.1400, -104.8100, 200], ['Casper', 42.8500, -106.3200, 200], ['Jackson', 43.4800, -110.7600, 200], ['Laramie', 41.3100, -105.5900, 200],
+    ['Sheridan', 44.8000, -106.9600, 200], ['Rock Springs', 41.5900, -109.2200, 200], ['Ranch country (Johnson)', 44.3000, -106.4000, 1500]],
+  UT: [['Salt Lake City Sugar House', 40.7500, -111.8700, 150], ['Cottonwood Heights', 40.6200, -111.8500, 150], ['Salt Lake downtown condos', 40.7650, -111.8900, 150],
+    ['Provo', 40.2338, -111.6585, 150], ['Orem', 40.2970, -111.6950, 150], ['Lehi', 40.3900, -111.8500, 150], ['Kaysville (Davis)', 41.0350, -111.9380, 150]],
+  AK: [['Anchorage', 61.1900, -149.8800, 250], ['Anchorage hillside', 61.1300, -149.7700, 300], ['Fairbanks', 64.8400, -147.7300, 200], ['Juneau', 58.3000, -134.4200, 200],
+    ['Wasilla (Mat-Su)', 61.5800, -149.4400, 300], ['Kenai Peninsula (Soldotna)', 60.4900, -151.0600, 300], ['Ketchikan', 55.3420, -131.6460, 250]],
 };
 // Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
@@ -88,7 +104,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
+const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership|CityStateZip)$/i;   // Minnesota's ownership is Private, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)
@@ -120,10 +136,10 @@ async function captureState(page, st) {
       if (sv.oid) p.set('orderByFields', sv.oid);
       return p;
     };
-    const fetchAll = async (geom, pages = 4) => {
+    const fetchAll = async (geom, pages = 4, url = sv.layerUrl) => {
       const feats = [];
       for (let i = 0, off = 0; i < pages; i++) {
-        const j = await getJSON(sv.layerUrl + '/query', ask(geom, { resultOffset: String(off) }).toString());
+        const j = await getJSON(url + '/query', ask(geom, { resultOffset: String(off) }).toString());
         const got = (j.features || []).filter((f) => f.geometry && f.geometry.rings && f.geometry.rings.length);
         feats.push(...got); off += (j.features || []).length;
         if (!j.exceededTransferLimit || !(j.features || []).length) break;
@@ -144,6 +160,12 @@ async function captureState(page, st) {
       : st === 'DC' ? `${useCode(a) || '-'}${field(a, 'CONDO_LOT') === 'Y' ? '/condo lot' : ''}`
       : st === 'MD' ? `${useCode(a) || '-'}/${field(a, 'BLDG_DESC').split(' ')[0] || '-'}/${field(a, 'COUNTY')}`     // land use, building type, county
       : st === 'NY' ? `${useCode(a) || '-'}/${field(a, 'STYLE').split(/[ ,(]/)[0] || '-'}${field(a, 'DUP_GEO') === 'Y' ? '/stacked' : ''}/${field(a, 'COUNTY')}`
+      : st === 'VT' ? `${useCode(a) || '-'}/${field(a, 'PROP_DESC').split(/[ &,]/)[0].slice(0, 12) || '-'}`
+      : st === 'MT' || st === 'AR' || st === 'IL' ? `${useCode(a) || '-'}${field(a, 'UNITS') && +field(a, 'UNITS') > 1 ? '/many' : ''}`
+      : st === 'CO' ? `${(useDesc(a) || useCode(a)).slice(0, 30) || '-'}/${field(a, 'COUNTY')}`
+      : st === 'WY' ? `${field(a, 'COUNTY') || '-'}/${+field(a, 'TOTAL_VAL') > 0 ? 'valued' : 'none'}`
+      : st === 'UT' ? `${useCode(a) || '-'}/${field(a, 'UNITS') || '-'}`
+      : st === 'AK' ? `${useCode(a).slice(0, 16) || '-'}/${useDesc(a).slice(0, 24) || '-'}`
       : String(parseInt(String(useCode(a)).replace(/\D/g, '') || 'x', 10));
     const signature = (feats) => { const ks = [...new Set(feats.map((f) => kindOf(f.attributes)))].sort();
       const n = feats.length; return `${ks.join('+')}|${n === 1 ? '1' : n <= 4 ? '2-4' : n <= 20 ? '5-20' : '21+'}`; };
@@ -153,7 +175,9 @@ async function captureState(page, st) {
     for (const [name, lat, lon, m] of SPOTS[st]) {
       log(st, name);
       let feats;
-      try { feats = await fetchAll({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', distance: String(m), units: 'esriSRUnit_Meter' }); }
+      // Utah: the county's own layer, the way the app picks it
+      const layer = (await page.evaluate((id, la, lo, mm) => { const rg = window.__hp.REGIONS[id]; return rg.layersFor ? rg.layersFor(la, lo, mm)[0] || null : null; }, st, lat, lon, m)) || sv.layerUrl;
+      try { feats = await fetchAll({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', distance: String(m), units: 'esriSRUnit_Meter' }, 4, layer); }
       catch (e) { log('  skipped:', e.message); continue; }
       // DC: the condo units and building records the app adds from the service's other tables, the way the app adds them
       const extra = await page.evaluate(async (id, fs) => { const hp = window.__hp, rg = hp.REGIONS[id]; if (!rg.expand) return null;
@@ -165,7 +189,7 @@ async function captureState(page, st) {
       // At most PER_KIND lots of each kind across the whole state
       const list = [...lots.entries()].map(([k, fs]) => ({ k, fs, sig: signature(fs) }));
       for (const x of list) { if (chosen.has(x.k)) continue; const n = bySig.get(x.sig) || 0; if (n >= PER_KIND) continue;
-        bySig.set(x.sig, n + 1); chosen.set(x.k, { spot: name, sig: x.sig, feats: x.fs }); }
+        bySig.set(x.sig, n + 1); chosen.set(x.k, { spot: name, sig: x.sig, feats: x.fs, layer }); }
     }
     // Named lots (Massachusetts): the outline from the state's own server, then everything the app's layer has on that lot
     for (const [label, id] of NAMED[st] || []) {
@@ -196,7 +220,7 @@ async function captureState(page, st) {
         try {
           const g = feats[0].geometry, xs = g.rings.flat().map((p) => p[0]), ys = g.rings.flat().map((p) => p[1]);
           const env = `${lo(xs)},${lo(ys)},${hi(xs)},${hi(ys)}`;
-          const again = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 3)).filter((f) => lotKey(f) === k);
+          const again = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 3, v.layer || sv.layerUrl)).filter((f) => lotKey(f) === k);
           if (again.length >= feats.length) feats = again;
         } catch (e) { log('  re-fetch failed, keeping the first copy', k); }
       }

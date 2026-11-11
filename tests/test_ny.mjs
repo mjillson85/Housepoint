@@ -90,7 +90,7 @@ check(['brooklyn', 'manhattan', 'bronx', 'statenIsland', 'queens', 'montauk', 'a
   'New York places land in New York, along the Connecticut, Massachusetts and New Jersey lines too');
 check(rg.jerseyCity === 'NJ' && rg.hoboken === 'NJ' && rg.greenwich === 'CT' && rg.stamford === 'CT' && rg.ridgefield === 'CT' && rg.stonington === 'CT' && rg.pittsfield === 'MA'
   && rg.greatBarrington === 'MA', 'New Jersey, Connecticut and Massachusetts keep their side');
-check(['bennington', 'erie', 'scranton', 'kingston', 'montreal'].every((k) => rg[k] === null), 'Vermont, Pennsylvania and Canada stay out of New York');
+check(['erie', 'scranton', 'kingston', 'montreal'].every((k) => rg[k] === null) && rg.bennington === 'VT', 'Pennsylvania and Canada stay out of New York; Bennington is Vermont');
 const decl = await page.evaluate(() => [[40.78, -73.97], [42.89, -78.88], [42.65, -73.76]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
 check(Math.abs(decl[0] + 12.6) < 0.5 && Math.abs(decl[1] + 10.2) < 0.5 && Math.abs(decl[2] + 13.1) < 0.5, 'compass declination: Manhattan, Buffalo, Albany ' + decl.join(', '));
 

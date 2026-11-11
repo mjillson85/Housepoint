@@ -453,6 +453,14 @@
     <button data-lat="38.88620" data-lon="-76.99550" data-name="Capitol Hill, Washington, DC">DC's Capitol Hill</button>
     <button data-lat="38.97840" data-lon="-76.49220" data-name="Downtown Annapolis, MD">Annapolis</button>
     <button data-lat="40.67200" data-lon="-73.97800" data-name="Park Slope, Brooklyn, NY">Brooklyn's Park Slope</button>
+    <button data-lat="44.48000" data-lon="-73.21000" data-name="Burlington, VT">Burlington, Vermont</button>
+    <button data-lat="46.86500" data-lon="-113.99500" data-name="Missoula, MT">Missoula</button>
+    <button data-lat="34.76000" data-lon="-92.31000" data-name="Hillcrest, Little Rock, AR">Little Rock's Hillcrest</button>
+    <button data-lat="41.88500" data-lon="-87.78500" data-name="Oak Park, IL">Oak Park, Illinois</button>
+    <button data-lat="39.70000" data-lon="-104.97000" data-name="Washington Park, Denver, CO">Denver's Washington Park</button>
+    <button data-lat="41.14000" data-lon="-104.81000" data-name="Cheyenne, WY">Cheyenne</button>
+    <button data-lat="40.75000" data-lon="-111.87000" data-name="Sugar House, Salt Lake City, UT">Salt Lake's Sugar House</button>
+    <button data-lat="64.84000" data-lon="-147.73000" data-name="Fairbanks, AK">Fairbanks</button>
     <button id="useGps">Near me</button>
     <button id="useHighlights">Highlights</button>
   </div>
@@ -692,6 +700,14 @@ function useKind(r, rid) {
   if (rid === 'DC') return dcKind(r);
   if (rid === 'MD') return mdKind(r);
   if (rid === 'NY') return nyKind(r);
+  if (rid === 'VT') return vtKind(r);
+  if (rid === 'MT') return mtKind(r);
+  if (rid === 'AR') return arKind(r);
+  if (rid === 'IL') return ilKind(r);
+  if (rid === 'CO') return coKind(r);
+  if (rid === 'WY') return 'unknown';
+  if (rid === 'UT') return utKind(r);
+  if (rid === 'AK') return akKind(r);
   // Massachusetts (MassGIS / Department of Revenue classes): the first three digits; towns may add a fourth character.
   const d = code.replace(/\D/g, ''), c3 = d.slice(0, 3), style = String(r.STYLE || '').toUpperCase();
   if (c3.length < 3) return 'unknown';
@@ -1812,6 +1828,307 @@ function attachImageryFallback(group, set, credit) {
    so the rest of the app doesn't care which state it's in. Only the fields
    listed here are ever requested, so owner names never reach the phone.
    ========================================================================= */
+/* ---------- Tier 2 states (November 11, 2026): Montana, Arkansas, Vermont, Cook County (Illinois), Colorado, Wyoming, Utah, Alaska ---------- */
+const t2clean = (a) => String(a ?? '').replace(/\s+/g, ' ').trim();
+const t2year = (y) => (num(y) > 1600 && num(y) <= THIS_YEAR ? num(y) : null);
+const t2url = (u) => (/^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(t2clean(u)) ? t2clean(u) : null);
+
+// Montana: the Department of Revenue's records via the State Library's cadastral parcels. Its property type is broad: a house
+// and a store are both "Improved Property", so those stay "use not listed" unless the lot is mostly farm or ranch land.
+const MT_KIND = { 'VACANT LAND': 'vacant', 'VAC_R - VACANT LAND - RURAL': 'vacant', 'EXEMPT PROPERTY': 'exempt', 'PARTIAL EXEMPT PROPERTY': 'exempt',
+  'TRIBAL PROPERTY': 'other', CONDOMINIUM: 'resCondo', TOWNHOUSE: 'single', APARTMENT: 'apartments', 'MINING CLAIM': 'other', 'GRAVEL PIT': 'industrial',
+  'OILFIELD IMPROVEMENTS': 'industrial', 'INDUSTRIAL PROPERTY': 'industrial', 'IR - INDUSTRIAL RURAL': 'industrial', 'MOBILE/RV PARKS': 'commercial',
+  'GOLF COURSE': 'commercial', 'NON-VALUED PROPERTY': 'other', 'CN - CENTRALLY ASSESSED NON-VALUED PROPERTY': 'other', 'NON-VALUED WITH SPECIALS': 'other',
+  'CA - CENTRALLY ASSESSED': 'other', 'LOCALLY ASSESSED UTILITY': 'other', 'ON LEASED LAND': 'unknown' };
+const MT_LABEL = { 'TRIBAL PROPERTY': 'Tribal land', TOWNHOUSE: 'Townhouse', 'MINING CLAIM': 'Mining claim', 'GRAVEL PIT': 'Gravel pit', 'OILFIELD IMPROVEMENTS': 'Oilfield',
+  'MOBILE/RV PARKS': 'Mobile home or RV park', 'GOLF COURSE': 'Golf course', 'ON LEASED LAND': 'Building on leased land', 'IMPROVED PROPERTY': 'Improved property (home or business)',
+  'IMPROVED - DEED RESTRICTED': 'Improved property (deed restricted)', 'NON-VALUED PROPERTY': 'Not valued', 'NON-VALUED WITH SPECIALS': 'Not valued',
+  'PARTIAL EXEMPT PROPERTY': 'Partly tax-exempt', 'CN - CENTRALLY ASSESSED NON-VALUED PROPERTY': 'Utility or railroad', 'CA - CENTRALLY ASSESSED': 'Utility or railroad',
+  'LOCALLY ASSESSED UTILITY': 'Utility' };
+function mtKind(r) {
+  const t = t2clean(r.USE_CODE).toUpperCase(), built = (num(r.BLDG_VAL) || 0) > 0;
+  if (/^IMPROVED/.test(t)) return (num(r.AG_ACRES) || 0) >= 20 ? 'farmForest' : built ? 'unknown' : 'vacant';
+  const k = MT_KIND[t]; if (!k) return 'unknown';
+  return k === 'vacant' && built ? 'unknown' : k;
+}
+function mtUseLabel(r) {
+  if (!r) return null;
+  const t = t2clean(r.USE_CODE).toUpperCase(); if (!t) return null;
+  if (/^IMPROVED/.test(t) && (num(r.AG_ACRES) || 0) >= 20) return 'Farm or ranch';
+  return MT_LABEL[t] || KIND_LABEL[mtKind(r)] || null;
+}
+function mtDerive(o) {
+  const a1 = t2clean(o.SITE_ADDR), a2 = t2clean(o.ADDR2);
+  let a = a1 + (/^(UNIT|APT|STE|#)\s*\S+$/i.test(a2) ? ` ${a2.replace(/^#\s*/, 'UNIT ')}` : '');
+  a = a.replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null; delete o.ADDR2;
+  const csz = t2clean(o.CSZ), m = /^(.*?),?\s+MT\s+(\d{5})/i.exec(csz);
+  o.CITY = m ? m[1] || null : csz.replace(/,.*$/, '') || null; o.ZIP = m ? m[2] : null; delete o.CSZ;
+  o.AG_ACRES = ['CROP_AC', 'FALLOW_AC', 'GRAZE_AC', 'HAY_AC', 'IRR_AC', 'FOREST_AC'].reduce((t, k) => { const v = num(o[k]) || 0; delete o[k]; return t + v; }, 0);
+  if (!(num(o.TOTAL_VAL) > 0) && (num(o.LAND_VAL) > 0 || num(o.BLDG_VAL) > 0)) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
+  o.FY = num(o.FY) > 1900 && num(o.FY) <= THIS_YEAR + 1 ? num(o.FY) : null;
+  o.COUNTY = t2clean(o.COUNTY) || null;
+}
+
+// Arkansas: the Arkansas GIS Office's parcels with each county's CAMA values. The parcel type is two letters: what it is
+// (R residential, A agricultural, C commercial, I industrial, E exempt) and whether it's improved (I) or vacant (V).
+const AR_LABEL = { RI: 'Residential', RV: 'Vacant residential land', AV: 'Farmland', AI: 'Farm with buildings', CI: 'Commercial', CV: 'Vacant commercial land',
+  II: 'Industrial', IV: 'Vacant industrial land', MH: 'Mobile home', RM: 'Mobile home', AM: 'Mobile home on farmland', CA: 'Apartments', PS: 'Utility',
+  EX: 'Tax-exempt', VP: 'Vacant land', VR: 'Vacant land' };
+function arKind(r) {
+  const c = t2clean(r.USE_CODE).toUpperCase(), a = c[0], b = c[1];
+  if (!c) return 'unknown';
+  if (c === 'MH' || c === 'RM' || c === 'AM') return 'mobile';
+  if (b === 'V' || c === 'VP' || c === 'VR') return a === 'A' ? 'farmForest' : 'vacant';
+  if (a === 'R') return c === 'RC' ? 'resCondo' : 'single';
+  if (a === 'A') return 'farmForest';
+  if (a === 'C') return c === 'CA' ? 'apartments' : 'commercial';
+  if (a === 'I') return 'industrial';
+  if (a === 'E') return 'exempt';
+  return 'other';
+}
+function arUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(); return AR_LABEL[c] || (c ? KIND_LABEL[arKind(r)] : null) || null; }
+function arDerive(o) {
+  let a = t2clean(o.SITE_ADDR);
+  if (!/^\d/.test(a) && num(o.A_NUM) > 0) a = t2clean([o.A_NUM, o.A_PRE, o.S_NAME, o.S_TYPE, o.S_DIR].filter((x) => t2clean(x)).join(' '));
+  a = a.replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null;
+  for (const k of ['A_NUM', 'A_PRE', 'S_NAME', 'S_TYPE', 'S_DIR']) delete o[k];
+  const z = String(o.ZIP ?? '').trim(); o.ZIP = /^[1-9]\d{4}$/.test(z) ? z : null;
+  o.CITY = t2clean(o.CITY) || null; o.COUNTY = t2clean(o.COUNTY) || null;
+}
+
+// Vermont: every town's grand list on the state's parcel map (VCGI). The grand list gives a category (R1 a home on under six acres,
+// R2 on six or more, S1 and S2 seasonal camps, C commercial, I industrial, F farm, W woodland...) and a short description;
+// it has no street address, so the card finds the nearest one on the map.
+const VT_LABEL = { R2: 'Home on 6+ acres', S1: 'Seasonal home or camp', S2: 'Seasonal home or camp on 6+ acres', F: 'Farm', W: 'Woodland', UE: 'Electric utility',
+  UO: 'Utility', M: 'Miscellaneous', MHU: 'Mobile home on rented land', MHL: 'Mobile home with its land', CA: 'Apartments', I: 'Industrial' };
+function vtKind(r) {
+  const c = t2clean(r.USE_CODE).toUpperCase(), d = t2clean(r.PROP_DESC).toUpperCase(), built = hasBuilding(r), condo = /\bCONDO|\bUNIT\b/.test(d);
+  if (/^(R1|R2|S1|S2)$/.test(c)) {
+    if (condo) return 'resCondo';
+    if (!built) return 'vacant';
+    return /\b[2-4][- ]?(FAM|FAMILY|UNIT|APT)|DUPLEX|TRIPLEX|\bAPTS?\b/.test(d) ? 'multi' : 'single';
+  }
+  if (c === 'MHU' || c === 'MHL') return 'mobile';
+  if (c === 'C') return condo ? 'comCondo' : built ? 'commercial' : 'vacant';
+  if (c === 'CA') return 'apartments';
+  if (c === 'I') return built ? 'industrial' : 'vacant';
+  if (c === 'F' || c === 'W') return 'farmForest';
+  if (c === 'UE' || c === 'UO') return 'other';
+  if (c === 'M' || c === 'O') return condo ? 'resCondo' : built ? 'other' : 'vacant';
+  return 'unknown';
+}
+function vtUseLabel(r) {
+  if (!r) return null;
+  const c = t2clean(r.USE_CODE).toUpperCase(), k = vtKind(r);
+  if (k === 'resCondo' || k === 'comCondo' || k === 'vacant' || k === 'multi') return KIND_LABEL[k];
+  return VT_LABEL[c] || (c ? KIND_LABEL[k] : null) || null;
+}
+function vtDerive(o) {
+  const loc = t2clean(o.LOC);
+  let a = t2clean(o.SITE_ADDR) || (/^\d+[A-Z]?\s+[A-Z]/i.test(loc) ? loc : '');
+  a = a.replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null; delete o.LOC;
+  o.CITY = t2clean(o.CITY).replace(/^(CITY|TOWN) OF\s+/i, '') || null;
+  o.FY = num(o.FY) > 1900 && num(o.FY) <= THIS_YEAR ? num(o.FY) : null;
+  o.HOMESTEAD = /^Y/i.test(t2clean(o.HOMESTEAD)) ? 'Y' : null;
+}
+
+// Cook County: the assessor's values on the county's parcel map. Values there are assessed values, a fixed share of market
+// value by class (10% for homes and most apartments, 20% for not-for-profits, 25% for businesses), so the card shows the market
+// value they stand for. A condo building is one lot with its units' values added up.
+function ilLevel(c) { const d = t2clean(c).toUpperCase()[0]; return /[1236789]/.test(d || '') ? 0.10 : d === '4' ? 0.20 : d === '5' ? 0.25 : null; }
+const IL_LABEL = { 100: 'Vacant land', 190: 'Vacant land', 200: 'Residential land', 201: 'Garage', 202: 'One-story house', 203: 'One-story house', 204: 'One-story house',
+  205: 'Two-story house', 206: 'Two-story house', 207: 'Two-story house', 208: 'Two-story house', 209: 'Two-story house', 210: 'Townhouse', 211: 'Two- to six-unit building',
+  212: 'Shops with apartments', 213: 'Co-op', 224: 'Farm building', 234: 'Split-level house', 239: 'Farm', 241: 'Vacant land', 278: 'Two-story house',
+  288: 'House', 290: 'Minor building', 295: 'Townhouse', 297: 'Special residential', 299: 'Condo', 599: 'Commercial condo', EX: 'Tax-exempt', RR: 'Railroad' };
+function ilKind(r) {
+  const c = t2clean(r.USE_CODE).toUpperCase(), n = parseInt(c, 10), units = num(r.UNITS) || 1;
+  if (c === 'EX') return 'exempt';
+  if (c === 'RR') return 'other';
+  if (!Number.isFinite(n)) return 'unknown';
+  if (n === 299) return units > 1 ? 'condoMaster' : 'resCondo';
+  if (n < 200) return 'vacant';
+  if (n < 300) {
+    if (n === 200 || n === 241) return 'vacant';
+    if (n === 201 || n === 290) return 'accessory';
+    if (n === 211) return 'multi';
+    if (n === 212) return 'mixedRes';
+    if (n === 213) return 'resCondo';
+    if (n === 225) return 'apartments';
+    if (n === 224 || n === 239 || n === 240) return 'farmForest';
+    if (n === 236 || n === 297) return 'otherRes';
+    return 'single';
+  }
+  if (n < 400) return n === 300 ? 'vacant' : 'apartments';
+  if (n < 500) return 'institutional';
+  if (n < 600) return n === 500 ? 'vacant' : n === 590 ? 'accessory' : n === 599 ? 'comCondo' : n >= 550 && n < 590 ? 'industrial' : 'commercial';
+  if (n < 700) return 'industrial';
+  if (n < 900) return 'commercial';
+  return 'apartments';
+}
+function ilUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(), k = ilKind(r); if (k === 'condoMaster') return 'Condo building'; return IL_LABEL[c] || IL_LABEL[parseInt(c, 10)] || (c ? KIND_LABEL[k] : null) || null; }
+function ilDerive(o) {
+  const lv = ilLevel(o.USE_CODE), sc = (v) => (lv && num(v) > 0 ? Math.round(num(v) / lv) : num(v) === 0 ? 0 : null);
+  o.ASSESSED = num(o.TOTAL_VAL);
+  o.TOTAL_VAL = sc(o.TOTAL_VAL); o.LAND_VAL = sc(o.LAND_VAL); o.BLDG_VAL = sc(o.BLDG_VAL);
+  const fy = num(o.FY), age = num(o.BLDG_AGE);
+  o.FY = fy > 1900 && fy <= THIS_YEAR ? fy : null;
+  o.YEAR_BUILT = o.FY && age > 0 && age < 250 ? t2year(o.FY - age) : null; delete o.BLDG_AGE;
+  if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
+  if (/^2/.test(t2clean(o.USE_CODE)) && o.BLD_AREA) o.RES_AREA = o.BLD_AREA;
+  let a = t2clean(o.SITE_ADDR).replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null;
+  const z = t2clean(o.ZIP); o.ZIP = /^[1-9]\d{4}/.test(z) ? z.slice(0, 5) : null;
+  o.UNITS = num(o.UNITS) > 1 ? num(o.UNITS) : null;
+  const pin = t2clean(o.PROP_ID).replace(/\D/g, '');
+  o.RECORD_URL = /^\d{14}$/.test(pin) ? `https://www.cookcountyassessor.com/pin/${pin}` : null;
+}
+
+// Colorado: the state's public parcels (OIT), each county's own records and words for property types. Some counties send
+// codes only, and a few (El Paso, for one) send no values.
+function coKind(r) {
+  const t = t2clean(r.USE_DESC).toUpperCase();
+  if (!t) return 'unknown';
+  if (/COMMON|\bHOA\b/.test(t)) return 'other';
+  if (/EXEMPT|SCHOOL|CHURCH|RELIG|GOVERN|POLITICAL|NON ?TAXABLE|CHARIT|PUBLIC|FEDERAL|COUNTY NON/.test(t)) return 'exempt';
+  if (/MOBILE|MANUFACT.*HOME|\bMH\b/.test(t)) return 'mobile';
+  if (/VACANT|LAND ONLY|UNIMPROVED/.test(t)) return /AG|FARM|RANCH/.test(t) ? 'farmForest' : 'vacant';
+  if (/AGRI|FARM|RANCH|GRAZ|FOREST|IRRIG|DRY ?LAND|MEADOW|ORCHARD/.test(t)) return 'farmForest';
+  if (/CONDO/.test(t)) return /COMM|OFFICE|RETAIL|INDUS|WAREHOUSE/.test(t) ? 'comCondo' : 'resCondo';
+  if (/APART|9 ?- ?UP|9\+|MULTI ?UNIT APTS|4 TO 8/.test(t)) return 'apartments';
+  if (/DUPLEX|TRIPLEX|DUP\/|2-3|2-4|MULTIPLE UNIT|MULTI/.test(t)) return 'multi';
+  if (/ROW ?HOUSE|TOWN ?HOUSE|TOWNHOME/.test(t)) return 'single';
+  if (/MIXED/.test(t)) return 'mixed';
+  if (/INDUS|WAREHOUSE|MANUFACT/.test(t)) return 'industrial';
+  if (/COMM|RETAIL|OFFICE|RESTAURANT|HOTEL|MOTEL|MERCHAND|SHOPPING|STORE|BANK|SERVICE|PARKING|MEDICAL|CONVENIENCE|FAST FOOD|THEATER|GARAGE/.test(t)) return 'commercial';
+  if (/RESID|\bSFR\b|SINGLE|S-F|HOUSE|\bRES\b/.test(t)) return 'single';
+  return 'unknown';
+}
+function coUseLabel(r) {
+  if (!r) return null;
+  const k = coKind(r), t = t2clean(r.USE_DESC);
+  if (['single', 'resCondo', 'multi', 'apartments', 'vacant', 'mobile', 'exempt', 'farmForest'].includes(k)) return /ROW ?HOUSE|TOWN ?HOUSE|TOWNHOME/i.test(t) ? 'Townhouse' : KIND_LABEL[k];
+  if (!t || /^[\d\s,A-Z]{1,6}$/.test(t) && /\d/.test(t)) return KIND_LABEL[k] || null;     // a bare code
+  const words = t.replace(/\s*-\s*/g, ' · ').replace(/\s*\/\s*/g, ' / ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+function coDerive(o) {
+  for (const k of ['TOTAL_VAL', 'ASSESSED', 'LS_PRICE']) { const v = num(String(o[k] ?? '').replace(/[$,]/g, '')); o[k] = v > 0 ? v : null; }
+  const d = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t2clean(o.SALE_DATE));
+  o.LS_DATE = d && +d[3] > 1900 && +d[3] <= THIS_YEAR ? `${d[3]}${d[1].padStart(2, '0')}${d[2].padStart(2, '0')}` : null;
+  if (!o.LS_DATE) o.LS_PRICE = null;
+  delete o.SALE_DATE;
+  let a = t2clean(o.SITE_ADDR).replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null;
+  const z = t2clean(o.ZIP); o.ZIP = /^[1-9]\d{4}/.test(z) ? z.slice(0, 5) : null;
+  o.CITY = t2clean(o.CITY) || null; o.COUNTY = t2clean(o.COUNTY) || null;
+  o.RECORD_URL = t2url(o.RECORD_URL);
+}
+
+// Wyoming: the state's parcels with each county's actual (market) value. No property type, and no land and building split.
+function wyDerive(o) {
+  let a = t2clean(o.SITE_ADDR).replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) && !/^(NONE|UNKNOWN|N\/A)$/i.test(a) ? a : null;
+  o.COUNTY = t2clean(o.COUNTY) || null;
+  o.CITY = o.COUNTY ? `${titleCase(o.COUNTY)} County` : null;     // no town on the record: the county
+  o.FY = num(o.FY) > 1900 && num(o.FY) <= THIS_YEAR ? num(o.FY) : null;
+  if (!(num(o.TOTAL_VAL) > 0)) o.TOTAL_VAL = null;
+}
+
+// Utah: the Utah Geospatial Resource Center's parcels with county assessor records (one service per county, same fields).
+const UT_SVC = 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services';
+const UT_COUNTIES = { Beaver: [-114.05, 38.148, -112.344, 38.575], BoxElder: [-114.043, 41, -111.873, 42.001], Cache: [-112.171, 41.369, -111.402, 42],
+  Carbon: [-111.248, 39.467, -109.874, 39.814], Daggett: [-110, 40.662, -109.049, 41.004], Davis: [-112.179, 40.82, -111.777, 41.158],
+  Duchesne: [-110.903, 39.806, -109.977, 40.567], Emery: [-111.301, 38.629, -110.004, 39.639], Garfield: [-112.689, 37.536, -109.927, 38.154],
+  Grand: [-110.178, 38.5, -109.052, 39.462], Iron: [-114.053, 37.474, -112.467, 38.149], Juab: [-114.048, 39.315, -111.585, 40.012],
+  Kane: [-112.901, 37, -110.64, 37.544], Millard: [-114.05, 38.572, -112.016, 39.554], Morgan: [-111.877, 40.78, -111.209, 41.374],
+  Piute: [-112.421, 38.146, -111.771, 38.521], Rich: [-111.512, 41.141, -111.046, 42.002], SaltLake: [-112.229, 40.414, -111.553, 40.922],
+  SanJuan: [-110.574, 36.998, -109.042, 38.502], Sanpete: [-112.016, 39.033, -111.248, 39.812], Sevier: [-112.494, 38.498, -111.299, 39.048],
+  Summit: [-111.649, 40.548, -110.001, 41.252], Tooele: [-114.047, 39.903, -112.144, 41.028], Uintah: [-109.977, 39.462, -109.048, 40.858],
+  Utah: [-112.214, 39.776, -110.858, 40.578], Wasatch: [-111.621, 39.9, -110.891, 40.691], Washington: [-114.053, 37, -112.899, 37.618],
+  Wayne: [-111.781, 38.151, -110.35, 38.499], Weber: [-112.493, 41.077, -111.42, 41.434] };
+const utLayer = (c) => `${UT_SVC}/Parcels_${c}_LIR/FeatureServer/0`;
+// The county layers whose area reaches within m meters of a spot (usually one; two or three near a county line).
+function utLayersFor(lat, lon, m) {
+  const dy = m / 110540, dx = m / (111320 * Math.cos(lat * Math.PI / 180));
+  return Object.entries(UT_COUNTIES).filter(([, [w, s, e, n]]) => lon + dx >= w && lon - dx <= e && lat + dy >= s && lat - dy <= n).map(([c]) => utLayer(c));
+}
+function utKind(r) {
+  const c = t2clean(r.USE_CODE).toUpperCase(), units = num(r.UNITS) || 0, built = hasBuilding(r);
+  if (!c || c === 'UNKNOWN') return 'unknown';
+  if (c === 'RESIDENTIAL') return !built ? 'vacant' : units >= 5 ? 'apartments' : units >= 2 ? 'multi' : 'single';
+  if (/APARTMENT & CONDO/.test(c)) return units >= 2 ? 'apartments' : 'resCondo';
+  if (/INDUSTRIAL/.test(c)) return 'industrial';
+  if (/^COMMERCIAL/.test(c)) return 'commercial';
+  if (/^TAX EXEMPT/.test(c)) return 'exempt';
+  if (c === 'VACANT' || c === 'UNDEVELOPED') return 'vacant';
+  if (c === 'GREENBELT') return 'farmForest';
+  return 'other';
+}
+const UT_LABEL = { GREENBELT: 'Farmland (greenbelt)', RECREATIONAL: 'Recreational', 'COMMERCIAL - OFFICE SPACE': 'Offices', 'COMMERCIAL - RETAIL': 'Retail',
+  UNDEVELOPED: 'Undeveloped land', 'TAX EXEMPT - CHARITABLE ORGANIZATION OR RELIGIOUS': 'Tax-exempt (charity or church)', 'TAX EXEMPT - GOVERNMENT': 'Tax-exempt (government)' };
+function utUseLabel(r) { if (!r) return null; const c = t2clean(r.USE_CODE).toUpperCase(), k = utKind(r); return UT_LABEL[c] || (c ? KIND_LABEL[k] : null) || null; }
+function utDerive(o) {
+  let a = t2clean(o.SITE_ADDR).replace(/^0+\s+/, '');
+  o.SITE_ADDR = a && !/^0*$/.test(a) ? a : null;
+  o.CITY = t2clean(o.CITY) || null; o.COUNTY = t2clean(o.COUNTY) || null;
+  const tv = num(o.TOTAL_VAL), lv = num(o.LAND_VAL);
+  o.BLDG_VAL = tv > 0 && lv >= 0 && tv > lv ? tv - lv : null;
+  o.YEAR_BUILT = t2year(o.YEAR_BUILT); o.EFF_YEAR = t2year(o.EFF_YEAR);
+  if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
+  if (/^RESIDENTIAL$/i.test(t2clean(o.USE_CODE)) && o.BLD_AREA) o.RES_AREA = o.BLD_AREA;
+  o.UNITS = num(o.UNITS) > 0 ? num(o.UNITS) : null;
+  if (!(num(o.STORIES) > 0)) o.STORIES = null;
+  o.HOMESTEAD = /^Y/i.test(t2clean(o.HOMESTEAD)) ? 'Y' : null;
+}
+
+// Alaska: the state's parcels with each borough's or city's records (property types in their own words). No street addresses,
+// so the card finds the nearest one on the map; some places (Juneau, for one) share lot lines without values.
+function akKind(r) {
+  const t = `${t2clean(r.USE_CODE)} ${t2clean(r.USE_DESC)}`.toUpperCase();
+  if (!t.trim() || /^(PARCEL|LOT|TAX LOT|TRACT)\s*(NO DATA)?$/.test(t.trim())) return 'unknown';
+  if (/ASSEMBLED/.test(t)) return 'other';
+  if (/EXEMPT|STATE|BOROUGH|CITY OF|AGENCY|GOVERN|NATIVE ALLOT|CHURCH|SCHOOL/.test(t) && !/PARTIAL/.test(t)) return 'exempt';
+  if (/CONDO/.test(t)) return /COMMERCIAL|OFFICE/.test(t) ? 'comCondo' : 'resCondo';
+  if (/MOBILE|MANUFACT/.test(t)) return 'mobile';
+  if (/VACANT|\bVAC\b/.test(t)) return 'vacant';
+  if (/ACCESSORY/.test(t)) return 'accessory';
+  if (/APARTMENT/.test(t)) return 'apartments';
+  if (/2 FAMILY|DUPLEX|TRIPLEX|FOURPLEX|MULTI|3 FAMILY|4 FAMILY/.test(t)) return 'multi';
+  if (/INDUSTRIAL|WAREHOUSE/.test(t)) return 'industrial';
+  if (/COMMERCIAL|OFFICE|RETAIL|RESTAURANT|HOTEL|MOTEL|PARKING|THEATER|STORE/.test(t)) return 'commercial';
+  if (/RESIDENTIAL|1 FAMILY|SINGLE|\bRES\b|HOMESITE|R1|RR1/.test(t)) return 'single';
+  return 'unknown';
+}
+function akUseLabel(r) {
+  if (!r) return null;
+  const k = akKind(r), u = t2clean(r.USE_DESC);
+  if (k === 'unknown' || k === 'other') return u && !/NO DATA/i.test(u) && !/^[A-Z]$/.test(u) ? u.replace(/^[A-Z] - /, '') : null;
+  return KIND_LABEL[k];
+}
+function akDerive(o) {
+  const g = t2clean(o.COUNTY);
+  o.COUNTY = g || null;
+  o.CITY = g.replace(/\s+(Municipality|Borough|City and Borough|City & Borough|Census Area)$/i, '').replace(/^(City|Municipality) of\s+/i, '') || null;
+  for (const k of ['TOTAL_VAL', 'LAND_VAL', 'BLDG_VAL']) if (!(num(o[k]) > 0)) o[k] = num(o[k]) === 0 && num(o.TOTAL_VAL) > 0 ? 0 : null;
+}
+
+// Vermont and Alaska records have no street address: the card asks Geoapify (OpenStreetMap) for the address nearest the lot.
+async function posAddrFor(p) {
+  if (p.posAddr !== undefined) return p.posAddr;
+  if (!KEYS.geoapify || !p.ringsLL || !p.ringsLL[0]) return (p.posAddr = null);
+  p.posAddr = null;
+  const r = p.ringsLL[0]; let x = 0, y = 0; for (const [lo, la] of r) { x += lo; y += la; } x /= r.length; y /= r.length;
+  try {
+    const j = await getJSON(`https://api.geoapify.com/v1/geocode/reverse?lat=${y.toFixed(6)}&lon=${x.toFixed(6)}&format=json&limit=1&apiKey=${encodeURIComponent(KEYS.geoapify)}`, {}, 8000);
+    const a = (j.results || [])[0];
+    if (a && a.housenumber && a.street && !(a.distance > 60)) p.posAddr = `${a.housenumber} ${a.street}`;
+  } catch (e) { /* the card keeps "Address not listed" */ }
+  return p.posAddr;
+}
+
 const REGIONS = {
   MA: {
     id: 'MA', name: 'Massachusetts',
@@ -2192,15 +2509,27 @@ const REGIONS = {
     bbox: [-79.77, 40.49, -71.85, 45.02],
     // Rough outline: the kills and the Hudson on the New Jersey side and the Massachusetts and Connecticut lines, all as in those
     // states' outlines (they're checked first); the New Jersey line, the Delaware, the 42nd parallel, Lake Erie, the Niagara, Lake
-    // Ontario and the St. Lawrence, the 45th parallel, Lake Champlain, the Vermont line, and Long Island and Fishers Island, loose
+    // Ontario and the St. Lawrence, the 45th parallel, Lake Champlain and the Vermont line (the same as Vermont's outline), and Long Island and Fishers Island, loose
     // into the sound and the ocean.
     poly: [[-74.253, 40.4867], [-74.2588, 40.4989], [-74.2541, 40.5157], [-74.246, 40.521], [-74.2503, 40.5423], [-74.2475, 40.5494], [-74.2314, 40.5592],
       [-74.2146, 40.5605], [-74.2072, 40.5879], [-74.1996, 40.5979], [-74.2048, 40.6061], [-74.2039, 40.6244], [-74.2024, 40.6316], [-74.1856, 40.646],
       [-74.1431, 40.642], [-74.126, 40.6422], [-74.1098, 40.6481], [-74.087, 40.6515], [-74.0558, 40.6515], [-74.0264, 40.7001], [-74.0236, 40.7181],
       [-74.014, 40.7576], [-73.9636, 40.8266], [-73.9528, 40.8511], [-73.9298, 40.8887], [-73.9142, 40.928], [-73.8961, 40.9819], [-73.8936, 40.9972], [-74.695, 41.357],
       [-75.0, 41.5], [-75.07, 41.8], [-75.36, 42.0], [-79.762, 42.0], [-79.762, 42.27], [-79.0, 42.65], [-78.92, 42.87], [-79.06, 43.1], [-79.06, 43.3], [-78.5, 43.38],
-      [-77.6, 43.4], [-76.6, 43.5], [-76.3, 43.8], [-76.45, 44.15], [-76.0, 44.35], [-75.6, 44.6], [-75.0, 44.95], [-74.75, 45.0], [-73.34, 45.01], [-73.36, 44.5],
-      [-73.42, 44.0], [-73.27, 43.6], [-73.2648, 42.7458], [-73.5082, 42.0861], [-73.497, 42.0496], [-73.4873, 42.0495], [-73.4896, 42.0001], [-73.511, 41.7587],
+      [-77.6, 43.4], [-76.6, 43.5], [-76.3, 43.8], [-76.45, 44.15], [-76.0, 44.35], [-75.6, 44.6], [-75.0, 44.95], [-74.75, 45.0],
+      [-73.3432, 45.0107], [-73.3546, 44.9874], [-73.3382, 44.9648], [-73.339, 44.9177], [-73.3562, 44.9045], [-73.3691, 44.8667], [-73.3816, 44.8494],
+      [-73.3795, 44.838], [-73.335, 44.8041], [-73.3332, 44.7888], [-73.3656, 44.7418], [-73.366, 44.6976], [-73.3613, 44.6945], [-73.3701, 44.6849],
+      [-73.3697, 44.6635], [-73.3845, 44.6467], [-73.3786, 44.6415], [-73.3868, 44.6364], [-73.3902, 44.6184], [-73.3768, 44.5996],
+      [-73.3818, 44.5893], [-73.375, 44.5758], [-73.3388, 44.548], [-73.322, 44.5253], [-73.3208, 44.5136], [-73.3067, 44.5003], [-73.2936, 44.4389],
+      [-73.315, 44.3885], [-73.335, 44.3644], [-73.3127, 44.2654], [-73.3237, 44.2442], [-73.3434, 44.2382], [-73.3623, 44.2085], [-73.3906, 44.1911],
+      [-73.403, 44.145], [-73.4161, 44.1324], [-73.4115, 44.112], [-73.4297, 44.0786], [-73.4379, 44.0451], [-73.4076, 44.0211], [-73.4125, 43.9822],
+      [-73.4057, 43.9559], [-73.4086, 43.9319], [-73.3962, 43.9033], [-73.3742, 43.8762], [-73.3823, 43.8561], [-73.3726, 43.8454],
+      [-73.3925, 43.8213], [-73.3768, 43.7992], [-73.3582, 43.7865], [-73.3508, 43.7714], [-73.3699, 43.7439], [-73.3706, 43.7253],
+      [-73.4047, 43.6902], [-73.4155, 43.6525], [-73.4265, 43.6426], [-73.4284, 43.6355], [-73.4177, 43.6217], [-73.4312, 43.5883],
+      [-73.3958, 43.5681], [-73.3833, 43.5772], [-73.3869, 43.5908], [-73.3725, 43.6048], [-73.3764, 43.6088], [-73.3719, 43.6245],
+      [-73.3488, 43.6215], [-73.3342, 43.628], [-73.3112, 43.6241], [-73.3064, 43.6283], [-73.3028, 43.6098], [-73.291, 43.5992], [-73.2973, 43.5794],
+      [-73.2849, 43.5793], [-73.2586, 43.565], [-73.2416, 43.535], [-73.2477, 43.5232], [-73.2783, 42.8376], [-73.2854, 42.8341], [-73.2837, 42.8139],
+      [-73.2909, 42.8019], [-73.2764, 42.746], [-73.2648, 42.7458], [-73.5082, 42.0861], [-73.497, 42.0496], [-73.4873, 42.0495], [-73.4896, 42.0001], [-73.511, 41.7587],
       [-73.521, 41.6198], [-73.551, 41.2954], [-73.4827, 41.2128], [-73.7278, 41.1007], [-73.6552, 41.0123], [-73.6603, 41.0005], [-73.6596, 40.9941],
       [-73.6572, 40.9909], [-73.6597, 40.9879], [-73.6568, 40.9845], [-73.6129, 40.9509], [-73.0, 41.05], [-72.3, 41.15], [-72.1, 41.3], [-71.9, 41.32],
       [-71.85, 41.07], [-72.5, 40.55], [-73.5, 40.5], [-74.0, 40.48], [-74.253, 40.4867]],
@@ -2234,9 +2563,316 @@ const REGIONS = {
     gapNote: 'Some New York counties (among them Nassau, Monroe and Saratoga) don’t share their parcels openly, so lots there have no records here.',
     useLabel: (c, r) => nyUseLabel(r),
   },
+  VT: {
+    id: 'VT', name: 'Vermont',
+    bbox: [-73.44, 42.72, -71.46, 45.02],
+    // Rough outline from the Census Bureau's: the New York line (shared with New York's outline, checked first) and the
+    // Massachusetts line (the same as Massachusetts's), the Connecticut River on the New Hampshire side, the Canadian border.
+    poly: [[-73.2648, 42.7458], [-73.2764, 42.746], [-73.2909, 42.8019], [-73.2837, 42.8139], [-73.2854, 42.8341], [-73.2783, 42.8376], [-73.2477, 43.5232],
+      [-73.2416, 43.535], [-73.2586, 43.565], [-73.2849, 43.5793], [-73.2973, 43.5794], [-73.291, 43.5992], [-73.3028, 43.6098], [-73.3064, 43.6283],
+      [-73.3112, 43.6241], [-73.3342, 43.628], [-73.3488, 43.6215], [-73.3719, 43.6245], [-73.3764, 43.6088], [-73.3725, 43.6048], [-73.3869, 43.5908],
+      [-73.3833, 43.5772], [-73.3958, 43.5681], [-73.4312, 43.5883], [-73.4177, 43.6217], [-73.4284, 43.6355], [-73.4265, 43.6426],
+      [-73.4155, 43.6525], [-73.4047, 43.6902], [-73.3706, 43.7253], [-73.3699, 43.7439], [-73.3508, 43.7714], [-73.3582, 43.7865],
+      [-73.3768, 43.7992], [-73.3925, 43.8213], [-73.3726, 43.8454], [-73.3823, 43.8561], [-73.3742, 43.8762], [-73.3962, 43.9033],
+      [-73.4086, 43.9319], [-73.4057, 43.9559], [-73.4125, 43.9822], [-73.4076, 44.0211], [-73.4379, 44.0451], [-73.4297, 44.0786], [-73.4115, 44.112],
+      [-73.4161, 44.1324], [-73.403, 44.145], [-73.3906, 44.1911], [-73.3623, 44.2085], [-73.3434, 44.2382], [-73.3237, 44.2442], [-73.3127, 44.2654],
+      [-73.335, 44.3644], [-73.315, 44.3885], [-73.2936, 44.4389], [-73.3067, 44.5003], [-73.3208, 44.5136], [-73.322, 44.5253], [-73.3388, 44.548],
+      [-73.375, 44.5758], [-73.3818, 44.5893], [-73.3768, 44.5996], [-73.3902, 44.6184], [-73.3868, 44.6364], [-73.3786, 44.6415], [-73.3845, 44.6467],
+      [-73.3697, 44.6635], [-73.3701, 44.6849], [-73.3613, 44.6945], [-73.366, 44.6976], [-73.3656, 44.7418], [-73.3332, 44.7888], [-73.335, 44.8041],
+      [-73.3795, 44.838], [-73.3816, 44.8494], [-73.3691, 44.8667], [-73.3562, 44.9045], [-73.339, 44.9177], [-73.3382, 44.9648], [-73.3546, 44.9874],
+      [-73.3432, 45.0107], [-72.847, 45.0167], [-72.3119, 45.0038], [-71.465, 45.0136], [-71.4808, 45.0023], [-71.5085, 45.0079], [-71.537, 44.9935],
+      [-71.5413, 44.9839], [-71.5163, 44.9644], [-71.5148, 44.9437], [-71.5228, 44.9399], [-71.4949, 44.9043], [-71.5495, 44.8621], [-71.5511, 44.837],
+      [-71.5769, 44.8152], [-71.5684, 44.807], [-71.5728, 44.7909], [-71.632, 44.7521], [-71.6261, 44.7285], [-71.6171, 44.7287], [-71.5939, 44.6964],
+      [-71.5966, 44.6781], [-71.5815, 44.6732], [-71.5874, 44.6597], [-71.5628, 44.6524], [-71.5637, 44.6372], [-71.5468, 44.6298], [-71.557, 44.6295],
+      [-71.5463, 44.623], [-71.5551, 44.6252], [-71.5536, 44.6061], [-71.5621, 44.6012], [-71.5349, 44.5879], [-71.5458, 44.5779], [-71.5524, 44.5844],
+      [-71.5477, 44.5714], [-71.5597, 44.564], [-71.597, 44.5595], [-71.5719, 44.5379], [-71.5941, 44.5216], [-71.577, 44.5021], [-71.5881, 44.5066],
+      [-71.5986, 44.4868], [-71.6178, 44.4858], [-71.6262, 44.4745], [-71.6345, 44.4756], [-71.6247, 44.4817], [-71.6328, 44.4838],
+      [-71.6468, 44.4732], [-71.639, 44.4644], [-71.6542, 44.4588], [-71.6609, 44.4399], [-71.7026, 44.4135], [-71.7945, 44.399], [-71.8006, 44.384],
+      [-71.8144, 44.3819], [-71.8158, 44.354], [-71.8716, 44.3367], [-71.9124, 44.3481], [-71.934, 44.336], [-71.9814, 44.3374], [-72.0328, 44.3205],
+      [-72.0329, 44.3022], [-72.0685, 44.2708], [-72.0583, 44.2701], [-72.0477, 44.239], [-72.0662, 44.1901], [-72.0333, 44.1314], [-72.0554, 44.1108],
+      [-72.0479, 44.0966], [-72.0313, 44.1004], [-72.0453, 44.0873], [-72.0318, 44.0785], [-72.0529, 44.0763], [-72.0483, 44.0697],
+      [-72.0681, 44.0574], [-72.0619, 44.0496], [-72.0783, 44.0434], [-72.0827, 44.0218], [-72.0954, 44.0218], [-72.0905, 44.0099],
+      [-72.1028, 44.0146], [-72.117, 43.9942], [-72.1144, 43.9681], [-72.0909, 43.9658], [-72.1183, 43.9465], [-72.1205, 43.9196], [-72.1721, 43.885],
+      [-72.1679, 43.8691], [-72.1846, 43.8641], [-72.1841, 43.8064], [-72.2055, 43.7846], [-72.2052, 43.7709], [-72.2342, 43.746], [-72.2711, 43.7339],
+      [-72.2997, 43.7061], [-72.3031, 43.6686], [-72.3348, 43.618], [-72.3283, 43.6011], [-72.3798, 43.5742], [-72.3807, 43.5404], [-72.3982, 43.5104],
+      [-72.38, 43.49], [-72.3825, 43.4759], [-72.3926, 43.4669], [-72.4035, 43.3916], [-72.416, 43.3765], [-72.4126, 43.3623], [-72.3899, 43.3566],
+      [-72.4106, 43.3311], [-72.3953, 43.3127], [-72.416, 43.2702], [-72.4388, 43.252], [-72.4382, 43.2029], [-72.4505, 43.1926], [-72.4439, 43.1798],
+      [-72.4574, 43.1475], [-72.4328, 43.1202], [-72.4432, 43.1028], [-72.434, 43.0845], [-72.4678, 43.0527], [-72.4626, 43.0258], [-72.4433, 43.0076],
+      [-72.4625, 42.9974], [-72.4617, 42.9829], [-72.4737, 42.9721], [-72.5338, 42.9526], [-72.5245, 42.9151], [-72.5334, 42.8953], [-72.5526, 42.885],
+      [-72.5571, 42.8532], [-72.5415, 42.8071], [-72.5087, 42.7795], [-72.5155, 42.7656], [-72.4905, 42.7727], [-72.4584, 42.7269], [-72.458, 42.7269]],
+    declination: (lat, lon) => -13.717 - 0.398 * (lon + 72.4) - 0.204 * (lat - 43.9),   // ~ -13.5 in Burlington, ~ -13.4 in Brattleboro
+    // VCGI's statewide parcels with each town's grand list (the standardized copy). Owner names and mailing addresses are in
+    // this layer too, and are never asked for.
+    services: ['https://services1.arcgis.com/BkFxaEFNwHqX3tAw/arcgis/rest/services/FS_VCGI_OPENDATA_Cadastral_VTPARCELS_poly_standardized_parcels_SP_v1/FeatureServer/0'],
+    discover: 'type:"Feature Service" AND title:"VTPARCELS" AND standardized',
+    detect: ['SPAN', 'REAL_FLV', 'CAT'],
+    lotWhere: "PROPTYPE = 'PARCEL'",
+    fields: {
+      PROP_ID: ['SPAN'], SITE_ADDR: ['E911ADDR'], LOC: ['LOCAPROP'], CITY: ['TOWN'], FY: ['GLYEAR'], USE_CODE: ['CAT'], PROP_DESC: ['DESCPROP'],
+      TOTAL_VAL: ['REAL_FLV'], LAND_VAL: ['LAND_LV'], BLDG_VAL: ['IMPRV_LV'], HOMESTEAD: ['HSDECL'],
+    },
+    extraFields: ['LOC', 'PROP_DESC'],
+    derive: (o) => vtDerive(o),
+    stackedUnits: true, noSales: true, addrByPosition: true,
+    valueLabel: 'Town listed value', deltaWord: 'value', valueWord: 'Listed value', valueTitle: 'Listed value',
+    yearLabel: (y) => `${y} grand list`,
+    source: (fy) => `Source: town grand lists via VCGI’s statewide parcels${fy ? `, ${fy} grand list` : ''}. The listed value is the town’s appraisal for taxes, which can trail the market where the town hasn’t reappraised lately.`,
+    shareSource: 'Vermont town grand lists via VCGI',
+    gapNote: 'This town’s parcels aren’t on the state’s map, or none are near here.',
+    useLabel: (c, r) => vtUseLabel(r),
+  },
+  MT: {
+    id: 'MT', name: 'Montana',
+    bbox: [-116.05, 44.35, -104.03, 49.01],
+    // Rough outline from the Census Bureau's: the Wyoming line along the 45th parallel (shared with Wyoming's outline), the Idaho
+    // line over the Bitterroots, straight lines on the Dakota and Canadian sides.
+    poly: [[-104.0397, 44.9981], [-104.0579, 44.9976], [-105.857, 45.0004], [-105.9131, 45.0002], [-105.9282, 44.9935], [-106.1262, 44.9933],
+      [-107.476, 45.0014], [-109.0807, 44.9994], [-109.1032, 45.0058], [-110.1058, 45.0035], [-110.1832, 44.997], [-110.7045, 44.9922],
+      [-110.7901, 45.0009], [-111.0546, 45.001], [-111.0558, 44.4768], [-111.1274, 44.4976], [-111.1314, 44.5324], [-111.1786, 44.5525],
+      [-111.181, 44.5692], [-111.2276, 44.5767], [-111.2409, 44.6145], [-111.2193, 44.6225], [-111.2526, 44.6512], [-111.2785, 44.6513],
+      [-111.2668, 44.6675], [-111.3236, 44.7291], [-111.353, 44.7262], [-111.3848, 44.755], [-111.4143, 44.7107], [-111.4388, 44.7205],
+      [-111.4888, 44.7056], [-111.4725, 44.6662], [-111.4901, 44.6425], [-111.5163, 44.644], [-111.5025, 44.6265], [-111.5226, 44.6141],
+      [-111.5236, 44.5922], [-111.5013, 44.5725], [-111.5078, 44.5623], [-111.4694, 44.5577], [-111.468, 44.539], [-111.5129, 44.536],
+      [-111.5857, 44.5626], [-111.6139, 44.5487], [-111.7032, 44.5601], [-111.7156, 44.5434], [-111.8215, 44.5089], [-111.8693, 44.5666],
+      [-111.9478, 44.557], [-111.9777, 44.5357], [-112.0327, 44.5466], [-112.0328, 44.5284], [-112.0691, 44.5372], [-112.1064, 44.5206],
+      [-112.1367, 44.5399], [-112.1837, 44.533], [-112.2223, 44.5439], [-112.2292, 44.5641], [-112.2866, 44.5686], [-112.3195, 44.5389],
+      [-112.3525, 44.538], [-112.3584, 44.4853], [-112.3865, 44.4473], [-112.4727, 44.4793], [-112.5006, 44.4628], [-112.5417, 44.4838],
+      [-112.6617, 44.486], [-112.7179, 44.5043], [-112.7808, 44.4847], [-112.8399, 44.4247], [-112.8101, 44.3988], [-112.8122, 44.3771],
+      [-112.8539, 44.3595], [-112.8896, 44.4059], [-112.9454, 44.4146], [-113.0045, 44.4528], [-113.0268, 44.4955], [-113.0065, 44.5258],
+      [-113.0454, 44.5443], [-113.0373, 44.5648], [-113.0883, 44.5997], [-113.0507, 44.6345], [-113.0678, 44.6788], [-113.0978, 44.6989],
+      [-113.1016, 44.7295], [-113.1348, 44.7528], [-113.1315, 44.7728], [-113.2469, 44.823], [-113.3413, 44.7847], [-113.3776, 44.8352],
+      [-113.422, 44.8376], [-113.4551, 44.8654], [-113.4988, 44.9422], [-113.4439, 44.9594], [-113.452, 45.0592], [-113.5222, 45.0914],
+      [-113.5112, 45.1161], [-113.5699, 45.1239], [-113.5657, 45.1496], [-113.5907, 45.1559], [-113.5921, 45.1848], [-113.6919, 45.2625],
+      [-113.6803, 45.2789], [-113.7387, 45.3294], [-113.7335, 45.3908], [-113.776, 45.4085], [-113.7597, 45.4271], [-113.7843, 45.4549],
+      [-113.7599, 45.4804], [-113.766, 45.5206], [-113.8348, 45.5207], [-113.8215, 45.5659], [-113.7967, 45.5816], [-113.8064, 45.6016],
+      [-113.8616, 45.6238], [-113.9047, 45.622], [-113.8953, 45.6438], [-113.9199, 45.6581], [-113.9353, 45.6943], [-113.9648, 45.69],
+      [-113.9885, 45.706], [-114.0155, 45.6959], [-114.0283, 45.6752], [-114.0153, 45.6528], [-114.0667, 45.6282], [-114.0861, 45.5915],
+      [-114.1936, 45.5364], [-114.2484, 45.5458], [-114.2699, 45.4846], [-114.33, 45.4597], [-114.3672, 45.4919], [-114.4257, 45.5107],
+      [-114.4306, 45.5295], [-114.4639, 45.545], [-114.4561, 45.5622], [-114.4981, 45.5555], [-114.5273, 45.5709], [-114.5649, 45.5577],
+      [-114.5379, 45.6066], [-114.564, 45.6376], [-114.5076, 45.6575], [-114.499, 45.6789], [-114.5151, 45.6849], [-114.4951, 45.704],
+      [-114.5665, 45.7733], [-114.5096, 45.8454], [-114.4377, 45.8626], [-114.4097, 45.8516], [-114.3879, 45.8839], [-114.4314, 45.936],
+      [-114.4025, 45.9579], [-114.4118, 45.9779], [-114.48, 45.9929], [-114.4803, 46.0303], [-114.5075, 46.0315], [-114.4683, 46.0628],
+      [-114.4605, 46.0978], [-114.521, 46.1251], [-114.5274, 46.1454], [-114.5149, 46.1677], [-114.4441, 46.1693], [-114.448, 46.2316],
+      [-114.4707, 46.266], [-114.4254, 46.2879], [-114.4334, 46.3055], [-114.4102, 46.3611], [-114.4224, 46.387], [-114.3684, 46.4371],
+      [-114.4032, 46.4988], [-114.3426, 46.5184], [-114.3479, 46.5515], [-114.3296, 46.5762], [-114.3442, 46.59], [-114.3225, 46.6109],
+      [-114.3216, 46.649], [-114.3582, 46.6711], [-114.4246, 46.6607], [-114.4668, 46.6318], [-114.5418, 46.65], [-114.6057, 46.6359],
+      [-114.6426, 46.6729], [-114.6208, 46.7073], [-114.6654, 46.7392], [-114.6986, 46.7405], [-114.713, 46.7154], [-114.7668, 46.6969],
+      [-114.7884, 46.7128], [-114.7652, 46.7454], [-114.7875, 46.7828], [-114.8291, 46.7826], [-114.8658, 46.8145], [-114.8952, 46.8016],
+      [-114.8984, 46.8224], [-114.9483, 46.86], [-114.9251, 46.9187], [-114.9606, 46.93], [-115.0013, 46.9719], [-115.0488, 46.97],
+      [-115.0717, 47.0264], [-115.1311, 47.069], [-115.1441, 47.1019], [-115.2446, 47.1513], [-115.2618, 47.1814], [-115.3006, 47.1883],
+      [-115.2915, 47.2109], [-115.3244, 47.2447], [-115.3198, 47.2567], [-115.4823, 47.2814], [-115.5285, 47.2992], [-115.5508, 47.3497],
+      [-115.5776, 47.3674], [-115.6434, 47.3773], [-115.6575, 47.4005], [-115.7211, 47.4257], [-115.7589, 47.4234], [-115.7161, 47.4529],
+      [-115.6465, 47.4568], [-115.6295, 47.4796], [-115.6863, 47.4849], [-115.7114, 47.5168], [-115.6983, 47.5314], [-115.7556, 47.5479],
+      [-115.6878, 47.5953], [-115.6944, 47.6238], [-115.7365, 47.6538], [-115.7226, 47.6951], [-115.7772, 47.7204], [-115.7975, 47.7573],
+      [-115.8309, 47.755], [-115.8523, 47.8279], [-115.9189, 47.8536], [-116.0188, 47.9629], [-116.0491, 47.9768], [-116.0491, 49.0008],
+      [-104.0487, 48.9999]],
+    declination: (lat, lon) => 10.602 - 0.465 * (lon + 110) + 0.143 * (lat - 46.7),   // ~ +9.9 in Billings, ~ +12.5 in Missoula
+    // The Montana State Library's cadastral parcels, with the Department of Revenue's values. Owner names and addresses are in
+    // the layer too, and are never asked for.
+    services: ['https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v1/MapServer/1'],
+    discover: 'type:"Map Service" AND title:"cadastral" AND Montana',
+    detect: ['PARCELID', 'TOTALVALUE', 'PROPTYPE'],
+    fields: {
+      PROP_ID: ['PARCELID'], SITE_ADDR: ['AddressLine1'], ADDR2: ['AddressLine2'], CSZ: ['CityStateZip'], COUNTY: ['CountyName'], FY: ['TaxYear'],
+      USE_CODE: ['PropType'], TOTAL_VAL: ['TotalValue'], LAND_VAL: ['TotalLandValue'], BLDG_VAL: ['TotalBuildingValue'],
+      CROP_AC: ['ContinuousCropAcres'], FALLOW_AC: ['FallowAcres'], GRAZE_AC: ['GrazingAcres'], HAY_AC: ['WildHayAcres'], IRR_AC: ['IrrigatedAcres'], FOREST_AC: ['ForestAcres'],
+    },
+    extraFields: ['ADDR2', 'CSZ', 'AG_ACRES', 'CROP_AC', 'FALLOW_AC', 'GRAZE_AC', 'HAY_AC', 'IRR_AC', 'FOREST_AC'],
+    derive: (o) => mtDerive(o),
+    stackedUnits: true, noSales: true,
+    valueLabel: 'State market value', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
+    yearLabel: (y) => `${y} tax year`,
+    source: (fy) => `Source: the Montana Department of Revenue via the Montana State Library’s cadastral parcels${fy ? `, ${fy} tax year` : ''}. Market value is the state’s appraisal for taxes.`,
+    shareSource: 'Montana Department of Revenue records via the Montana State Library',
+    useLabel: (c, r) => mtUseLabel(r),
+  },
+  AR: {
+    id: 'AR', name: 'Arkansas',
+    bbox: [-94.62, 33.0, -89.64, 36.5],
+    // Rough outline from the Census Bureau's (the Mississippi and the St. Francis on the east, the Red River corner).
+    poly: [[-94.618, 36.499], [-90.152, 36.498], [-90.159, 36.48], [-90.142, 36.471], [-90.155, 36.464], [-90.134, 36.454], [-90.138, 36.414], [-90.064, 36.384],
+      [-90.082, 36.322], [-90.064, 36.303], [-90.084, 36.272], [-90.117, 36.264], [-90.126, 36.229], [-90.22, 36.184], [-90.235, 36.139],
+      [-90.32, 36.09], [-90.378, 35.996], [-89.733, 36.001], [-89.719, 35.963], [-89.647, 35.924], [-89.644, 35.89], [-89.669, 35.874],
+      [-89.745, 35.911], [-89.773, 35.866], [-89.695, 35.836], [-89.699, 35.819], [-89.729, 35.803], [-89.782, 35.805], [-89.8, 35.788],
+      [-89.799, 35.758], [-89.826, 35.745], [-89.907, 35.759], [-89.958, 35.727], [-89.956, 35.69], [-89.925, 35.658], [-89.894, 35.652],
+      [-89.863, 35.67], [-89.851, 35.658], [-89.858, 35.634], [-89.958, 35.589], [-89.942, 35.557], [-89.911, 35.547], [-89.905, 35.519],
+      [-89.959, 35.524], [-89.958, 35.541], [-89.99, 35.56], [-90.031, 35.554], [-90.048, 35.504], [-90.003, 35.43], [-90.048, 35.412],
+      [-90.057, 35.404], [-90.042, 35.397], [-90.054, 35.389], [-90.07, 35.408], [-90.068, 35.467], [-90.108, 35.477], [-90.129, 35.442],
+      [-90.169, 35.422], [-90.179, 35.385], [-90.136, 35.377], [-90.146, 35.4], [-90.129, 35.414], [-90.08, 35.384], [-90.11, 35.305],
+      [-90.157, 35.301], [-90.169, 35.28], [-90.149, 35.254], [-90.091, 35.245], [-90.076, 35.213], [-90.117, 35.188], [-90.068, 35.156],
+      [-90.067, 35.138], [-90.092, 35.12], [-90.139, 35.132], [-90.168, 35.121], [-90.188, 35.073], [-90.181, 35.054], [-90.207, 35.026],
+      [-90.297, 35.039], [-90.308, 34.993], [-90.245, 34.948], [-90.241, 34.919], [-90.258, 34.893], [-90.318, 34.871], [-90.308, 34.846],
+      [-90.338, 34.858], [-90.389, 34.831], [-90.439, 34.825], [-90.45, 34.84], [-90.429, 34.866], [-90.437, 34.883], [-90.48, 34.882],
+      [-90.484, 34.861], [-90.455, 34.821], [-90.477, 34.794], [-90.448, 34.74], [-90.483, 34.722], [-90.517, 34.727], [-90.493, 34.773],
+      [-90.514, 34.8], [-90.544, 34.792], [-90.54, 34.754], [-90.572, 34.713], [-90.53, 34.696], [-90.474, 34.705], [-90.463, 34.684],
+      [-90.534, 34.627], [-90.555, 34.645], [-90.542, 34.684], [-90.57, 34.693], [-90.592, 34.621], [-90.54, 34.554], [-90.593, 34.491],
+      [-90.584, 34.412], [-90.657, 34.377], [-90.669, 34.313], [-90.693, 34.323], [-90.676, 34.371], [-90.764, 34.364], [-90.738, 34.289],
+      [-90.766, 34.27], [-90.832, 34.277], [-90.847, 34.206], [-90.929, 34.245], [-90.934, 34.218], [-90.914, 34.196], [-90.817, 34.183],
+      [-90.808, 34.162], [-90.845, 34.137], [-90.91, 34.166], [-90.959, 34.136], [-90.956, 34.119], [-90.921, 34.093], [-90.873, 34.088],
+      [-90.891, 34.029], [-90.988, 34.019], [-90.961, 33.979], [-90.976, 33.961], [-91.0, 33.967], [-91.019, 34.003], [-91.048, 33.992],
+      [-91.082, 34.009], [-91.091, 33.991], [-91.085, 33.957], [-91.011, 33.935], [-91.073, 33.859], [-91.049, 33.816], [-91.0, 33.799],
+      [-90.991, 33.777], [-91.02, 33.764], [-91.132, 33.784], [-91.145, 33.768], [-91.149, 33.731], [-91.13, 33.712], [-91.061, 33.715],
+      [-91.03, 33.688], [-91.034, 33.674], [-91.093, 33.658], [-91.16, 33.707], [-91.215, 33.699], [-91.23, 33.682], [-91.218, 33.659],
+      [-91.141, 33.63], [-91.129, 33.607], [-91.164, 33.571], [-91.233, 33.563], [-91.183, 33.5], [-91.236, 33.439], [-91.177, 33.444],
+      [-91.17, 33.498], [-91.134, 33.483], [-91.117, 33.454], [-91.132, 33.43], [-91.209, 33.407], [-91.148, 33.379], [-91.1, 33.407],
+      [-91.087, 33.451], [-91.058, 33.447], [-91.065, 33.418], [-91.142, 33.349], [-91.141, 33.299], [-91.106, 33.242], [-91.078, 33.284],
+      [-91.044, 33.276], [-91.071, 33.227], [-91.1, 33.219], [-91.08, 33.18], [-91.086, 33.136], [-91.183, 33.142], [-91.202, 33.124], [-91.2, 33.107],
+      [-91.121, 33.058], [-91.166, 33.004], [-94.043, 33.019], [-94.043, 33.552], [-94.073, 33.555], [-94.056, 33.562], [-94.074, 33.585],
+      [-94.073, 33.572], [-94.121, 33.567], [-94.129, 33.551], [-94.135, 33.571], [-94.151, 33.569], [-94.142, 33.581], [-94.184, 33.595],
+      [-94.217, 33.58], [-94.195, 33.574], [-94.195, 33.555], [-94.206, 33.567], [-94.251, 33.557], [-94.243, 33.59], [-94.277, 33.557],
+      [-94.291, 33.559], [-94.288, 33.583], [-94.309, 33.552], [-94.344, 33.568], [-94.353, 33.544], [-94.382, 33.544], [-94.401, 33.56],
+      [-94.381, 33.582], [-94.412, 33.569], [-94.431, 33.592], [-94.472, 33.603], [-94.448, 33.642], [-94.486, 33.638], [-94.431, 35.393],
+      [-94.618, 36.499]],
+    declination: (lat, lon) => -0.524 - 0.670 * (lon + 92.1) - 0.041 * (lat - 34.8),   // ~ -0.4 in Little Rock, ~ +0.8 in Fayetteville
+    // The Arkansas GIS Office's parcels with each county's CAMA values (74 of 75 counties). Owner names are in the layer too,
+    // and are never asked for; nor is the legal description.
+    services: ['https://gis.arkansas.gov/arcgis/rest/services/FEATURESERVICES/Planning_Cadastre/FeatureServer/6'],
+    discover: 'type:"Feature Service" AND title:"Planning_Cadastre" AND Arkansas',
+    detect: ['PARCELID', 'TOTALVALUE', 'PARCELTYPE'],
+    fields: {
+      PROP_ID: ['parcelid'], SITE_ADDR: ['adrlabel'], A_NUM: ['adrnum'], A_PRE: ['predir'], S_NAME: ['pstrnam'], S_TYPE: ['pstrtype'], S_DIR: ['psufdir'],
+      CITY: ['adrcity'], ZIP: ['adrzip5'], COUNTY: ['county'], USE_CODE: ['parceltype'], TOTAL_VAL: ['totalvalue'], ASSESSED: ['assessvalue'],
+      LAND_VAL: ['landvalue'], BLDG_VAL: ['impvalue'],
+    },
+    derive: (o) => arDerive(o),
+    stackedUnits: true, noSales: true,
+    valueLabel: 'County appraised value', deltaWord: 'value', valueWord: 'Appraised', valueTitle: 'Appraised value',
+    yearLabel: () => '',
+    source: () => 'Source: county assessors via the Arkansas GIS Office’s parcels. The appraised value is the county’s market value for taxes; property is taxed on 20% of it.',
+    shareSource: 'Arkansas county assessor records via the Arkansas GIS Office',
+    useLabel: (c, r) => arUseLabel(r),
+  },
+  IL: {
+    id: 'IL', name: 'Cook County, Illinois',
+    bbox: [-88.27, 41.46, -87.11, 42.16],
+    // Cook County only: the Census Bureau's county outline, loose into Lake Michigan.
+    poly: [[-87.525, 41.6446], [-87.5257, 41.4703], [-87.7903, 41.4698], [-87.7928, 41.5585], [-87.9094, 41.5568], [-87.9119, 41.6439], [-88.0277, 41.6415],
+      [-88.029, 41.6852], [-87.9667, 41.6867], [-87.9474, 41.6954], [-87.9423, 41.6989], [-87.9418, 41.703], [-87.9215, 41.7162], [-87.9143, 41.7166],
+      [-87.9204, 41.8641], [-87.9205, 41.9939], [-88.2629, 41.9864], [-88.2636, 42.0669], [-88.2382, 42.067], [-88.2384, 42.1542], [-87.1112, 42.1494],
+      [-87.2078, 41.761], [-87.5237, 41.7599], [-87.525, 41.6446]],
+    declination: (lat, lon) => -3.980 - 0.741 * (lon + 87.9) - 0.103 * (lat - 41.8),   // ~ -4.2 in Chicago
+    // Cook County's parcel map with the assessor's values. No owner fields.
+    services: ['https://gis.cookcountyil.gov/traditional/rest/services/cookVwrDynmc/MapServer/44'],
+    discover: 'type:"Map Service" AND title:"cookVwrDynmc"',
+    detect: ['PIN14', 'BLDGCLASS', 'TOTALVALUE'],
+    fields: {
+      PROP_ID: ['PIN14'], SITE_ADDR: ['Address'], CITY: ['City'], ZIP: ['Zip_Code'], USE_CODE: ['BLDGClass'], BLD_AREA: ['BldgSqft'], BLDG_AGE: ['BldgAge'],
+      TOTAL_VAL: ['TotalValue'], LAND_VAL: ['LandValue'], BLDG_VAL: ['BldgValue'], FY: ['TAXYR'], UNITS: ['RECORD_COUNT'],
+    },
+    extraFields: ['BLDG_AGE', 'ASSESSED'],
+    derive: (o) => ilDerive(o),
+    noSales: true, noDelta: true,
+    valueLabel: 'County market value (from the assessment)', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
+    yearLabel: (y) => `${y} assessment`,
+    source: (fy) => `Source: the Cook County Assessor’s values on Cook County’s parcel map${fy ? `, ${fy}` : ''}. Market value here is the assessed value divided by its class’s level (10% for homes, 25% for businesses).`,
+    shareSource: 'Cook County Assessor records',
+    recordLinkText: 'Cook County Assessor’s page for this property',
+    commonNote: 'Cook County’s map shows a condo building as one property, with its units’ values added up. Each unit has its own page with the assessor.',
+    useLabel: (c, r) => ilUseLabel(r),
+  },
+  CO: {
+    id: 'CO', name: 'Colorado',
+    bbox: [-109.07, 36.99, -102.04, 41.01],
+    // The Census Bureau's lines: the Wyoming line (shared with Wyoming's outline), the Utah line (the same as Utah's), the
+    // Nebraska line (Nebraska's outline wins where they touch), and straight lines elsewhere.
+    poly: [[-109.0452, 36.999], [-109.0426, 38.157], [-109.0602, 38.2782], [-109.0512, 39.1426], [-109.05, 41.0007], [-106.3212, 40.9991], [-104.045, 41.0],
+      [-102.0517, 41.0024], [-102.0421, 36.993], [-105.155, 36.9953], [-109.0452, 36.999]],
+    declination: (lat, lon) => 7.670 - 0.497 * (lon + 105.6) + 0.098 * (lat - 39.0),   // ~ +7.5 in Denver, ~ +9.1 in Grand Junction
+    // The State of Colorado's public parcels (OIT): each county's own records. Owner names, owner addresses and the legal
+    // description are in the layer too, and are never asked for.
+    services: ['https://gis.colorado.gov/public/rest/services/Address_and_Parcel/Colorado_Public_Parcels/FeatureServer/0'],
+    discover: 'type:"Feature Service" AND title:"Colorado Public Parcels"',
+    detect: ['PARCEL_ID', 'APPRVALTOT', 'LANDUSEDSC'],
+    fields: {
+      PROP_ID: ['parcel_id'], SITE_ADDR: ['situsAdd'], CITY: ['sitAddCty'], ZIP: ['sitAddZip'], COUNTY: ['countyName'], USE_CODE: ['landUseCde'], USE_DESC: ['landUseDsc'],
+      SALE_DATE: ['saleDate'], LS_PRICE: ['salePrice'], TOTAL_VAL: ['apprValTot'], ASSESSED: ['asedValTot'], RECORD_URL: ['URL'],
+    },
+    derive: (o) => coDerive(o),
+    stackedUnits: true,
+    valueLabel: 'County actual value', deltaWord: 'value', valueWord: 'Actual value', valueTitle: 'Actual value',
+    yearLabel: () => '',
+    source: () => 'Source: county assessors via the State of Colorado’s public parcels (OIT). Actual value is Colorado’s term for the county’s market value for taxes.',
+    shareSource: 'Colorado county assessor records via the State of Colorado',
+    gapNote: 'Some Colorado counties share their lot lines without values or addresses, and a few don’t share at all.',
+    useLabel: (c, r) => coUseLabel(r),
+  },
+  WY: {
+    id: 'WY', name: 'Wyoming',
+    bbox: [-111.06, 40.99, -104.04, 45.01],
+    // The Census Bureau's lines, shared with Montana's, Colorado's and Utah's outlines; a little over the Nebraska line, whose
+    // outline wins.
+    poly: [[-111.0468, 40.9979], [-111.0467, 42.0017], [-111.0439, 43.2129], [-111.0546, 45.001], [-110.7901, 45.0009], [-110.7045, 44.9922],
+      [-110.1832, 44.997], [-110.1058, 45.0035], [-109.1032, 45.0058], [-109.0807, 44.9994], [-107.476, 45.0014], [-106.1262, 44.9933],
+      [-105.9282, 44.9935], [-105.9131, 45.0002], [-105.857, 45.0004], [-104.0579, 44.9976], [-104.045, 43.0], [-104.045, 41.0], [-106.3212, 40.9991],
+      [-109.05, 41.0007], [-111.0468, 40.9979]],
+    declination: (lat, lon) => 9.091 - 0.491 * (lon + 107.6) + 0.119 * (lat - 43.0),   // ~ +7.5 in Cheyenne, ~ +10.7 in Jackson
+    // The State of Wyoming's parcels for 2026: each county's actual value, without property types. Owner names and mailing
+    // addresses are in the layer too, and are never asked for; nor is the legal description.
+    services: ['https://services3.arcgis.com/r0iJ85SKZ4zAzz3P/arcgis/rest/services/Wyoming_Parcels_for_2026/FeatureServer/0'],
+    discover: 'type:"Feature Service" AND title:"Wyoming Parcels"',
+    detect: ['PARCELNB', 'ACTUALVALU', 'LOCATIONAD'],
+    fields: { PROP_ID: ['parcelnb'], SITE_ADDR: ['locationad'], COUNTY: ['jurisdicti'], FY: ['taxyear'], TOTAL_VAL: ['actualvalu'], ASSESSED: ['assessedva'] },
+    derive: (o) => wyDerive(o),
+    stackedUnits: true, noSales: true, builtByOutline: true,
+    valueLabel: 'County actual value', deltaWord: 'value', valueWord: 'Actual value', valueTitle: 'Actual value',
+    yearLabel: (y) => `${y} tax year`,
+    source: (fy) => `Source: county assessors via the State of Wyoming’s parcels${fy ? `, ${fy} tax year` : ''}. Actual value is the county’s market value for taxes. The records don’t say what kind of property it is.`,
+    shareSource: 'Wyoming county assessor records via the State of Wyoming',
+    useLabel: () => null,
+  },
+  UT: {
+    id: 'UT', name: 'Utah',
+    bbox: [-114.06, 36.99, -109.04, 42.01],
+    // The Census Bureau's lines, shared with Colorado's and Wyoming's outlines.
+    poly: [[-111.5078, 41.9996], [-111.0467, 42.0017], [-111.0468, 40.9979], [-109.05, 41.0007], [-109.0512, 39.1426], [-109.0602, 38.2782], [-109.0426, 38.157],
+      [-109.0452, 36.999], [-114.0501, 37.0002], [-114.0415, 41.9939], [-113.8733, 41.9882], [-112.7057, 42.0002], [-111.5078, 41.9996]],
+    declination: (lat, lon) => 10.317 - 0.369 * (lon + 111.5) + 0.151 * (lat - 39.5),   // ~ +10.7 in Salt Lake City and in St. George
+    // The Utah Geospatial Resource Center's parcels with county assessor records: one service per county, all with the same
+    // fields (no owner fields). The lots come from the county or counties around the spot (layersFor).
+    services: [utLayer('SaltLake'), utLayer('Utah'), utLayer('Davis')],
+    discover: 'type:"Feature Service" AND title:"Parcels_SaltLake_LIR"',
+    detect: ['PARCEL_ADD', 'TOTAL_MKT_VALUE', 'PROP_CLASS'],
+    layersFor: (lat, lon, m) => utLayersFor(lat, lon, m),
+    fields: {
+      PROP_ID: ['PARCEL_ID'], SITE_ADDR: ['PARCEL_ADD'], CITY: ['PARCEL_CITY'], COUNTY: ['COUNTY_NAME'], TOTAL_VAL: ['TOTAL_MKT_VALUE'], LAND_VAL: ['LAND_MKT_VALUE'],
+      USE_CODE: ['PROP_CLASS'], HOMESTEAD: ['PRIMARY_RES'], UNITS: ['HOUSE_CNT'], BLD_AREA: ['BLDG_SQFT'], STORIES: ['FLOORS_CNT'], YEAR_BUILT: ['BUILT_YR'],
+      EFF_YEAR: ['EFFBUILT_YR'],
+    },
+    derive: (o) => utDerive(o),
+    stackedUnits: true, noSales: true, slowSearch: true,
+    valueLabel: 'County market value', deltaWord: 'value', valueWord: 'Market value', valueTitle: 'Market value',
+    yearLabel: () => '',
+    source: () => 'Source: county assessors via the Utah Geospatial Resource Center’s parcels. Market value is the county’s value for taxes. Utah doesn’t make sale prices public.',
+    shareSource: 'Utah county assessor records via UGRC',
+    useLabel: (c, r) => utUseLabel(r),
+  },
+  AK: {
+    id: 'AK', name: 'Alaska',
+    bbox: [-180, 50.5, -129.9, 72.0],
+    // Rough outline: the 141st meridian and the Southeast boundary with Canada (Hyder in, Stewart out), loose over the sea, short
+    // of Russia's side of the Bering Strait.
+    poly: [[-141.0, 72.0], [-141.0, 60.306], [-139.07, 60.35], [-138.7, 59.92], [-137.6, 59.24], [-137.45, 58.91], [-136.6, 59.16], [-135.5, 59.8],
+      [-135.03, 59.57], [-134.5, 59.12], [-133.4, 58.4], [-131.8, 56.6], [-130.6, 56.25], [-130.005, 55.95], [-130.005, 55.3], [-130.6, 54.7],
+      [-133.5, 54.4], [-150.0, 51.0], [-180.0, 50.5], [-180.0, 62.0], [-172.2, 63.9], [-168.9, 65.5], [-168.9, 72.0], [-141.0, 72.0]],
+    // A curved fit: Alaska spans about 15° of compass change.
+    declination: (lat, lon) => { const x = lon + 150, y = lat - 61.3; return 13.954 + 0.336 * x - 0.00627 * y - 0.00536 * x * x + 0.00635 * x * y - 0.00725 * y * y; },   // ~ +14 in Anchorage, ~ +17.5 in Juneau
+    // The State of Alaska's parcels with borough and city records. Owner names are in the layer too, and are never asked for.
+    services: ['https://services1.arcgis.com/7HDiw78fcUiM2BWn/arcgis/rest/services/AK_Parcels/FeatureServer/0'],
+    discover: 'type:"Feature Service" AND title:"AK_Parcels"',
+    detect: ['PARCEL_ID', 'TOTAL_VALUE', 'PROPERTY_USE'],
+    fields: { PROP_ID: ['parcel_id'], USE_CODE: ['property_type'], USE_DESC: ['property_use'], TOTAL_VAL: ['total_value'], LAND_VAL: ['land_value'], BLDG_VAL: ['building_value'], COUNTY: ['local_gov'] },
+    derive: (o) => akDerive(o),
+    stackedUnits: true, noSales: true, addrByPosition: true,
+    valueLabel: 'Assessed value', deltaWord: 'value', valueWord: 'Assessed', valueTitle: 'Assessed value',
+    yearLabel: () => '',
+    source: () => 'Source: borough and city assessors via the State of Alaska’s parcels. The assessed value is the local government’s market value for taxes.',
+    shareSource: 'Alaska borough and city assessor records via the State of Alaska',
+    gapNote: 'Much of Alaska, and a few boroughs, don’t share parcels; some (Juneau’s, for one) share lot lines without values.',
+    useLabel: (c, r) => akUseLabel(r),
+  },
 };
 const ALL_FIELDS = new Set(Object.values(REGIONS).flatMap((r) => [...Object.keys(r.fields), ...(r.extraFields || [])]).concat(['LS_DATE', 'TOTAL_VAL', 'FY']));
-const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland and New York';
+const COVERAGE = 'Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska and Cook County, Illinois';
 const BORDER_SLOP = 1500;   // meters: near a state line, load both states' records
 
 function inPoly(lon, lat, ring) {
@@ -2249,7 +2885,7 @@ function inPoly(lon, lat, ring) {
 }
 const inRegion = (r, lat, lon) => { const [w, so, e, n] = r.bbox; return lon >= w && lon <= e && lat >= so && lat <= n && (!r.poly || inPoly(lon, lat, r.poly)); };
 // Connecticut is checked before Massachusetts: the Massachusetts box reaches down over northern Connecticut.
-const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA', 'NE', 'MN', 'DC', 'MD', 'NY'];   // DC before Maryland: Maryland's outline holds it   // Wisconsin before Minnesota: their outlines share the river line
+const REGION_ORDER = ['CT', 'NJ', 'MA', 'FL', 'NC', 'WI', 'WA', 'NE', 'MN', 'DC', 'MD', 'NY', 'VT', 'MT', 'AR', 'IL', 'CO', 'WY', 'UT', 'AK'];   // DC before Maryland: Maryland's outline holds it   // Wisconsin before Minnesota: their outlines share the river line
 function regionFor(lat, lon) {
   if (lat == null || lon == null) return null;
   for (const id of REGION_ORDER) if (inRegion(REGIONS[id], lat, lon)) return REGIONS[id];
@@ -2428,21 +3064,29 @@ async function queryRegion(region, lat, lon, radius) {
   await initService(region);
   const sv = SVC[region.id];
   if (region.prepare) region.prepare(sv).catch(() => {});   // the extra tables' layout, asked while the lots load
-  const feats = [];
-  for (let page = 0, offset = 0; page < 8; page++) {
-    const params = new URLSearchParams({
-      geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
-      distance: String(radius), units: 'esriSRUnit_Meter', outFields: sv.outFields.join(','), returnGeometry: 'true',
-      outSR: '4326', geometryPrecision: '7', resultOffset: String(offset), resultRecordCount: String(sv.pageSize), f: 'json',
-    });
-    if (sv.oid) params.set('orderByFields', sv.oid);
-    if (region.lotWhere) params.set('where', region.lotWhere);
-    const j = await hedgedJSON(sv.layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-    const got = j.features || [];
-    feats.push(...got);
-    if (!j.exceededTransferLimit || !got.length) break;   // dense areas (condos) can exceed one page
-    offset += got.length;
-  }
+  // Utah: one layer per county, all with the same fields; the lots come from the county (or counties) around the spot, asked at once.
+  const layers = region.layersFor ? region.layersFor(lat, lon, radius) : [sv.layerUrl];
+  const fetchLayer = async (layerUrl) => {
+    const out = [];
+    for (let page = 0, offset = 0; page < 8; page++) {
+      const params = new URLSearchParams({
+        geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+        distance: String(radius), units: 'esriSRUnit_Meter', outFields: sv.outFields.join(','), returnGeometry: 'true',
+        outSR: '4326', geometryPrecision: '7', resultOffset: String(offset), resultRecordCount: String(sv.pageSize), f: 'json',
+      });
+      if (sv.oid) params.set('orderByFields', sv.oid);
+      if (region.lotWhere) params.set('where', region.lotWhere);
+      const j = await hedgedJSON(layerUrl + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+      const got = j.features || [];
+      out.push(...got);
+      if (!j.exceededTransferLimit || !got.length) break;   // dense areas (condos) can exceed one page
+      offset += got.length;
+    }
+    return out;
+  };
+  const parts = await Promise.allSettled(layers.map(fetchLayer));
+  if (parts.length && parts.every((x) => x.status === 'rejected')) throw parts[0].reason;
+  const feats = parts.flatMap((x) => (x.status === 'fulfilled' ? x.value : []));
   // DC keeps condo units and building details in other tables: added here, and the lots still load if those don't answer.
   if (region.expand && feats.length) { try { await timeLimit(region.expand(feats, sv), EXPAND_MS); } catch (e) { console.warn(`${region.id} extra records`, e); } }
   return buildParcels(feats, region.id);
@@ -2469,7 +3113,7 @@ const SEARCH_GAP_MS = 2500;      // a backup service is asked too if the first h
 const NEAR_LOT_M = 400;          // a geocoded point can be this far from its lot on a long street; the state is asked about this circle
 const NEAR_LOT_MS = 8000;        // that's asked with the map already showing the street, so it can take longer
 const ADDR_MATCH_M = 250;        // among the lots already loaded, the one with the address this close to the geocoded point
-const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA', 31: 'NE', 27: 'MN', 11: 'DC', 24: 'MD', 36: 'NY' };
+const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI', 53: 'WA', 31: 'NE', 27: 'MN', 11: 'DC', 24: 'MD', 36: 'NY', 50: 'VT', 30: 'MT', '05': 'AR', 17: 'IL', '08': 'CO', 56: 'WY', 49: 'UT', '02': 'AK' };
 const STREET_END = new Set([...Object.keys(STREET_ABBR), ...Object.values(STREET_ABBR), 'AV', 'ROW', 'PATH', 'TRL', 'TRAIL', 'LOOP', 'PIKE', 'TPKE', 'TURNPIKE', 'EXT', 'EXTENSION']);
 const COMPASS_ABBR = /^(N|S|E|W|NE|NW|SE|SW)$/, COMPASS_FULL = /^(NORTH|SOUTH|EAST|WEST)$/;
 // Apartment and unit numbers aren't needed to find a lot.
@@ -2716,7 +3360,8 @@ async function searchIn(region, alts, town, street, near) {
     const params = new URLSearchParams({ where, outFields: sv.outFields.join(','), returnGeometry: 'true', outSR: '4326', geometryPrecision: '7', resultRecordCount: street ? '25' : '10', f: 'json' });
     if (near) for (const [k, v] of Object.entries({ geometry: `${near.lon.toFixed(6)},${near.lat.toFixed(6)}`, geometryType: 'esriGeometryPoint', inSR: '4326',
       spatialRel: 'esriSpatialRelIntersects', distance: String(near.m), units: 'esriSRUnit_Meter' })) params.set(k, v);
-    const j = await getJSON(sv.layerUrl + '/query?' + params.toString(), {}, near ? NEAR_LOT_MS : SEARCH_LOT_MS);
+    const url = near && region.layersFor ? region.layersFor(near.lat, near.lon, near.m)[0] || sv.layerUrl : sv.layerUrl;
+    const j = await getJSON(url + '/query?' + params.toString(), {}, near ? NEAR_LOT_MS : SEARCH_LOT_MS);
     const ps = buildParcels(j.features || [], region.id);
     if (ps.length) {
       const proj = makeProj(ps[0].ringsLL[0][0][1], ps[0].ringsLL[0][0][0]);
@@ -2871,7 +3516,7 @@ async function townPlace(names, order, fix) {
   // Rank: how it was typed, then the state order, then (towns in New England, New Jersey and Wisconsin, cities in Florida, North Carolina and
   // Washington), then nearest:
   // New Jersey has five Washington townships.
-  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' || x.st === 'NE' || x.st === 'MN' || x.st === 'DC' || x.st === 'MD' || x.st === 'NY' ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
+  const ids = order.map((r) => r.id), pref = (x) => (x.st === 'FL' || x.st === 'NC' || x.st === 'WA' || x.st === 'NE' || x.st === 'MN' || x.st === 'DC' || x.st === 'MD' || x.st === 'NY' || /^(MT|AR|IL|CO|WY|UT|AK)$/.test(x.st) ? ['place', 'cdp', 'cousub'] : ['cousub', 'place', 'cdp']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
   const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
@@ -3022,6 +3667,14 @@ const BLDG_SOURCES = {
   DC: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   MD: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
   NY: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  VT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  MT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  AR: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  IL: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  CO: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  WY: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  UT: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
+  AK: { urls: [], items: ['0ec8512ad21e4bb987d7e848d14e7e24'], more: [] },
 };
 const BSVC = {};
 function bldgLayer(rid) {
@@ -3076,6 +3729,7 @@ function setBuildings(list) {
     }
     if (!best) continue;
     best.hasBldg = true;
+    if ((REGIONS[best.p.region] || {}).builtByOutline) best.p.built = true;   // Wyoming: no building values, so a roof on the lot says it's built
     out.push({ rings, c, bb, L: best, area: Math.abs(rings.reduce((t, r) => t + ringArea(r), 0)) });
   }
   S.bldgs = out; S.bldgVer++;
@@ -3216,7 +3870,9 @@ function summarize(p) {
   // A condo's master record with only the street ("N CORCORAN ST") and units with the house number: the units' address.
   if (lot.condo && !/^\d/.test(String(rawAddr).trim())) { const u = unitRecs.find((x) => /^\d/.test(String(x.SITE_ADDR || '').trim())); if (u) rawAddr = u.SITE_ADDR; }
   if (lot.condo) rawAddr = stripUnitNo(rawAddr);
-  const addr = titleCase(rawAddr) || 'Address not listed';
+  // Vermont and Alaska records have no street address: the nearest one on the map, once it's been looked up (posAddrFor).
+  const addrApprox = !titleCase(rawAddr) && !!p.posAddr;
+  const addr = titleCase(rawAddr) || p.posAddr || 'Address not listed';
   const town = titleCase(r0.CITY || '');
   const eff = bldgRecs.map((r) => num(r.EFF_YEAR)).filter((y) => y && y > 1600 && y <= THIS_YEAR);
   const unitsListed = num(r0.UNITS) || 1;
@@ -3229,7 +3885,8 @@ function summarize(p) {
     || (region.id === 'WA' && lot.kinds.every((k) => k === 'condoMaster'))     // King County: the whole building, with its value
     || (region.id === 'DC' && recs.length === 1 && !!r0.CONDO_LOT)            // DC: the units didn't load
     || (region.id === 'MD' && recs.length === 1 && !!r0.CONDO_OUTLINE)        // Maryland: the same
-    || (region.id === 'NY' && recs.length === 1 && useKind(r0, 'NY') === 'condoMaster');   // New York City's condo billing lot
+    || (region.id === 'NY' && recs.length === 1 && useKind(r0, 'NY') === 'condoMaster')   // New York City's condo billing lot
+    || (region.id === 'IL' && lot.kinds.every((k) => k === 'condoMaster'));                // Cook County: the whole condo building
   // Mobile home parks are one property on the records; the homes in them aren't listed. Massachusetts files a park under the same
   // code as a single mobile home (103), so a big lot or several units marks a park. Florida's code 28 also covers parking lots.
   const dig = String(r0.USE_CODE || '').replace(/\D/g, ''), sites = num(r0.UNITS) || 0;
@@ -3244,7 +3901,7 @@ function summarize(p) {
   if (lot.kinds[lot.main] === 'vacant' && /^(Commercial|Industrial)$/.test(use || '')) use = `Vacant ${use.toLowerCase()} land`;   // 3939: land, not a store
   const kind = park ? 'park' : lot.kind;
   const BUILDING_LABEL = { resCondo: 'Condo building', comCondo: 'Commercial condo building', mixedCondo: 'Condo building · homes and businesses' };
-  return { r0, recs, year, sales, vals, addr, town, units: lot.condo ? unitRecs.length : unitsListed, condo: lot.condo,
+  return { r0, recs, year, sales, vals, addr, addrApprox, town, units: lot.condo ? unitRecs.length : unitsListed, condo: lot.condo,
     use, park, sites: park && sites >= 3 ? sites : null,
     fy: num(r0.FY), region, commonOnly,
     kind, building: lot.building, kinds: lot.kinds, unitRecs, unitKinds: lot.condo ? lot.units.map((i) => lot.kinds[i]) : [lot.kinds[lot.main]], taxRecs: unitRecs,
@@ -3399,11 +4056,19 @@ function renderCard(cand, total, idx) {
     ${unitList}
     ${s.isHome ? buyBoxHtml(L) : ''}
     ${r.RECORD_URL ? `<a class="rec-link" href="${esc(r.RECORD_URL)}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
-    <div class="note">${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
+    <div class="note">${s.addrApprox ? 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ' : ''}${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
     ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
   wireBuy(L, s);
+  // No street address on the record (Vermont, Alaska): look up the nearest one, then show the card again if it's still open.
+  if (s.region.addrByPosition && !DEMO && L.p.posAddr === undefined && s.addr === 'Address not listed') {
+    posAddrFor(L.p).then((a) => {
+      L.badges = null;
+      const c = S.candidates && S.candidates[S.cIdx];
+      if (a && c && c.L === L && $('#sheet').classList.contains('open')) renderCard(c, S.candidates.length, S.cIdx);
+    });
+  }
   const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, s);
   const cr = $('#copyRec'); if (cr) cr.onclick = () => copyRecords(L);
   document.querySelectorAll('#cardBody .units').forEach((ul) => ul.addEventListener('click', (e) => {
@@ -3972,7 +4637,10 @@ const miles = (m) => { const x = m / 1609.34; return x < 0.1 ? `${Math.max(50, M
 const nfmt = (v) => (v == null ? '—' : Math.round(v).toLocaleString('en-US'));
 const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsight.ct.gov/', NJ: 'https://rc.doe.state.nj.us/', FL: 'https://edudata.fldoe.org/',
   NC: 'https://ncreports.ondemand.sas.com/src/', WI: 'https://dpi.wi.gov/accountability/report-cards', WA: 'https://washingtonstatereportcard.ospi.k12.wa.us/', NE: 'https://nep.education.ne.gov/',
-  MN: 'https://rc.education.mn.gov/', DC: 'https://dcschoolreportcard.org/', MD: 'https://reportcard.msde.maryland.gov/', NY: 'https://data.nysed.gov/' };
+  MN: 'https://rc.education.mn.gov/', DC: 'https://dcschoolreportcard.org/', MD: 'https://reportcard.msde.maryland.gov/', NY: 'https://data.nysed.gov/',
+  VT: 'https://education.vermont.gov/data-and-reporting/vermont-education-dashboard', MT: 'https://gems.opi.mt.gov/', AR: 'https://myschoolinfo.arkansas.gov/',
+  IL: 'https://www.illinoisreportcard.com/', CO: 'https://www.cde.state.co.us/schoolview', WY: 'https://wyomingmeasuresup.com/', UT: 'https://reportcard.schools.utah.gov/',
+  AK: 'https://education.alaska.gov/compass/report-card' };
 
 function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
@@ -4474,7 +5142,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
    ========================================================================= */
 const CALC_KEY = 'housepoint.calc';
 const RATE30 = { rate: 7.18, asOf: 'Nov 5, 2026' };     // Freddie Mac weekly average, 30-year fixed (update now and then)
-const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228, WI: 1488, WA: 1392, NE: 4020, MN: 2616, DC: 1152, MD: 1932, NY: 1404 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
+const STATE_INSURANCE = { MA: 1968, CT: 2028, NJ: 1236, FL: 6324, NC: 3228, WI: 1488, WA: 1392, NE: 4020, MN: 2616, DC: 1152, MD: 1932, NY: 1404, VT: 948, MT: 2556, AR: 3420, IL: 2544, CO: 3120, WY: 1692, UT: 1524, AK: 1308 };   // average yearly premium for a $300k-dwelling policy (Insurify, updated Nov 1, 2026)
 const PMI_RATE = 0.006;                                  // rough yearly mortgage insurance under 20% down
 let calcPrefs = { down: 20, rate: RATE30.rate, term: 30 };
 try {
@@ -5717,7 +6385,7 @@ $("#goMap").onclick = () => { startMapMode(null, 'Search an address, or try a sa
 $('#goDemo').onclick = () => { location.search = '?demo=1'; };
 const ABOUT = `
   <h2>About Housepoint</h2>
-  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland or New York and see its story from public records: when it was built, what it’s valued at,
+  <p>Point your phone at a house in Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska or Cook County, Illinois and see its story from public records: when it was built, what it’s valued at,
   when it last sold, an estimated property tax, and its flood zone.</p>
   <h3>Privacy</h3>
   <p><b>No owner names, ever.</b> Housepoint never asks the record services for owner names, so they never reach your phone. Your camera and
@@ -5737,7 +6405,15 @@ const ABOUT = `
     <li><b>Washington, DC property records and lot lines:</b> the DC Office of Tax and Revenue’s records, condo units and building records, through the DC Office of the Chief Technology Officer’s property and land data.</li>
     <li><b>Maryland property records and lot lines:</b> the State Department of Assessments and Taxation’s records and Maryland iMAP’s parcel boundaries and property points; 2026–27 county, town and state tax rates from SDAT.</li>
     <li><b>New York property records and lot lines:</b> city and town assessment rolls, through New York State’s public tax parcels (Office of Information Technology Services), for the counties that share them openly, New York City included.</li>
-    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland and New York), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
+    <li><b>Vermont property records and lot lines:</b> town grand lists, through VCGI’s statewide parcels (Vermont Center for Geographic Information). Street addresses for Vermont lots come from OpenStreetMap via Geoapify.</li>
+    <li><b>Montana property records and lot lines:</b> the Montana Department of Revenue, through the Montana State Library’s cadastral parcels.</li>
+    <li><b>Arkansas property records and lot lines:</b> county assessors, through the Arkansas GIS Office’s parcels.</li>
+    <li><b>Cook County, Illinois property records and lot lines:</b> the Cook County Assessor’s values on Cook County’s parcel map.</li>
+    <li><b>Colorado property records and lot lines:</b> county assessors, through the State of Colorado’s public parcels (Office of Information Technology), for the counties that share them.</li>
+    <li><b>Wyoming property records and lot lines:</b> county assessors, through the State of Wyoming’s parcels.</li>
+    <li><b>Utah property records and lot lines:</b> county assessors, through the Utah Geospatial Resource Center’s parcels.</li>
+    <li><b>Alaska property records and lot lines:</b> borough and city assessors, through the State of Alaska’s parcels, for the places that share them. Street addresses for Alaska lots come from OpenStreetMap via Geoapify.</li>
+    <li><b>Building outlines:</b> MassGIS Building Structures (Massachusetts); FEMA and Oak Ridge National Laboratory USA Structures (Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington, DC, Maryland, New York and the newer states), with Florida’s statewide building footprints (derived from Microsoft building footprints) as a backup in Florida.</li>
     <li><b>Aerial photos:</b> MassGIS 2025 aerial imagery (Massachusetts); USGS National Agriculture Imagery Program (elsewhere).</li>
     <li><b>Flood zones:</b> FEMA National Flood Hazard Layer. Not an official flood determination.</li>
     <li><b>Hosting:</b> several of the states’ parcel layers and the building outlines are served from ArcGIS Online, Esri’s hosting service, and the app looks up their current addresses there.</li>
@@ -5802,7 +6478,9 @@ const HEALTH_LOT = {};          // a lot found in each state's check, for the bu
 const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
   NC: [35.8085, -78.6430, 'Raleigh Five Points'], WI: [43.0700, -89.4300, 'Madison Near West'], WA: [47.6680, -122.3850, 'Seattle Ballard'], NE: [41.2611, -95.9850, 'Omaha Dundee'],
   MN: [44.9244, -93.3195, 'Minneapolis Linden Hills'], DC: [38.8862, -76.9955, 'Capitol Hill'],
-  MD: [39.2780, -76.6100, 'Baltimore Federal Hill'], NY: [40.6720, -73.9780, 'Brooklyn Park Slope'] };
+  MD: [39.2780, -76.6100, 'Baltimore Federal Hill'], NY: [40.6720, -73.9780, 'Brooklyn Park Slope'], VT: [44.4800, -73.2100, 'Burlington'],
+  MT: [46.8650, -113.9950, 'Missoula'], AR: [34.7600, -92.3100, 'Little Rock Hillcrest'], IL: [42.0450, -87.6900, 'Evanston'], CO: [39.7000, -104.9700, 'Denver Washington Park'],
+  WY: [41.1400, -104.8100, 'Cheyenne'], UT: [40.7500, -111.8700, 'Salt Lake City Sugar House'], AK: [64.8400, -147.7300, 'Fairbanks'] };
 async function runHealth() {
   document.body.insertAdjacentHTML('beforeend', `<div id="health" role="main"><h2>Data services</h2>
     <p class="hs">Each check runs the way the app does. Green answered, amber answered with a problem, red didn’t answer.</p><ol id="hRows"></ol>
