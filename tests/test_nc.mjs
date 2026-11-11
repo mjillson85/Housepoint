@@ -64,6 +64,15 @@ page.on('request', (req) => {
     // Guilford County: no address on the state layer, 1899 for an unknown sale date
     feats.push({ geometry: { rings: [ring(50, -60, 80, -30, b)] }, attributes: { ...secret, objectid: 60, siteadd: null, scity: null, cntyname: 'Guilford', parval: 310000, landval: 90000,
       improvval: 220000, parusedesc: 'RESIDENTIAL', parusedsc2: '01-SFR', structyear: 1962, saledate: -2208970800000 } });
+    // Durham: units share the building's parcel number and write the unit after the house number
+    for (let i = 1; i <= 3; i++) feats.push({ geometry: { rings: [ring(-90, 40, -60, 80, b)] }, attributes: { ...secret, objectid: 70 + i, parno: '0821972317',
+      siteadd: `110 210${i} N CORCORAN ST`, scity: 'DURHAM', cntyname: 'Durham', parval: 500000 + (i % 2) * 1000, parusedesc: 'RES/ CONDOMINIUM', saledatetx: `3/${i}/2019 12:00:00 AM` } });
+    feats.push({ geometry: { rings: [ring(-90, 40, -60, 80, b)] }, attributes: { ...secret, objectid: 79, parno: '0821972317', siteadd: '110 N CORCORAN ST', scity: 'DURHAM', cntyname: 'Durham',
+      parval: 1, parusedesc: 'COM/ HOMEOWNERS ASSO', saledatetx: '12/30/1899 12:00:00 AM' } });
+    // Mecklenburg: one apartment tower listed once per building section, the same value each time
+    for (const [i, use, addr] of [[81, 'PARKING GARAGE', null], [82, 'APARTMENT-HIRISE >=7 STORIES', '225 S POPLAR ST CHARLOTTE NC'], [83, 'RETAIL FREESTANDING', null]])
+      feats.push({ geometry: { rings: [ring(-90, -60, -60, -30, b)] }, attributes: { ...secret, objectid: i, parno: '07802101', siteadd: addr, scity: 'CHARLOTTE', cntyname: 'Mecklenburg',
+        parval: 103059400, parusecode: 'A500', parusedesc: 'MULTI FAMILY', parusecd2: '60H', parusedsc2: use, saledate: 1672722000000 } });
     return json({ features: feats });
   }
   return req.abort();
@@ -101,6 +110,11 @@ const kinds = await page.evaluate(() => {
     hanoverHouse: k('RES', 'Residential', '10', '1 Family Residential'), hanoverLand: k('RES', 'Residential', '958', 'Unused Land', { YEAR_BUILT: null, BLDG_VAL: 0 }),
     dareMulti: k('1900', 'MULTI-USE'), dareShed: k('9900', 'SECONDARY IMPROVEMENT'), wataugaApt: k('A11', 'APARTMENT-GARDEN (1-3 STORIES)', 'CO'),
     mobile: k(null, null, '0202', 'MANUFACTURED HOME-DOUBLE WIDE'), farm: k('AG', null), none: k(null, null, null, null),
+    wataugaCommon: k('E17', 'EXCLUSIONS (COMMONE AREAS)', 'EC'), durhamAssoc: k('DD-C', 'VAC COM/ CONDO ASSOC'), durhamHoa: k(null, 'COM/ HOMEOWNERS ASSO'),
+    buncStorage: k('122', 'CONDO STORAGE', null, 'Improved'), meckCommonArea: k(null, 'OFFICE CONDOMINIUM COMMON AREA'),
+    meckOfficeTower: k('9010', 'NO LAND INTEREST', '18A', 'OFFICE HI-RISE A > 4 STORIES'), wataugaShop: k('C73', 'RETAIL - SINGLE OCCUPANCY', 'CO'),
+    wataugaGrocery: k('C47', 'SUPERMARKET', 'CO'), meckOfficeConv: k('O400', 'OFFICE', '17R', 'OFFICE CONVERSION FROM SFR'), dareState: k('9100', 'STATE OF NORTH CAROLINA'),
+    meckAir: k('9403', 'AIR RIGHTS PARCEL'), buncPolice: k('662', 'POLICE-FIRE DEPT.', null, 'Improved'), styleRanch: k(null, null, null, 'RANCH'),
   };
 });
 console.log('kinds:', JSON.stringify(kinds));
@@ -109,7 +123,9 @@ const want = { wakeHouse: 'single', wakeTwo: 'multi', wakeApt: 'apartments', wak
   meckOfficeCondo: 'comCondo', meckStadium: 'commercial', buncHouse: 'single', buncLot: 'vacant', buncCommon: 'other', buncRetail: 'commercial', buncGov: 'exempt',
   guilCondo: 'resCondo', guilTownhome: 'single', guilDuplex: 'multi', guilChurch: 'exempt', durhamHouse: 'single', durhamTwo: 'multi', durhamCondo: 'resCondo',
   durhamGov: 'exempt', durhamShop: 'commercial', hanoverHouse: 'single', hanoverLand: 'vacant', dareMulti: 'mixed', dareShed: 'accessory', wataugaApt: 'apartments',
-  mobile: 'mobile', farm: 'farmForest', none: 'unknown' };
+  mobile: 'mobile', farm: 'farmForest', none: 'unknown', wataugaCommon: 'other', durhamAssoc: 'condoMaster', durhamHoa: 'other', buncStorage: 'accessory',
+  meckCommonArea: 'condoMaster', meckOfficeTower: 'commercial', wataugaShop: 'commercial', wataugaGrocery: 'commercial', meckOfficeConv: 'commercial',
+  dareState: 'exempt', meckAir: 'other', buncPolice: 'exempt', styleRanch: 'single' };
 const wrong = Object.entries(want).filter(([k, v]) => kinds[k] !== v).map(([k, v]) => `${k}: ${kinds[k]} (want ${v})`);
 check(!wrong.length, 'each county’s use codes read as the right kind' + (wrong.length ? ': ' + wrong.join(', ') : ''));
 
@@ -154,6 +170,15 @@ const noAddr = await page.evaluate(() => { const S = window.__hp.S; const L = S.
   window.__hp.openSheet([{ L, dist: 20, cdist: 30, bearing: 0 }], 0); return document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | '); });
 console.log('no address:', noAddr.slice(0, 300));
 check(/Address not listed/.test(noAddr) && /Single-family home/.test(noAddr) && /No recorded sale on file/.test(noAddr), 'no address on the state layer; 1899 isn’t a sale');
+
+const durham = await open('110 N CORCORAN ST');
+console.log('durham:', durham.slice(0, 500));
+check(/110 N Corcoran St/.test(durham) && /3 units/i.test(durham), 'units sharing a parcel number stay separate units');
+const durhamUnits = await page.$$eval('#cardBody .units .unit', (els) => els.map((e) => e.innerText.replace(/\n/g, ' ')));
+check(durhamUnits.some((u) => /Unit 2101/.test(u)) && !durhamUnits.some((u) => /110 2101/.test(u)), 'unit number moved after the street: ' + durhamUnits.join(' / '));
+const tower = await open('225 S POPLAR ST');
+console.log('tower:', tower.slice(0, 500));
+check(/225 S Poplar St/.test(tower) && /Apartments/.test(tower) && !/Also on this lot/.test(tower) && /\$103,059,400/.test(tower), 'a parcel listed once per building section is one record');
 
 await page.evaluate(() => window.__hp.startMapMode(null, 'x')); await sleep(300);
 check(await page.$$eval('#samples button', (els) => els.some((e) => /Raleigh/.test(e.textContent))), 'Raleigh sample spot');

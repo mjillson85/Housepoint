@@ -1,5 +1,5 @@
 # Tries the services behind "Thinking of buying?" (tests/probe/services.mjs) and other states' parcel services
-# (tests/probe/states.mjs, state-fields.mjs) from a browser on GitHub, and logs the answers.
+# (tests/probe/states.mjs, state-fields.mjs, live-state.mjs) from a browser on GitHub, and logs the answers.
 # Runs when the probe changes, or by hand from the Actions tab. Nothing is saved or committed.
 name: probe services
 on:
@@ -19,19 +19,16 @@ jobs:
       - name: Install the test tools
         working-directory: tests
         run: npm install --no-audit --no-fund
-      - name: North Carolina tax rates
-        working-directory: tests
-        continue-on-error: true
-        run: pip install --quiet openpyxl && python3 probe/nc-tax-rates.py
       - name: Probe
         working-directory: tests
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/services.mjs
-      # probe/states.mjs (which states have free parcel services) is run by hand when needed.
-      - name: Probe the next state's fields and property types
+      # Run by hand when needed: probe/states.mjs (which states have free parcel services), probe/state-fields.mjs (a new state's
+      # fields and use codes), probe/nc-tax-rates.py (North Carolina's tax rate table; needs pip install openpyxl).
+      - name: The newest state against its real service
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/state-fields.mjs
+        run: node probe/live-state.mjs

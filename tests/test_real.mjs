@@ -89,7 +89,7 @@ for (const set of sets) {
         r0Sale: { p: +s.r0.LS_PRICE || 0, d: s.r0.LS_DATE ?? s.r0.SALE_YR ?? null }, fy: s.fy, stale: !!hp.staleRecord(s), commonOnly: s.commonOnly, copied: JSON.parse(hp.lotRecordsJson(L)), year: s.year, recs: s.recs.length, rid: s.region.id };
     }, lot.lat, lot.lon);
     if (st.err || st.none) { skipped++; continue; }     // e.g. a road or water outline: the app doesn't load those as lots
-    if (REPORT) REPORT.push({ name, town: st.town, value: st.value, kind: st.kind, home: st.isHome, units: st.condo ? st.units : null, heads: st.heads, lists: st.lists.map((l) => l.slice(0, 4)),
+    if (REPORT) REPORT.push({ name, town: st.town, value: st.value, chip: st.chip.replace(/\s+/g, ' ').trim(), share: st.share, kind: st.kind, home: st.isHome, units: st.condo ? st.units : null, heads: st.heads, lists: st.lists.map((l) => l.slice(0, 4)),
       codes: lot.features.map((f) => f.attributes.USE_CODE ?? f.attributes.DOR_UC ?? f.attributes.PROP_CLASS ?? f.attributes.State_Use_Description ?? null).slice(0, 12) });
     shown++;
     tally[st.kind] = (tally[st.kind] || 0) + 1;
@@ -121,7 +121,7 @@ for (const set of sets) {
     for (const m of T.matchAll(new RegExp(String.raw`(?:Last sold|Latest unit sale|Sold before that for)\s+` + AMT, 'g'))) check(dollars(m) >= 10000, `a nominal deed shown as a sale (${m[0]}): ${name}`);
     for (const m of st.share.matchAll(new RegExp('Last sold ' + AMT, 'g'))) check(dollars(m) >= 10000, `share text: nominal deed as a sale: ${name}`);
     // An address in any of the states' address fields shows on the card
-    const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1'].some((k) => String(f.attributes[k] ?? '').trim()));
+    const rawAddr = lot.features.some((f) => ['SITE_ADDR', 'Location', 'Location_1', 'PROP_LOC', 'PHY_ADDR1', 'siteadd'].some((k) => String(f.attributes[k] ?? '').trim()));
     if (rawAddr) check(st.addr !== 'Address not listed', `the records have an address but the card says "Address not listed": ${name}`);
     // A real sale in the records shows on the card
     if (!st.condo && !st.commonOnly && st.r0Sale.p >= 10000 && st.r0Sale.d) check(/last sold|part of a multi-lot sale/i.test(T), `the record has a ${st.r0Sale.p} sale (${st.r0Sale.d}) but the card shows none: ${name}`);
@@ -157,7 +157,7 @@ for (let i = 0; i < 120 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.te
 const health = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
 console.log('health:', health.join('\n        '));
 for (const st of sets.map((x) => x.state)) {
-  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida' }[st];
+  const name = { MA: 'Massachusetts', CT: 'Connecticut', NJ: 'New Jersey', FL: 'Florida', NC: 'North Carolina' }[st];
   const mine = health.filter((h) => h.includes(`${name}:`));
   check(mine.length === 4 && /^ok\|/.test(mine[0]) && /^(ok|warn)\|/.test(mine[1]) && /^(ok|warn)\|.* \d+ lots/.test(mine[2]) && /^(ok|warn)\|/.test(mine[3]), `health: ${name} rows ${JSON.stringify(mine)}`);
 }

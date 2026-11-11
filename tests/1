@@ -1,0 +1,8012 @@
+[
+ {
+  "name": "CT Hartford downtown THREE FAMILY|1 (shape:1d60u5z.6)",
+  "town": "Hartford · Three-family",
+  "value": "$158,500",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "THREE FAMILY"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave EXEMPT COMMERCIAL|1 (shape:qlg9qh.7)",
+  "town": "Greenwhich · Tax-exempt property",
+  "value": "$27,840,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Exempt Commercial"
+  ]
+ },
+ {
+  "name": "CT New Haven APT OVER MDL|1 (shape:1670g9y.5)",
+  "town": "New Haven · Apartments",
+  "value": "$13,652,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT Over12  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) SINGLE FAM W IN LAW|1 (shape:1yv6qps.6)",
+  "town": "Mansfield · Single-family home",
+  "value": "$640,900",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Single Fam w In-law"
+  ]
+ },
+ {
+  "name": "CT Salisbury (rural) USE ASSESSMENT|1 (shape:2ya3do.46)",
+  "town": "Salisbury · Use Assessment",
+  "value": "$14,500",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Use Assessment"
+  ]
+ },
+ {
+  "name": "CT Stamford EXMPT COMM MDL|1 (shape:1ghdq3k.16)",
+  "town": "Stamford · Exmpt Commercial",
+  "value": "$17,273,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Exmpt Comm  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown GEN OFFICE|1 (shape:2k8hfz.6)",
+  "town": "Hartford · Gen Office",
+  "value": "$388,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "GEN OFFICE"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave LAND COMMERCIAL|1 (shape:8ypslt.5)",
+  "town": "Greenwhich · Land Commercial",
+  "value": "$92,900",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Land Commercial"
+  ]
+ },
+ {
+  "name": "CT New Haven FRATNL ORG MDL|1 (shape:1uigmno.6)",
+  "town": "New Haven · Fratnl Org",
+  "value": "$1,754,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "FRATNL ORG  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) STATE RES|1 (shape:cjc3yw.8)",
+  "town": "Mansfield · State Residential",
+  "value": "$398,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "State  Res"
+  ]
+ },
+ {
+  "name": "CT Salisbury (rural) VACANT LAND|1 (shape:16y0sc3.5)",
+  "town": "Salisbury · Vacant land",
+  "value": "$90,400",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Vacant Land"
+  ]
+ },
+ {
+  "name": "CT Stamford COMMERCIAL MDL|1 (shape:1ah4um3.5)",
+  "town": "Stamford · Vacant commercial land",
+  "value": "$760,200",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Commercial  MDL-00"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown TWO FAMILY|1 (shape:1pu3h11.6)",
+  "town": "Hartford · Two-family",
+  "value": "$115,400",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "TWO FAMILY"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave GENERAL OFFICE|1 (shape:4twybn.9)",
+  "town": "Greenwhich · General Office",
+  "value": "$4,173,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "General Office"
+  ]
+ },
+ {
+  "name": "CT New Haven PVT UNIV MDL|1 (shape:1i1zf4c.5)",
+  "town": "New Haven · Pvt Univ",
+  "value": "$39,766,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "PVT UNIV  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) TOWN MDL COM|1 (shape:gixroi.12)",
+  "town": "Mansfield · Town",
+  "value": "$31,298,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Town  MDL-Com"
+  ]
+ },
+ {
+  "name": "CT Salisbury (rural) RESIDENTIAL|1 (shape:1mpxqqc.20)",
+  "town": "Salisbury · Residential",
+  "value": "$3,518,700",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Residential"
+  ]
+ },
+ {
+  "name": "CT Stamford APARTMENT MDL|1 (shape:1q2uhxc.17)",
+  "town": "Stamford · Apartments",
+  "value": "$151,287,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Apartment  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown APARTMENT|1 (shape:1cjr5c.6)",
+  "town": "Hartford · Apartments",
+  "value": "$230,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APARTMENT"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave MIXED USE|1 (shape:1ugocly.5)",
+  "town": "Greenwhich · Mixed - Use",
+  "value": "$3,395,800",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Mixed - Use"
+  ]
+ },
+ {
+  "name": "CT New Haven EXEMPT COM MDL|1 (shape:1h0pipb.5)",
+  "town": "New Haven · Tax-exempt property",
+  "value": "$26,646,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "EXEMPT COM  MDL-00"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) COMMERCIAL CONDO|1 (shape:jcrjtl.14)",
+  "town": "Mansfield · Commercial condo",
+  "value": "$5,152,400",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Commercial Condo"
+  ]
+ },
+ {
+  "name": "CT Salisbury (rural) COMMERCIAL|1 (shape:1106hxo.30)",
+  "town": "Salisbury · Commercial",
+  "value": "$563,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Commercial"
+  ]
+ },
+ {
+  "name": "CT Stamford COMM CONDO MDL|1 (shape:pcnunh.20)",
+  "town": "Stamford · Commercial condo",
+  "value": "$3,074,800",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Comm Condo  MDL-06"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown A PARKING|1 (shape:6y5sqt.5)",
+  "town": "Hartford · A Parking",
+  "value": "$41,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "A PARKING"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave DEPARTMENT STORE|1 (shape:991alj.5)",
+  "town": "Greenwhich · Department Store",
+  "value": "$40,716,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Department Store"
+  ]
+ },
+ {
+  "name": "CT New Haven CONDO MAIN+CONDOMINIUM|21+ (shape:1jz1yj5.7)",
+  "town": "New Haven · Condo building",
+  "value": "$144k–$269k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 42,
+  "heads": [
+   "42 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "196 Crown St #2a",
+    "196 Crown St #2b",
+    "196 Crown St #2c",
+    "196 Crown St #2d"
+   ]
+  ],
+  "codes": [
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) TOWN VACANT|1 (shape:fzq81d.5)",
+  "town": "Mansfield · Vacant land",
+  "value": "$124,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Town  Vacant"
+  ]
+ },
+ {
+  "name": "CT Stamford APARTMENT PUD|1 (shape:tji4fo.20)",
+  "town": "Stamford · Apartments",
+  "value": "$70,856,800",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Apartment PUD 06"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown APT SUBSIDIZED|1 (shape:jfr54g.6)",
+  "town": "Hartford · Apartments",
+  "value": "$342,500",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT SUBSIDIZED"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave RETAIL STORE|1 (shape:bcmtnl.10)",
+  "town": "Greenwhich · Retail Store",
+  "value": "$4,391,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Retail Store"
+  ]
+ },
+ {
+  "name": "CT New Haven CITY SCHOO MDL|1 (shape:ntqpzi.9)",
+  "town": "New Haven · City Schoo",
+  "value": "$79,862,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY SCHOO  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) COMMERCIAL IMPROV|1 (shape:e4nilj.5)",
+  "town": "Mansfield · Commercial Improv",
+  "value": "$753,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Commercial Improv"
+  ]
+ },
+ {
+  "name": "CT Stamford INDUSTRIAL MDL|1 (shape:ss25uq.8)",
+  "town": "Stamford · Industrial",
+  "value": "$4,132,100",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Industrial  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ST ADMINISTR|1 (shape:dkm0mo.22)",
+  "town": "Hartford · St-Administr",
+  "value": "$42,612,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ST-ADMINISTR"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave STRIP RETAIL RESIDENTIAL|1 (shape:1voomhi.7)",
+  "town": "Greenwhich · Strip Retail/Residential",
+  "value": "$4,170,000",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Strip Retail/Residential"
+  ]
+ },
+ {
+  "name": "CT New Haven CITY MDL|1 (shape:1v1d6l1.38)",
+  "town": "New Haven · City",
+  "value": "$37,396,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY  MDL-00"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) CONDO MAIN|1 (shape:560akh.18)",
+  "town": "Mansfield · Condo common record",
+  "value": "Condo",
+  "kind": "condoMaster",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Condo Main"
+  ]
+ },
+ {
+  "name": "CT Stamford EXMPT CM COND OP|1 (shape:10hth2.5)",
+  "town": "Stamford · Exmpt Cm Cond Op",
+  "value": "$2,331,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Exmpt Cm Cond OP"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown VAC LAND RES|1 (shape:1aview.6)",
+  "town": "Hartford · Vacant land",
+  "value": "$16,200",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "VAC LAND RES"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave AUTO DEALERSHIP|1 (shape:tl9bcf.7)",
+  "town": "Greenwhich · Auto Dealership",
+  "value": "$8,448,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Auto Dealership"
+  ]
+ },
+ {
+  "name": "CT New Haven CONDO MAIN+OFF CONDO MDL+RTL CONDO MDL|5-20 (shape:16brhq5.5)",
+  "town": "New Haven · Commercial condo building",
+  "value": "$47k–$898k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 11,
+  "heads": [
+   "11 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "216 Crown St #-1a",
+    "216 Crown St #-1c",
+    "216 Crown St #-4a",
+    "216 Crown St #-5a"
+   ]
+  ],
+  "codes": [
+   "RTL CONDO  MDL-06",
+   "RTL CONDO  MDL-06",
+   "OFF CONDO  MDL-06",
+   "RTL CONDO  MDL-06",
+   "OFF CONDO  MDL-06",
+   "RTL CONDO  MDL-06",
+   "OFF CONDO  MDL-06",
+   "CONDO MAIN",
+   "OFF CONDO  MDL-06",
+   "RTL CONDO  MDL-06",
+   "OFF CONDO  MDL-06",
+   "OFF CONDO  MDL-06"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) RELIGOUS COM|1 (shape:jpczd8.8)",
+  "town": "Mansfield · Religous Com",
+  "value": "$17,027,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Religous Com"
+  ]
+ },
+ {
+  "name": "CT Stamford EXMPT CM CONDO|1 (shape:t29dtf.10)",
+  "town": "Stamford · Condo",
+  "value": "$41,727,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Exmpt Cm Condo"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown RES COMM|1 (shape:1fmexei.5)",
+  "town": "Hartford · Residential/Commercial",
+  "value": "$304,800",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "RES/COMM"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave SINGLE FAMILY|1 (shape:100t7km.5)",
+  "town": "Greenwhich · Single-family home",
+  "value": "$1,316,200",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Single Family"
+  ]
+ },
+ {
+  "name": "CT New Haven REST CLUBS MDL|1 (shape:1dh4jmi.6)",
+  "town": "New Haven · Rest/Clubs",
+  "value": "$1,881,800",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "REST/CLUBS  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) RES COMM MDL|1 (shape:bp4i0o.6)",
+  "town": "Mansfield · Residential/Commercial",
+  "value": "$522,100",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Res/Comm MDL-01"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CHURCH|1 (shape:lb4xn0.6)",
+  "town": "Hartford · Church",
+  "value": "$576,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CHURCH"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave BARBER BEAUTY SHOP|1 (shape:1z09u9g.5)",
+  "town": "Greenwhich · Barber/Beauty Shop",
+  "value": "$1,477,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Barber/Beauty Shop"
+  ]
+ },
+ {
+  "name": "CT New Haven MIXED USE MDL|1 (shape:5ic533.5)",
+  "town": "New Haven · Mixed Use",
+  "value": "$591,900",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "MIXED USE  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) PUBLIC UTILITY|1 (shape:ra2jn3.6)",
+  "town": "Mansfield · Public Utility",
+  "value": "$658,400",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Public Utility"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown APART COMM|1 (shape:yiuewo.6)",
+  "town": "Hartford · Apartments",
+  "value": "$555,300",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APART/COMM"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave CONDOMINIUM COMMERCIAL|1 (shape:iq2pn.9)",
+  "town": "Greenwhich · Commercial condo",
+  "value": "$1,757,900",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Condominium Commercial"
+  ]
+ },
+ {
+  "name": "CT New Haven STATE ADM MDL|1 (shape:710q5b.7)",
+  "town": "New Haven · State Adm",
+  "value": "$31,586,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "STATE ADM  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) STATE VACANT|1 (shape:1lt5hw9.31)",
+  "town": "Mansfield · Vacant land",
+  "value": "$40,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "State  Vacant"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ONE FAMILY|1 (shape:x4gugm.6)",
+  "town": "Hartford · Single-family home",
+  "value": "$109,100",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ONE FAMILY"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave DINER LUNCHEONETTE|1 (shape:12ds9bz.5)",
+  "town": "Greenwhich · Diner/Luncheonette",
+  "value": "$1,908,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Diner/Luncheonette"
+  ]
+ },
+ {
+  "name": "CT New Haven STORE SHOP MDL|1 (shape:tcoyw4.5)",
+  "town": "New Haven · Store/Shop",
+  "value": "$553,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "STORE/SHOP  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Storrs (Mansfield) CEMETERY|1 (shape:10ugnp9.9)",
+  "town": "Mansfield · Cemetery",
+  "value": "$256,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Cemetery"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CONDO CONV APT|5-20 (shape:15056pe.6)",
+  "town": "Hartford · Condo building",
+  "value": "$86k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 5,
+  "heads": [
+   "5 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "58 Russ St, Unit 2",
+    "58 Russ St, Unit 2",
+    "58 Russ St, Unit 3",
+    "58 Russ St, Unit 3"
+   ]
+  ],
+  "codes": [
+   "CONDO CONV APT",
+   "CONDO CONV APT",
+   "CONDO CONV APT",
+   "CONDO CONV APT",
+   "CONDO CONV APT"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave RES VACANT|1 (shape:12lu96a.11)",
+  "town": "Greenwhich · Vacant land",
+  "value": "$87,800",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Res Vacant"
+  ]
+ },
+ {
+  "name": "CT New Haven PARK LOT|1 (shape:xl9nws.5)",
+  "town": "New Haven · Park Lot",
+  "value": "$328,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "PARK LOT"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CITY PARKS|1 (shape:26s9ai.5)",
+  "town": "Hartford · City-Parks",
+  "value": "$255,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY-PARKS"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave STRIP RETAIL|1 (shape:16py53q.5)",
+  "town": "Greenwhich · Strip Retail",
+  "value": "$10,178,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Strip Retail"
+  ]
+ },
+ {
+  "name": "CT New Haven ACC COM LD MDL|1 (shape:1wnhib9.5)",
+  "town": "New Haven · Acc Com Ld",
+  "value": "$367,700",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ACC COM LD  MDL-00"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown OTHER RELIGS|1 (shape:szz1ua.5)",
+  "town": "Hartford · Other Religs",
+  "value": "$24,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "OTHER RELIGS"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave RESTAURANT|1 (shape:sec2vy.5)",
+  "town": "Greenwhich · Restaurant",
+  "value": "$1,738,700",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Restaurant"
+  ]
+ },
+ {
+  "name": "CT New Haven CONDO MAIN+CONDOMINIUM+RTL CONDO MDL|5-20 (shape:z2kxu8.5)",
+  "town": "New Haven · Condo building · homes and businesses",
+  "value": "$432k–$1.34M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 14,
+  "heads": [
+   "14 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "81 Church St #1r",
+    "81 Church St #2e",
+    "81 Church St #2s",
+    "81 Church St #2w"
+   ]
+  ],
+  "codes": [
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "CONDO MAIN",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "Condominium",
+   "RTL CONDO  MDL-06"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown L PARKING|1 (shape:jga6t8.5)",
+  "town": "Hartford · L Parking",
+  "value": "$23,700",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "L PARKING"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave MEDICAL OFFICE|1 (shape:e7daz9.7)",
+  "town": "Greenwhich · Medical Office",
+  "value": "$8,220,200",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Medical Office"
+  ]
+ },
+ {
+  "name": "CT New Haven EC VACANT|1 (shape:1qefgj2.8)",
+  "town": "New Haven · Vacant land",
+  "value": "$402,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "EC VACANT"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CHARITABLE|1 (shape:bhrkk4.6)",
+  "town": "Hartford · Charitable",
+  "value": "$224,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CHARITABLE"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave BANK|1 (shape:3podph.6)",
+  "town": "Greenwhich · Bank",
+  "value": "$13,279,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Bank"
+  ]
+ },
+ {
+  "name": "CT New Haven EDUC BLDG|1 (shape:188xira.7)",
+  "town": "New Haven · Educ Bldg",
+  "value": "$2,313,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "EDUC BLDG"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ?+CONDOMINIUM|5-20 (shape:pwb75j.6)",
+  "town": "Hartford · Condo building",
+  "value": "$20k–$32k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 3,
+  "heads": [
+   "3 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "39 Hungerford St, Unit 0001",
+    "39 Hungerford St, Unit 0004",
+    "39 Hungerford St, Unit 0004"
+   ]
+  ],
+  "codes": [
+   "CONDOMINIUM",
+   null,
+   "CONDOMINIUM",
+   null,
+   "CONDOMINIUM"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave LAND EXEMPT|1 (shape:qxb5d1.26)",
+  "town": "Greenwhich · Tax-exempt property",
+  "value": "$61,230,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Land Exempt"
+  ]
+ },
+ {
+  "name": "CT New Haven APT UNIT|1 (shape:ewe4jg.5)",
+  "town": "New Haven · Apartments",
+  "value": "$684,900",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT 4-Unit"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown APT FOUR|1 (shape:18eamnu.6)",
+  "town": "Hartford · Apartments",
+  "value": "$265,500",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT FOUR"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave NURSERY GARDEN|1 (shape:jrwukj.6)",
+  "town": "Greenwhich · Nursery Garden",
+  "value": "$6,948,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Nursery Garden"
+  ]
+ },
+ {
+  "name": "CT New Haven CITY LIBR|1 (shape:c1p17p.5)",
+  "town": "New Haven · City Libr",
+  "value": "$28,572,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY LIBR"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CONDO CONV RES|5-20 (shape:1f8von.6)",
+  "town": "Hartford · Condo building",
+  "value": "$30k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 7,
+  "heads": [
+   "7 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "479-483 Broad St, Unit 479-1",
+    "479-483 Broad St, Unit 483-1",
+    "479-483 Broad St, Unit 483-1",
+    "479-483 Broad St, Unit 483-1"
+   ]
+  ],
+  "codes": [
+   "CONDO CONV RES",
+   "CONDO CONV RES",
+   "CONDO CONV RES",
+   "CONDO CONV RES",
+   "CONDO CONV RES",
+   "CONDO CONV RES",
+   "CONDO CONV RES"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave APARTMENTS LOW RISE|1 (shape:1pkt8u5.5)",
+  "town": "Greenwhich · Apartments",
+  "value": "$1,254,200",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Apartments Low Rise (5-10)"
+  ]
+ },
+ {
+  "name": "CT New Haven DEVEL LAND|1 (shape:co2hr1.5)",
+  "town": "New Haven · Devel Land",
+  "value": "$371,000",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "DEVEL LAND"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ST EDUC|1 (shape:1fzmi0s.15)",
+  "town": "Hartford · St-Educ",
+  "value": "$52,228,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ST-EDUC"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave MULTIPLE DWELLINGS|1 (shape:occndd.5)",
+  "town": "Greenwhich · Multiple Dwellings",
+  "value": "$1,419,400",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Multiple Dwellings"
+  ]
+ },
+ {
+  "name": "CT New Haven OFFICE BLD MDL|1 (shape:18utdz8.5)",
+  "town": "New Haven · Office Bld",
+  "value": "$4,950,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "OFFICE BLD  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CONDOMINIUM|1 (shape:1bt6pzm.6)",
+  "town": "Hartford · Condo",
+  "value": "$39,200",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CONDOMINIUM"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave FUNERAL HOME MORTUARY|1 (shape:6vgd5l.5)",
+  "town": "Greenwhich · Funeral Home/Mortuary",
+  "value": "$5,170,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Funeral Home/Mortuary"
+  ]
+ },
+ {
+  "name": "CT New Haven POT DEVEL|1 (shape:1ex2zon.6)",
+  "town": "New Haven · Pot Devel",
+  "value": "$550,600",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "POT DEVEL"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CONVENIENCE|1 (shape:1b9uyzh.8)",
+  "town": "Hartford · Convenience",
+  "value": "$700,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CONVENIENCE"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave FOUR FAMILY|1 (shape:1waap2.5)",
+  "town": "Greenwhich · Four Family",
+  "value": "$4,451,600",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Four Family"
+  ]
+ },
+ {
+  "name": "CT New Haven CITY ADMN|1 (shape:4agrs4.21)",
+  "town": "New Haven · City Admn",
+  "value": "$31,444,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY ADMN"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown COMM APART|1 (shape:49y1iv.6)",
+  "town": "Hartford · Apartments",
+  "value": "$413,800",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "COMM & APART"
+  ]
+ },
+ {
+  "name": "CT New Haven APT MDL|1 (shape:1yvbk9k.5)",
+  "town": "New Haven · Apartments",
+  "value": "$1,368,500",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT5 - 12  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown VAC LAND COM|1 (shape:16iadx5.6)",
+  "town": "Hartford · Vacant land",
+  "value": "$5,000",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "VAC LAND COM"
+  ]
+ },
+ {
+  "name": "CT New Haven CHURCH MDL|1 (shape:o7u3c0.9)",
+  "town": "New Haven · Church",
+  "value": "$4,196,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CHURCH  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown APT CRDA|1 (shape:1idzef3.11)",
+  "town": "Hartford · Apartments",
+  "value": "$5,866,700",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "APT CRDA"
+  ]
+ },
+ {
+  "name": "CT New Haven ?+COM CND MU MDL|2-4 (shape:6pk7om.5)",
+  "town": "New Haven · Commercial condo",
+  "value": "$15,290,200",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "Unit · Other record"
+   ]
+  ],
+  "codes": [
+   "COM CND MU  MDL-06",
+   null
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CITY FLOOD|1 (shape:196myqn.14)",
+  "town": "Hartford · City-Flood",
+  "value": "$170,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY-FLOOD"
+  ]
+ },
+ {
+  "name": "CT New Haven RELIG COMM MDL|1 (shape:virp9d.6)",
+  "town": "New Haven · Relig Commercial",
+  "value": "$3,063,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "RELIG COMM  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CITY PARKING|1 (shape:1s2xqpx.6)",
+  "town": "Hartford · City-Parking",
+  "value": "$371,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY-PARKING"
+  ]
+ },
+ {
+  "name": "CT New Haven BORDING HS MDL|1 (shape:15hr2lj.5)",
+  "town": "New Haven · Bording Hs",
+  "value": "$673,000",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Bording Hs  MDL-01"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ST MISC PROP|1 (shape:s4tn83.5)",
+  "town": "Hartford · St-Misc Prop",
+  "value": "$7,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ST-MISC PROP"
+  ]
+ },
+ {
+  "name": "CT New Haven US GOVT MDL|1 (shape:1h83gmi.5)",
+  "town": "New Haven · Us Govt",
+  "value": "$50,677,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "US GOVT  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown MANUFACTURNG|1 (shape:1cp74ah.8)",
+  "town": "Hartford · Manufacturng",
+  "value": "$6,768,000",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "MANUFACTURNG"
+  ]
+ },
+ {
+  "name": "CT New Haven HOTELS MDL|1 (shape:1bfy4kg.12)",
+  "town": "New Haven · Hotels",
+  "value": "$12,470,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "HOTELS  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ST DEP SAFTE|1 (shape:mdju62.34)",
+  "town": "Hartford · St-Dep Safte",
+  "value": "$79,771,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "ST-DEP SAFTE"
+  ]
+ },
+ {
+  "name": "CT New Haven CONDO MAIN+EX RET CND MDL+RTL CONDO MDL|2-4 (shape:1jges41.7)",
+  "town": "New Haven · Commercial condo building",
+  "value": "$1.89M–$4.16M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "238 College St #1",
+    "238 College St #2"
+   ]
+  ],
+  "codes": [
+   "EX RET CND  MDL-06",
+   "RTL CONDO  MDL-06",
+   "CONDO MAIN"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown RAILROAD|1 (shape:akcwc0.13)",
+  "town": "Hartford · Railroad",
+  "value": "$1,466,800",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "RAILROAD"
+  ]
+ },
+ {
+  "name": "CT New Haven PVT SCHOOL MDL|1 (shape:hltpws.5)",
+  "town": "New Haven · Pvt School",
+  "value": "$2,956,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "PVT SCHOOL  MDL-94"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ?|1 (shape:1dlmsv7.22)",
+  "town": "Hartford · Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "CT New Haven NON PROFIT MDL|1 (shape:18noobv.5)",
+  "town": "New Haven · Non-Profit",
+  "value": "$339,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "NON-PROFIT  MDL-00"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown CITY TAX COL|1 (shape:4w3r9u.30)",
+  "town": "Hartford · City-Tax Col",
+  "value": "$2,466,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "CITY-TAX COL"
+  ]
+ },
+ {
+  "name": "CT New Haven VAC UN BLD|1 (shape:jgxt88.5)",
+  "town": "New Haven · Vacant land",
+  "value": "$13,100",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "VAC UN BLD"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown ?+CONDOMINIUM|2-4 (shape:p5ke4p.5)",
+  "town": "Hartford · Condo",
+  "value": "$39,200",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "19 Babcock St, Unit Cndasc · Other record",
+    "19 Babcock St, Unit Cndasc · Other record"
+   ]
+  ],
+  "codes": [
+   null,
+   "CONDOMINIUM",
+   null
+  ]
+ },
+ {
+  "name": "CT New Haven VAC BLD|1 (shape:10v9qnu.6)",
+  "town": "New Haven · Vacant land",
+  "value": "$178,900",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "VAC BLD"
+  ]
+ },
+ {
+  "name": "CT Hartford downtown THREE FAMILY|1 (shape:1rp12zm.6)",
+  "town": "Hartford · Three-family",
+  "value": "$132,100",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "THREE FAMILY"
+  ]
+ },
+ {
+  "name": "CT Greenwich Ave EXEMPT COMMERCIAL|1 (shape:56kofd.13)",
+  "town": "Greenwhich · Tax-exempt property",
+  "value": "$109,888,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "Exempt Commercial"
+  ]
+ },
+ {
+  "name": "CT New Haven PVT UNIV MDL|1 (shape:o3oqfc.9)",
+  "town": "New Haven · Pvt Univ",
+  "value": "$66,912,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "PVT UNIV  MDL-94"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 10|1 (shape:17ddm1s.6)",
+  "town": "Miami · Vacant commercial land",
+  "value": "$1,000",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "010"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 98|1 (shape:5pzwig.5)",
+  "town": "West Palm Beach · Other",
+  "value": "—",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "098"
+  ]
+ },
+ {
+  "name": "FL Tequesta NaN|1 (shape:1tar9gr.50847)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   " "
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 33|1 (shape:59eyap.5)",
+  "town": "Tampa · Commercial",
+  "value": "$928,957",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "033"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 8|1 (shape:1h3sxuy.5)",
+  "town": "Okeechobee · Multi-family, under 10 units",
+  "value": "$148,291",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "008"
+  ]
+ },
+ {
+  "name": "FL The Villages 38|1 (shape:obxhh9.327)",
+  "town": "The Villages · Commercial",
+  "value": "$7,898,180",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "038"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 11|1 (shape:b6l222.8)",
+  "town": "Miami · Commercial",
+  "value": "$907,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "011"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 21|1 (shape:1xmiii5.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$1,069,608",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "021"
+  ]
+ },
+ {
+  "name": "FL Tequesta 1|1 (shape:15p3kxc.6)",
+  "town": "Tequesta · Single-family home",
+  "value": "$865,878",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "001"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 48|1 (shape:144szjv.5)",
+  "town": "Tampa · Industrial",
+  "value": "$2,625,676",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "048"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 49|1 (shape:rv6vd4.7)",
+  "town": "Okeechobee · Industrial",
+  "value": "$211,579",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "049"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 0|1 (shape:11hi2kz.6)",
+  "town": "Miami · Vacant residential land",
+  "value": "—",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "000"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 90|1 (shape:ke0o76.14)",
+  "town": "West Palm Beach · Other",
+  "value": "$20,534,959",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "090"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 75|1 (shape:11ez5na.5)",
+  "town": "Tampa · Institutional",
+  "value": "$2,883,700",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "075"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 27|1 (shape:1o7m7v8.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$275,918",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "027"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 83|1 (shape:103zwzy.8)",
+  "town": "Miami · Government property",
+  "value": "$43,801,775",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "083"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 46|1 (shape:1c49yl.5)",
+  "town": "West Palm Beach · Industrial",
+  "value": "$768,045",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "046"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 16|1 (shape:1h9yv5j.5)",
+  "town": "Tampa · Commercial",
+  "value": "$1,502,049",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "016"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 2|1 (shape:8xf070.5)",
+  "town": "Okeechobee · Mobile home",
+  "value": "$41,506",
+  "kind": "mobile",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "002"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 80|1 (shape:7gyv6b.6)",
+  "town": "Miami · Government property",
+  "value": "$1,984,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "080"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 17|1 (shape:161ss4k.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$1,108,604",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "017"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 77|1 (shape:tz4x4q.5)",
+  "town": "Tampa · Institutional",
+  "value": "$3,596,554",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "077"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 87|1 (shape:1grlx6a.15)",
+  "town": "Okeechobee · Government property",
+  "value": "$4,734,010",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "087"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 18|1 (shape:11bwlc1.11)",
+  "town": "Miami · Commercial",
+  "value": "$88,228,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "018"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 23|1 (shape:1ldshv8.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$2,281,672",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "023"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 20|1 (shape:a2ihj5.10)",
+  "town": "Tampa · Commercial",
+  "value": "$3,573,700",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "020"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 99|1 (shape:1mrmhv9.40)",
+  "town": "Okeechobee · Other",
+  "value": "$491,390",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "099"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 3|1 (shape:hq4nda.12)",
+  "town": "Miami · Apartments, 10+ units",
+  "value": "$157,570,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "003"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 32|1 (shape:phiqjo.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$4,346,116",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "032"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 61|1 (shape:uvhwc7.7)",
+  "town": "Okeechobee · Farm land",
+  "value": "$227,400",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "061"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 39|1 (shape:8s28uv.5)",
+  "town": "Miami · Commercial",
+  "value": "$39,400,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "039"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 86|1 (shape:kyp4db.5)",
+  "town": "West Palm Beach · Government property",
+  "value": "$961,580",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "086"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 40|1 (shape:1ic8kn7.5)",
+  "town": "Okeechobee · Vacant industrial land",
+  "value": "$97,796",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "040"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 97|1 (shape:1iyld01.22)",
+  "town": "Miami · Other",
+  "value": "—",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "097"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 91|1 (shape:8odsz7.7)",
+  "town": "West Palm Beach · Other",
+  "value": "$4,837,066",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "091"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 25|1 (shape:11vv6gi.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$106,471",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "025"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 12|1 (shape:14nfcof.22)",
+  "town": "Miami · Commercial",
+  "value": "$398,000,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "012"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 9|1 (shape:1g359sj.6)",
+  "town": "West Palm Beach · Residential common area",
+  "value": "Condo",
+  "kind": "condoMaster",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "009"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 19|1 (shape:kivvqq.8)",
+  "town": "Okeechobee · Commercial",
+  "value": "$415,583",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "019"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 28|1 (shape:8bfd1k.15)",
+  "town": "Miami · Mobile home park or parking lot",
+  "value": "$2,337,358",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "028"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 71|1 (shape:1iermzk.5)",
+  "town": "West Palm Beach · Institutional",
+  "value": "$11,110,413",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "071"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 41|1 (shape:1iqbkbr.10)",
+  "town": "Okeechobee · Industrial",
+  "value": "$265,648",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "041"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 88|1 (shape:13osn7i.6)",
+  "town": "Miami · Government property",
+  "value": "$9,511,744",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "088"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 94|1 (shape:aqz828.5)",
+  "town": "West Palm Beach · Other",
+  "value": "$69",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "094"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 26|1 (shape:ko4r8w.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$1,254,797",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "026"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 89|1 (shape:13r8epc.6)",
+  "town": "Miami · Government property",
+  "value": "$3,081,720",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "089"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 6|1 (shape:19oiibg.14)",
+  "town": "West Palm Beach · Retirement home",
+  "value": "$48,039,121",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "006"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 95|1 (shape:ckz61m.5)",
+  "town": "Okeechobee · Other",
+  "value": "$2,234",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "095"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 12+21|5-20 (shape:1gkmh31.6)",
+  "town": "West Palm Beach · Commercial condo building",
+  "value": "$345k–$5.68M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 13,
+  "heads": [
+   "13 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "400 Clematis St Unit 101",
+    "400 Clematis St Unit 102",
+    "400 Clematis St Unit 103",
+    "400 Clematis St Unit 200"
+   ]
+  ],
+  "codes": [
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 47|1 (shape:1wsw3rh.8)",
+  "town": "Okeechobee · Industrial",
+  "value": "$398,222",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "047"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 4+90|21+ (shape:1uqkivb.37)",
+  "town": "West Palm Beach · Condo building",
+  "value": "$1.1M–$4.25M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 77,
+  "heads": [
+   "77 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "400 N Flagler Dr 501",
+    "400 N Flagler Dr 502",
+    "400 N Flagler Dr 505",
+    "400 N Flagler Dr 506"
+   ],
+   [
+    "402 N Flagler Dr · Other",
+    "400 N Flagler Dr G · Other",
+    "300 N Flagler Dr · Other"
+   ]
+  ],
+  "codes": [
+   "004",
+   "090",
+   "090",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 76|1 (shape:1obt7gi.5)",
+  "town": "Okeechobee · Institutional",
+  "value": "$1,949,573",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "076"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 4+NaN|21+ (shape:1h7k5s5.30)",
+  "town": "Condo building",
+  "value": "$375k–$2.4M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 52,
+  "heads": [
+   "52 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "101 N Clematis St 417",
+    "101 N Clematis St Unit 300",
+    "101 N Clematis St Unit 301",
+    "101 N Clematis St Unit 302"
+   ]
+  ],
+  "codes": [
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004",
+   "004"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 70|1 (shape:15vjh7g.5)",
+  "town": "Okeechobee · Institutional",
+  "value": "$183,600",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "070"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 12|21+ (shape:1vyexzn.5)",
+  "town": "West Palm Beach · Commercial condo building",
+  "value": "$145k–$1.37M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 34,
+  "heads": [
+   "34 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "330 Clematis St Unit 101",
+    "330 Clematis St Unit 102",
+    "330 Clematis St Unit 103",
+    "330 Clematis St Unit 104"
+   ]
+  ],
+  "codes": [
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012",
+   "012"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 29|1 (shape:17qjczg.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$240,911",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "029"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 18|21+ (shape:1bhcinf.5)",
+  "town": "West Palm Beach · Commercial condo building",
+  "value": "$69k–$2.04M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 37,
+  "heads": [
+   "37 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "120 S Olive Ave 211",
+    "120 S Olive Ave 212",
+    "120 S Olive Ave 601",
+    "120 S Olive Ave 602"
+   ],
+   [
+    "285 Datura St · Commercial"
+   ]
+  ],
+  "codes": [
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018",
+   "018"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 74|1 (shape:123xj5t.7)",
+  "town": "Okeechobee · Institutional",
+  "value": "$4,183,395",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "074"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 12|2-4 (shape:1wdplc0.46)",
+  "town": "Commercial",
+  "value": "$18,759,323",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "Unit · Commercial"
+   ]
+  ],
+  "codes": [
+   "012",
+   "012"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 72|1 (shape:8tw3gn.5)",
+  "town": "Okeechobee · Institutional",
+  "value": "$537,663",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "072"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 14|1 (shape:yd15kr.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$1,806,276",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "014"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 24|1 (shape:11bm5tm.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$476,595",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "024"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 0|1 (shape:1dmnd2d.8)",
+  "town": "Miami · Vacant residential land",
+  "value": "—",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "000"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 21|1 (shape:1vu84zw.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$2,120,418",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "021"
+  ]
+ },
+ {
+  "name": "FL Tequesta 80|1 (shape:ai544t.4)",
+  "town": "Jupiter · Government property",
+  "value": "—",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "080"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 88|1 (shape:759fxd.5)",
+  "town": "Tampa · Government property",
+  "value": "$112,649,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "088"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 48|1 (shape:zxwasq.5)",
+  "town": "Okeechobee · Industrial",
+  "value": "$526,601",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "048"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 10|1 (shape:xoh56b.14)",
+  "town": "Miami · Vacant commercial land",
+  "value": "$47,214,400",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "010"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 12|1 (shape:9v0sl2.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$2,402,036",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "012"
+  ]
+ },
+ {
+  "name": "FL Tequesta 9|1 (shape:1hj338u.8)",
+  "town": "Jupiter · Residential common area",
+  "value": "Condo",
+  "kind": "condoMaster",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "009"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 75|1 (shape:1xpue76.4)",
+  "town": "Tampa · Institutional",
+  "value": "$534,600",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "075"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 49|1 (shape:n03gbq.5)",
+  "town": "Okeechobee · Industrial",
+  "value": "$80,628",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "049"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 18|1 (shape:voyxzb.11)",
+  "town": "Miami · Commercial",
+  "value": "$30,088,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "018"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 17|1 (shape:1ii3sq2.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$2,351,700",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "017"
+  ]
+ },
+ {
+  "name": "FL Tequesta 1|1 (shape:gx47zj.5)",
+  "town": "Tequesta · Single-family home",
+  "value": "$864,656",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "001"
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 16|1 (shape:101k7vt.5)",
+  "town": "Tampa · Commercial",
+  "value": "$879,414",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "016"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 2|1 (shape:liuyti.5)",
+  "town": "Okeechobee · Mobile home",
+  "value": "$104,502",
+  "kind": "mobile",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "002"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 3|1 (shape:10zrfed.20)",
+  "town": "Miami · Apartments, 10+ units",
+  "value": "$73,392,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "003"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 90|1 (shape:1r9jmyq.13)",
+  "town": "West Palm Beach · Other",
+  "value": "$49,591,373",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "090"
+  ]
+ },
+ {
+  "name": "FL Tequesta NaN|1 (shape:173b7hy.5)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   " "
+  ]
+ },
+ {
+  "name": "FL Tampa downtown 33|1 (shape:17bitfi.5)",
+  "town": "Tampa · Commercial",
+  "value": "$1,904,573",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "033"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 8|1 (shape:9xfjdi.5)",
+  "town": "Okeechobee · Multi-family, under 10 units",
+  "value": "$135,377",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "008"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 11|1 (shape:auil4v.17)",
+  "town": "Miami · Commercial",
+  "value": "$5,930,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "011"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 89|1 (shape:15ixjc3.5)",
+  "town": "West Palm Beach · Government property",
+  "value": "—",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "089"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 94|1 (shape:1m8i7nh.22)",
+  "town": "Okeechobee · Other",
+  "value": "—",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "094"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 97|1 (shape:yjwoqu.101)",
+  "town": "Miami · Other",
+  "value": "$100",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "097"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 23|1 (shape:ezwmcg.5)",
+  "town": "West Palm Beach · Commercial",
+  "value": "$2,355,505",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "023"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 32|1 (shape:1ipdsen.7)",
+  "town": "Okeechobee · Commercial",
+  "value": "$624,404",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "032"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 28|1 (shape:8giagy.17)",
+  "town": "Miami · Mobile home park or parking lot",
+  "value": "$46,486,161",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "028"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 98|1 (shape:xpxxyh.47)",
+  "town": "Other",
+  "value": "—",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "098"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 99|1 (shape:1y7np77.9)",
+  "town": "Okeechobee · Other",
+  "value": "$589,190",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "099"
+  ]
+ },
+ {
+  "name": "FL Miami Brickell 39|1 (shape:1g8h0ek.14)",
+  "town": "Miami · Commercial",
+  "value": "$28,100,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "039"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 86|1 (shape:6ihi1n.5)",
+  "town": "West Palm Beach · Government property",
+  "value": "$13,970,058",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "086"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 61|1 (shape:yo80yu.5)",
+  "town": "Okeechobee · Farm land",
+  "value": "$559,588",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "061"
+  ]
+ },
+ {
+  "name": "FL West Palm Beach 71|1 (shape:kr6df7.6)",
+  "town": "West Palm Beach · Institutional",
+  "value": "$12,053,762",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "071"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 27|1 (shape:qip8jg.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$332,671",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "027"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 19|1 (shape:1rpv0is.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$1,110,599",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "019"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 25|1 (shape:17o2ifx.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$329,327",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "025"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 95|1 (shape:gekpy8.5)",
+  "town": "Okeechobee · Other",
+  "value": "$5,646",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "095"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 40|1 (shape:10ouyk8.5)",
+  "town": "Okeechobee · Vacant industrial land",
+  "value": "$1,000",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "040"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 47|1 (shape:4r3g6q.7)",
+  "town": "Okeechobee · Industrial",
+  "value": "$309,558",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "047"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 26|1 (shape:87ptpl.5)",
+  "town": "Okeechobee · Commercial",
+  "value": "$145,489",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "026"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 91|1 (shape:imjhby.5)",
+  "town": "Okeechobee · Other",
+  "value": "$484,808",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "091"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 87|1 (shape:catu8y.5)",
+  "town": "Okeechobee · Government property",
+  "value": "$13,120",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "087"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 77|1 (shape:1a90sgb.5)",
+  "town": "Okeechobee · Institutional",
+  "value": "$336,649",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "077"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 70|1 (shape:lcyjiz.5)",
+  "town": "Okeechobee · Institutional",
+  "value": "$21,504",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "070"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 72|1 (shape:1b8v3u8.10)",
+  "town": "Okeechobee · Institutional",
+  "value": "$418,484",
+  "kind": "institutional",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "072"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 83|1 (shape:xpif31.6)",
+  "town": "Okeechobee · Government property",
+  "value": "$6,934,311",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "083"
+  ]
+ },
+ {
+  "name": "FL Okeechobee (rural) 41|1 (shape:1l28whx.17)",
+  "town": "Okeechobee · Industrial",
+  "value": "$2,660,196",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "041"
+  ]
+ },
+ {
+  "name": "MA 47-49 River St, Dedham (commercial condo, land and master records) 322+925+995|2-4 (id:F_751960_2913839)",
+  "town": "Dedham · Commercial condo building",
+  "value": "$221k–$861k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "47 River St #2",
+    "49 River St #1"
+   ],
+   [
+    "35 River St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "3221",
+   "925V",
+   "995",
+   "3221"
+  ]
+ },
+ {
+  "name": "MA 6 Mosesso Dr, Holbrook 101|1 (id:F_792474_2883742)",
+  "town": "Holbrook · Single-family home",
+  "value": "$556,700",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "101"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 101|1 (id:F_743258_2915432)",
+  "town": "Dedham · Single-family home",
+  "value": "$1,280,800",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1010"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 320|1 (id:F_770173_2953209)",
+  "town": "Boston · Commercial",
+  "value": "$6,634,108",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "320"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 357|21+ (id:F_775288_2955442)",
+  "town": "Boston · Commercial condo building",
+  "value": "$62k–$1.66M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 80,
+  "heads": [
+   "80 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "333 Washington St 200-3",
+    "333 Washington St 200-12",
+    "333 Washington St 203-1",
+    "333 Washington St 302"
+   ]
+  ],
+  "codes": [
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357",
+   "357"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 102+199|2-4 (id:F_762533_2958262)",
+  "town": "Cambridge · Condo building",
+  "value": "$707k–$784k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "44-46 Western Ave #44",
+    "46 Western Ave #46"
+   ]
+  ],
+  "codes": [
+   "199",
+   "102",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 330|1 (id:F_789960_2881714)",
+  "town": "Holbrook · Commercial",
+  "value": "$361,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "330"
+  ]
+ },
+ {
+  "name": "MA Hyannis 102|5-20 (id:F_987613_2701460)",
+  "town": "Barnstable · Condo building",
+  "value": "$231k–$232k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 5,
+  "heads": [
+   "5 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "7 Stevens Street, Hyannis",
+    "7 Stevens Street, Hyannis",
+    "7 Stevens Street, Hyannis",
+    "7 Stevens Street, Hyannis"
+   ]
+  ],
+  "codes": [
+   "102U",
+   "102U",
+   "102U",
+   "102U",
+   "102U"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 972+996|2-4 (id:F_359546_2864353)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$614,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "Bridge St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "972",
+   "996"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 440|1 (id:F_575744_2918939)",
+  "town": "Worcester · Vacant industrial land",
+  "value": "$38,600",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "440V"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 016|1 (id:M_86401_926987)",
+  "town": "Hawley · Mixed use",
+  "value": "$293,500",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "016"
+  ]
+ },
+ {
+  "name": "MA Plymouth (shore, parks) 936|1 (id:F_892898_2794475)",
+  "town": "Plymouth · Tax-exempt property",
+  "value": "$29,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "936"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 384|1 (id:F_1042313_2567176)",
+  "town": "Nantucket · Commercial",
+  "value": "$23,181,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3840"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 337|1 (id:F_744332_2915588)",
+  "town": "Dedham · Commercial",
+  "value": "$150,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3370"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 326+978|2-4 (id:F_770175_2952619)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$290,710,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "230 Dartmouth St · Commercial",
+    "230 Dartmouth St · Commercial"
+   ]
+  ],
+  "codes": [
+   "978",
+   "326",
+   "326"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 102+358+995|21+ (id:F_775151_2954236)",
+  "town": "Boston · Condo building · homes and businesses",
+  "value": "$322k–$2.06M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 23,
+  "heads": [
+   "23 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "42 48 Chauncy St 1b",
+    "42 48 Chauncy St 2-C",
+    "42 48 Chauncy St 2-D",
+    "42 48 Chauncy St 2/3-A/B"
+   ]
+  ],
+  "codes": [
+   "102",
+   "102",
+   "995",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "358"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 010|1 (id:F_762486_2958262)",
+  "town": "Cambridge · Mixed use",
+  "value": "$1,425,600",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0104"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 933|1 (id:F_791203_2879082)",
+  "town": "Holbrook · Tax-exempt property",
+  "value": "$806,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "933"
+  ]
+ },
+ {
+  "name": "MA Hyannis 347+955|5-20 (id:F_988199_2701476)",
+  "town": "Barnstable · Commercial condo building",
+  "value": "$1.37M–$1.66M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 3,
+  "heads": [
+   "3 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "46 North Street, Hyannis",
+    "46 North Street, Hyannis",
+    "46 North Street, Hyannis"
+   ],
+   [
+    "46 North Street, Hyannis · Tax-exempt property",
+    "46 North Street, Hyannis · Tax-exempt property",
+    "46 North Street, Hyannis · Tax-exempt property",
+    "46 North Street, Hyannis · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "3470",
+   "955O",
+   "955O",
+   "955O",
+   "955O",
+   "3470",
+   "3470"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 932|1 (id:F_360091_2862812)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$42,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "932"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 401|1 (id:F_575627_2919033)",
+  "town": "Worcester · Industrial",
+  "value": "$163,600",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4010"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 950|1 (id:M_87046_927525)",
+  "town": "Hawley · Tax-exempt property",
+  "value": "$103,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "950"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 107|1 (id:F_1041878_2567497)",
+  "town": "Nantucket · Residential",
+  "value": "$4,722,762",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1073"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 104|1 (id:F_744261_2915510)",
+  "town": "Dedham · Two-family",
+  "value": "$1,245,100",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1040"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 120|1 (id:F_769252_2952182)",
+  "town": "Boston · Residential",
+  "value": "$148,256,053",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "120"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 387|1 (id:F_774511_2954604)",
+  "town": "Boston · Commercial",
+  "value": "$353,203",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "387"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 132|1 (id:F_763696_2957534)",
+  "town": "Cambridge · Vacant land",
+  "value": "$6,100",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1322"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 327|5-20 (id:F_789483_2882107)",
+  "town": "Holbrook · Commercial condo building",
+  "value": "$125k–$232k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 5,
+  "heads": [
+   "5 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "35 N Franklin St",
+    "37 N Franklin St",
+    "39-41 N Franklin St",
+    "43 N Franklin St"
+   ]
+  ],
+  "codes": [
+   "327",
+   "327",
+   "327",
+   "327",
+   "327"
+  ]
+ },
+ {
+  "name": "MA Hyannis 303|1 (id:F_987738_2700719)",
+  "town": "Barnstable · Commercial",
+  "value": "$4,719,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3030"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 924|1 (id:F_359692_2864001)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "924"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 102+343+995|5-20 (id:F_576519_2919496)",
+  "town": "Worcester · Condo building · homes and businesses",
+  "value": "$131k–$669k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 9,
+  "heads": [
+   "9 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "82 Winter St # 1",
+    "82 Winter St # 2",
+    "82 Winter St # 4",
+    "82 Winter St # 5"
+   ]
+  ],
+  "codes": [
+   "1020",
+   "1020",
+   "3430",
+   "1020",
+   "995",
+   "1020",
+   "995",
+   "3430",
+   "1020",
+   "1020",
+   "1020"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 910|1 (id:M_84850_925836)",
+  "town": "Hawley · Tax-exempt property",
+  "value": "$3,930,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "910"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 032+322+995|2-4 (id:F_1041781_2567383)",
+  "town": "Nantucket · Commercial condo building",
+  "value": "$1.43M–$1.94M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "3 Old North Wf",
+    "5 Old North Wf"
+   ]
+  ],
+  "codes": [
+   "995",
+   "0320",
+   "322O"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 930|1 (id:F_744437_2914958)",
+  "town": "Dedham · Tax-exempt property",
+  "value": "$333,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9300"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 124|1 (id:F_769707_2953535)",
+  "town": "Boston · Residential",
+  "value": "$4,306,600",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "124"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 102+990|21+ (id:F_775233_2954970)",
+  "town": "Boston · Condo building",
+  "value": "$904k–$33.8M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 79,
+  "heads": [
+   "79 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1 Franklin St 1004",
+    "1 Franklin St 1105",
+    "1 Franklin St 1111",
+    "1 Franklin St 1211"
+   ],
+   [
+    "1 Franklin St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 102+199|5-20 (id:F_762800_2957773)",
+  "town": "Cambridge · Condo building",
+  "value": "$635k–$800k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 5,
+  "heads": [
+   "5 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "172 Auburn St #2",
+    "172 Auburn St #3",
+    "172 Auburn St #4",
+    "172 Auburn St #5"
+   ]
+  ],
+  "codes": [
+   "199",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 323|1 (id:F_789482_2882905)",
+  "town": "Holbrook · Commercial",
+  "value": "$2,026,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "323"
+  ]
+ },
+ {
+  "name": "MA Hyannis 301|1 (id:F_989007_2700726)",
+  "town": "Barnstable · Commercial",
+  "value": "$1,883,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3010"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 347+996|2-4 (id:F_359838_2864685)",
+  "town": "Springfield · Commercial condo building",
+  "value": "$720k–$2.27M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1525 Main St 1",
+    "1537 Main St 2"
+   ],
+   [
+    "1537 Main St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "347",
+   "347",
+   "996"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 424|1 (id:F_575190_2920471)",
+  "town": "Worcester · Industrial",
+  "value": "$1,202,600",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4240"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 718|1 (id:M_87117_926824)",
+  "town": "Hawley · Farm land",
+  "value": "$575,400",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "718"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 302|1 (id:F_1042142_2566568)",
+  "town": "Nantucket · Commercial",
+  "value": "$7,175,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "302R"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 013|1 (id:F_744195_2914919)",
+  "town": "Dedham · Mixed use",
+  "value": "$2,585,900",
+  "kind": "mixedRes",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0130"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 102+357+995|5-20 (id:F_768940_2952762)",
+  "town": "Boston · Condo building · homes and businesses",
+  "value": "$1.03M–$1.24M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "249 Newbury St C-1",
+    "249 Newbury St C-2",
+    "249 Newbury St R-1",
+    "249 Newbury St R-2"
+   ]
+  ],
+  "codes": [
+   "995",
+   "357",
+   "357",
+   "102",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 320+985|2-4 (id:F_775538_2955473)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$592,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "308 Washington St · Commercial"
+   ]
+  ],
+  "codes": [
+   "320",
+   "985"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 940|1 (id:F_763019_2957603)",
+  "town": "Cambridge · Tax-exempt property",
+  "value": "$3,651,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9403"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 400|1 (id:F_787614_2881684)",
+  "town": "Holbrook · Industrial",
+  "value": "$1,452,900",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "400"
+  ]
+ },
+ {
+  "name": "MA Hyannis 102+327|5-20 (id:F_989710_2701405)",
+  "town": "Barnstable · Condo building · homes and businesses",
+  "value": "$297k–$637k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 8,
+  "heads": [
+   "8 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "21 Pleasant Street, Hyannis",
+    "21 Pleasant Street, Hyannis",
+    "247 Main Street (hyannis), Hyannis",
+    "247 Main Street (hyannis), Hyannis"
+   ]
+  ],
+  "codes": [
+   "327O",
+   "102U",
+   "102U",
+   "102U",
+   "102U",
+   "102U",
+   "102U",
+   "102U"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 391|1 (id:F_360419_2864342)",
+  "town": "Springfield · Vacant commercial land",
+  "value": "$24,500",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "391"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 049|1 (id:F_576321_2920346)",
+  "town": "Worcester · Mixed use",
+  "value": "$21,130,900",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "049C"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 601|1 (id:M_86166_926817)",
+  "town": "Hawley · Forest land",
+  "value": "$900",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "601"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 032|1 (id:F_1041349_2566962)",
+  "town": "Nantucket · Mixed use",
+  "value": "$12,831,900",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "032C"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 325|1 (id:F_744379_2915304)",
+  "town": "Dedham · Commercial",
+  "value": "$774,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3250"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 976|1 (id:F_769133_2953648)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$7,294,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "976"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 320+977|2-4 (id:F_774262_2954635)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$38,129,300",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "148 150 Tremont St · Commercial"
+   ]
+  ],
+  "codes": [
+   "320",
+   "977"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 931+957|2-4 (id:F_763120_2958674)",
+  "town": "Cambridge · Tax-exempt property",
+  "value": "$7,497,300",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "689 Massachusetts Ave · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "931",
+   "957"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 953|1 (id:F_787508_2881155)",
+  "town": "Holbrook · Tax-exempt property",
+  "value": "$2,175,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "953"
+  ]
+ },
+ {
+  "name": "MA Hyannis 354|1 (id:F_989187_2701719)",
+  "town": "Barnstable · Commercial",
+  "value": "$623,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3542"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 347+931+960|5-20 (id:F_361510_2863603)",
+  "town": "Springfield · Commercial condo building",
+  "value": "$11k–$35k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1155 Main St Unit 221",
+    "1155 Main St Unit 401",
+    "1155 Main St Unit 417",
+    "1155 Main St Unit 1153"
+   ],
+   [
+    "1155 Main St Unit 301 · Tax-exempt property",
+    "1155 Main St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "347",
+   "347",
+   "960",
+   "347",
+   "931",
+   "347"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 355|1 (id:F_574560_2919407)",
+  "town": "Worcester · Commercial",
+  "value": "$1,936,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3550"
+  ]
+ },
+ {
+  "name": "MA Hawley (rural) 103|1 (id:M_86182_925991)",
+  "town": "Hawley · Mobile home",
+  "value": "$66,200",
+  "kind": "mobile",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "103"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 322+957+995|5-20 (id:F_1041103_2567158)",
+  "town": "Nantucket · Commercial condo building",
+  "value": "$1.09M–$2.71M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 7,
+  "heads": [
+   "7 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "7 Center St",
+    "9 Center St",
+    "11 Center St",
+    "13 Center St"
+   ]
+  ],
+  "codes": [
+   "995",
+   "3223",
+   "3223",
+   "3223",
+   "3223",
+   "3223",
+   "9571",
+   "3223"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 031|1 (id:F_744528_2915287)",
+  "town": "Dedham · Mixed use",
+  "value": "$1,235,600",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0310"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 346|1 (id:F_769128_2952513)",
+  "town": "Boston · Commercial",
+  "value": "$20,054,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "346"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 326+904|2-4 (id:F_774399_2954293)",
+  "town": "Boston · School or college",
+  "value": "$11,615,300",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "543 547 Washington St · Commercial"
+   ]
+  ],
+  "codes": [
+   "326",
+   "904"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 324|1 (id:F_763636_2958395)",
+  "town": "Cambridge · Commercial",
+  "value": "$15,102,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "324"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 102|2-4 (id:F_788122_2881802)",
+  "town": "Holbrook · Condo building",
+  "value": "$235k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 3,
+  "heads": [
+   "3 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "107 Union St",
+    "107-109 Union St",
+    "109 Union St"
+   ]
+  ],
+  "codes": [
+   "102",
+   "102",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Hyannis 393|1 (id:F_988766_2701830)",
+  "town": "Barnstable · Vacant commercial land",
+  "value": "$140,300",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3939"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 102+996|2-4 (id:F_361063_2864716)",
+  "town": "Springfield · Condo",
+  "value": "$65,700",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "70 Chestnut St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "996",
+   "102"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 901|1 (id:F_575921_2920258)",
+  "town": "Worcester · State property",
+  "value": "$3,596,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9010"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 322+995|5-20 (id:F_1041617_2567316)",
+  "town": "Nantucket · Commercial condo building",
+  "value": "$594k–$2.16M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 6,
+  "heads": [
+   "6 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "5a S Water St",
+    "5b S Water St",
+    "5c S Water St",
+    "5d S Water St"
+   ]
+  ],
+  "codes": [
+   "322O",
+   "322O",
+   "322O",
+   "322O",
+   "995",
+   "322O",
+   "322O"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 334|1 (id:F_744840_2915067)",
+  "town": "Dedham · Commercial",
+  "value": "$1,805,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3340"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 319|1 (id:F_768946_2952445)",
+  "town": "Boston · Commercial",
+  "value": "$9,228,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "319"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 102+326+995|5-20 (id:F_774716_2954868)",
+  "town": "Boston · Condo building · homes and businesses",
+  "value": "$1.77M–$3.21M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 7,
+  "heads": [
+   "7 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "3 Winter Pl 1- 4",
+    "3 Winter Pl 1-2",
+    "3 Winter Pl 1-3",
+    "3 Winter Pl 3-2"
+   ]
+  ],
+  "codes": [
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "995",
+   "326"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 114|1 (id:F_763915_2958457)",
+  "town": "Cambridge · Residential",
+  "value": "$1,552,000",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "114"
+  ]
+ },
+ {
+  "name": "MA Holbrook center 125|1 (id:F_789859_2881714)",
+  "town": "Holbrook · Residential",
+  "value": "$556,200",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "125"
+  ]
+ },
+ {
+  "name": "MA Hyannis 307+343|5-20 (id:F_989390_2700002)",
+  "town": "Barnstable · Commercial condo building",
+  "value": "$47k–$381k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 19,
+  "heads": [
+   "19 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "119 Ocean Street, Hyannis",
+    "119 Ocean Street, Hyannis",
+    "119 Ocean Street, Hyannis",
+    "119 Ocean Street, Hyannis"
+   ]
+  ],
+  "codes": [
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O",
+   "307O"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 990|1 (id:F_360247_2864051)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$38,741,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "990"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 102+326+343+995|5-20 (id:F_576375_2919498)",
+  "town": "Worcester · Condo building · homes and businesses",
+  "value": "$133k–$1.22M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 10,
+  "heads": [
+   "10 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "70 Winter St",
+    "85 Harding St",
+    "85 Harding St # 1a",
+    "85 Harding St # 1b"
+   ]
+  ],
+  "codes": [
+   "3260",
+   "1020",
+   "995",
+   "1020",
+   "1020",
+   "1020",
+   "1020",
+   "3430",
+   "1020",
+   "1020",
+   "1020"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 102+322+995|2-4 (id:F_1041507_2567209)",
+  "town": "Nantucket · Condo building · homes and businesses",
+  "value": "$651k–$2.61M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 3,
+  "heads": [
+   "3 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "3a N Union St",
+    "19 Main St",
+    "21 Main St"
+   ]
+  ],
+  "codes": [
+   "3223",
+   "995",
+   "3223",
+   "1020"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 341|1 (id:F_744762_2915215)",
+  "town": "Dedham · Commercial",
+  "value": "$1,062,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3410"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 102+108+995|5-20 (id:F_768643_2953283)",
+  "town": "Boston · Condo building",
+  "value": "$473k–$1.23M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 6,
+  "heads": [
+   "6 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "298 Marlborough St 1",
+    "298 Marlborough St 2",
+    "298 Marlborough St 3",
+    "298 Marlborough St 4"
+   ],
+   [
+    "298 Marlborough St Ps-A · Condo parking space",
+    "298 Marlborough St Ps-B · Condo parking space",
+    "298 Marlborough St Ps-C · Condo parking space"
+   ]
+  ],
+  "codes": [
+   "995",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "102",
+   "108",
+   "108",
+   "108"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 345|1 (id:F_775197_2954298)",
+  "town": "Boston · Commercial",
+  "value": "$35,093,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "345"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 345+943|2-4 (id:F_763639_2957991)",
+  "town": "Cambridge · Tax-exempt property",
+  "value": "$1,981,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "536 Massachusetts Ave · Commercial"
+   ]
+  ],
+  "codes": [
+   "345",
+   "943"
+  ]
+ },
+ {
+  "name": "MA Hyannis 946|1 (id:F_988212_2700292)",
+  "town": "Barnstable · Tax-exempt property",
+  "value": "$200,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9460"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 957+972|2-4 (id:F_359388_2864366)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$3,246,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "150 Bridge St 1 · Tax-exempt property",
+    "150 Bridge St 2 · Tax-exempt property",
+    "150 Bridge St 3 · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "957",
+   "972",
+   "972",
+   "972"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 371|1 (id:F_576025_2919268)",
+  "town": "Worcester · Commercial",
+  "value": "$9,864,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3710"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 101+102+995|2-4 (id:F_1040963_2566797)",
+  "town": "Nantucket · Condo building",
+  "value": "$640k–$24.2M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "72 Main St",
+    "82 Somerset Rd #2"
+   ]
+  ],
+  "codes": [
+   "1010",
+   "1024",
+   "995"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 342|1 (id:F_744653_2915172)",
+  "town": "Dedham · Commercial",
+  "value": "$901,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3420"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 970|1 (id:F_770151_2952889)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$5,067,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "970"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 320+905|2-4 (id:F_775296_2954241)",
+  "town": "Boston · Charitable organization",
+  "value": "$3,381,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "23 29 Kingston St · Commercial"
+   ]
+  ],
+  "codes": [
+   "905",
+   "320"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 106|1 (id:F_762536_2958198)",
+  "town": "Cambridge · Accessory building",
+  "value": "$76,100",
+  "kind": "accessory",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1062"
+  ]
+ },
+ {
+  "name": "MA Hyannis 030|1 (id:F_987822_2700183)",
+  "town": "Barnstable · Mixed use",
+  "value": "$7,251,000",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0301"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 347+931|5-20 (id:F_361446_2863618)",
+  "town": "Springfield · Commercial condo building",
+  "value": "$10k–$16k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "11 Stockbridge St Unit 102",
+    "11 Stockbridge St Unit 104",
+    "11 Stockbridge St Unit 105",
+    "11 Stockbridge St Unit 106"
+   ],
+   [
+    "11 Stockbridge St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "347",
+   "347",
+   "347",
+   "347",
+   "931"
+  ]
+ },
+ {
+  "name": "MA Worcester Canal District 374|1 (id:F_575209_2919944)",
+  "town": "Worcester · Commercial",
+  "value": "$700,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3740"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 036|1 (id:F_1041726_2566937)",
+  "town": "Nantucket · Mixed use",
+  "value": "$4,171,600",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0361"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 102+995|2-4 (id:F_743801_2915037)",
+  "town": "Dedham · Condo building",
+  "value": "$695k–$753k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "58 School St",
+    "60 School St"
+   ]
+  ],
+  "codes": [
+   "1021",
+   "995",
+   "1021"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 120+320+995|2-4 (id:F_769859_2952922)",
+  "town": "Boston · Condo building · homes and businesses",
+  "value": "$20.2M–$40.9M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "28 Exeter St Commun",
+    "180 Newbury St"
+   ]
+  ],
+  "codes": [
+   "995",
+   "120",
+   "320"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 376|1 (id:F_775434_2954518)",
+  "town": "Boston · Commercial",
+  "value": "$6,711,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "376"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 199|1 (id:F_762530_2958217)",
+  "town": "Cambridge · Residential",
+  "value": "—",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "199"
+  ]
+ },
+ {
+  "name": "MA Hyannis 092|1 (id:F_987908_2701146)",
+  "town": "Barnstable · Mixed use",
+  "value": "$944,700",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "0920"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 909|1 (id:F_360025_2864929)",
+  "town": "Springfield · Tax-exempt property",
+  "value": "$145,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "909"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 102|1 (id:F_1040734_2567465)",
+  "town": "Nantucket · Condo",
+  "value": "$1,004,500",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1020"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 031+102+995|2-4 (id:F_744279_2915232)",
+  "town": "Dedham · Condo building · homes and businesses",
+  "value": "$328k–$1.25M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "16 School St",
+    "18 School St"
+   ]
+  ],
+  "codes": [
+   "0310",
+   "1021",
+   "995"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 340+985|2-4 (id:F_770107_2953008)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$4,983,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "162 Newbury St · Commercial"
+   ]
+  ],
+  "codes": [
+   "340",
+   "985"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 361|1 (id:F_774474_2954355)",
+  "town": "Boston · Commercial",
+  "value": "$3,934,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "361"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 957|1 (id:F_763731_2958609)",
+  "town": "Cambridge · Tax-exempt property",
+  "value": "$6,942,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "957"
+  ]
+ },
+ {
+  "name": "MA Hyannis 102+327+970|21+ (id:F_989327_2702043)",
+  "town": "Barnstable · Condo building · homes and businesses",
+  "value": "$250k–$633k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 20,
+  "heads": [
+   "20 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "68 Center Street, Hyannis",
+    "68 Center Street, Hyannis",
+    "68 Center Street, Hyannis",
+    "68 Center Street, Hyannis"
+   ],
+   [
+    "68 Center Street, Hyannis · Tax-exempt property",
+    "68 Center Street, Hyannis · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "327O",
+   "327O",
+   "327O",
+   "327O",
+   "102U",
+   "102U",
+   "102U",
+   "970U",
+   "102U",
+   "102U",
+   "102U",
+   "102U"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 347+931|2-4 (id:F_361293_2863672)",
+  "town": "Springfield · Commercial condo building",
+  "value": "—",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "113 State St Unit 117",
+    "113 State St Unit 400"
+   ],
+   [
+    "113 State St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "931",
+   "347",
+   "347"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 102+322+340+995|5-20 (id:F_1041655_2567129)",
+  "town": "Nantucket · Condo building · homes and businesses",
+  "value": "$843k–$1.91M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 5,
+  "heads": [
+   "5 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "12 Main St #1",
+    "12 Main St #2",
+    "12 Main St #3",
+    "12 Main St #4"
+   ]
+  ],
+  "codes": [
+   "995",
+   "3221",
+   "322O",
+   "3401",
+   "1021",
+   "3223"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 943|1 (id:F_743500_2916508)",
+  "town": "Dedham · Tax-exempt property",
+  "value": "$4,132,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9430"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 902|1 (id:F_768713_2952994)",
+  "town": "Boston · County property",
+  "value": "$9,986,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "902"
+  ]
+ },
+ {
+  "name": "MA Boston Downtown 344+985|2-4 (id:F_774433_2954528)",
+  "town": "Boston · Tax-exempt property",
+  "value": "$2,757,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "16 24 West St · Commercial"
+   ]
+  ],
+  "codes": [
+   "344",
+   "985"
+  ]
+ },
+ {
+  "name": "MA Cambridge Central Sq 353|1 (id:F_763081_2958116)",
+  "town": "Cambridge · Commercial",
+  "value": "$2,651,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "353"
+  ]
+ },
+ {
+  "name": "MA Hyannis 929|1 (id:F_989751_2702733)",
+  "town": "Barnstable · Tax-exempt property",
+  "value": "$6,156,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "929I"
+  ]
+ },
+ {
+  "name": "MA Springfield downtown 031+347+996|2-4 (id:F_359644_2864182)",
+  "town": "Springfield · Commercial condo building",
+  "value": "$15.1M–$19.3M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1500 Main St 1",
+    "1500 Main St 2"
+   ],
+   [
+    "1500 Main St · Tax-exempt property"
+   ]
+  ],
+  "codes": [
+   "031",
+   "347",
+   "996"
+  ]
+ },
+ {
+  "name": "MA Nantucket town 302|2-4 (id:F_1040988_2567387)",
+  "town": "Nantucket · Commercial",
+  "value": "$4,963,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "31 Center St · Commercial",
+    "4 Chestnut St · Commercial",
+    "29 Center St · Commercial"
+   ]
+  ],
+  "codes": [
+   "302R",
+   "302R",
+   "302R",
+   "302R"
+  ]
+ },
+ {
+  "name": "MA Dedham Square 961|1 (id:F_743578_2915825)",
+  "town": "Dedham · Tax-exempt property",
+  "value": "$1,332,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "9610"
+  ]
+ },
+ {
+  "name": "MA Boston Back Bay 344|1 (id:F_769464_2952955)",
+  "town": "Boston · Commercial",
+  "value": "$4,762,200",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "344"
+  ]
+ },
+ {
+  "name": "NC Raleigh Five Points NaN|1 (shape:41pokn.9)",
+  "town": "Raleigh · Single-family home",
+  "value": "$728,456",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 100|1 (shape:y11e8t.5)",
+  "town": "Charlotte · Single-family home",
+  "value": "$1,268,000",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 300+735|21+ (shape:1jduy4a.10)",
+  "town": "Charlotte · Condo building · homes and businesses",
+  "value": "$246k–$904k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 80,
+  "heads": [
+   "80 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "333 W Trade St, 1b",
+    "333 W Trade St, 1c",
+    "333 W Trade St, 405",
+    "333 W Trade St, 500"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Durham NaN|5-20 (shape:1xfsm31.10)",
+  "town": "Durham · Condo building · homes and businesses",
+  "value": "$100–$3.06M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 18,
+  "heads": [
+   "18 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "101 A W Main St",
+    "101 B W Main St",
+    "101 C W Main St",
+    "101 W Main St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 470|1 (shape:ifhh2y.5)",
+  "town": "Vacant land",
+  "value": "$331,100",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 10|1 (shape:1fel69u.6)",
+  "town": "Nags Head · Vacant land",
+  "value": "$147,400",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 20|1 (shape:1tr8f3k.6)",
+  "town": "Church",
+  "value": "$591,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 400|1 (shape:mk5p54.5)",
+  "town": "Charlotte · Office building",
+  "value": "$2,229,200",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 400+9010|2-4 (shape:148dfvf.6)",
+  "town": "Charlotte · Single-family home",
+  "value": "$102,871,400",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "128 S Tryon St · Office building"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Durham NaN|2-4 (shape:1c45s0a.5)",
+  "town": "Durham · Commercial condo building",
+  "value": "$1–$338k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "117 C W Main St",
+    "117 W Main St"
+   ],
+   [
+    "117 A W Main St · Commercial",
+    "117 B W Main St · Commercial"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 652|1 (shape:1rxmnne.12)",
+  "town": "Government property",
+  "value": "$19,903,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 50|1 (shape:vfxtla.7)",
+  "town": "Nags Head · Government property",
+  "value": "$323,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 0|1 (shape:oald2l.5)",
+  "town": "Vacant land",
+  "value": "$3,800",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 100|2-4 (shape:14j9ej1.5)",
+  "town": "Charlotte · Single-family home",
+  "value": "$1,726,200",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1830 Ewing Av · Single-family home"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700|5-20 (shape:u2jkbf.18)",
+  "town": "Charlotte · Auto service",
+  "value": "$213,533,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "231 N Tryon St · Store",
+    "201 N Tryon St · Single-family home",
+    "233 N Tryon St · Store",
+    "235 N Tryon St · Restaurant"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Durham NaN|21+ (shape:vyznih.8)",
+  "town": "Durham · Condo building · homes and businesses",
+  "value": "$4k–$30.2M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 33,
+  "heads": [
+   "33 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "110 2101 N Corcoran St",
+    "110 2102 N Corcoran St",
+    "110 2103 N Corcoran St",
+    "110 2104 N Corcoran St"
+   ],
+   [
+    "110 N Corcoran St · Commercial",
+    "N Corcoran St · Store",
+    "N Corcoran St · Apartments",
+    "N Corcoran St · Commercial"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 653|1 (shape:1kygrry.5)",
+  "town": "Government property",
+  "value": "$1,092,300",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 1900|1 (shape:1i8g5ep.5)",
+  "town": "Nags Head · Mixed use",
+  "value": "$1,035,400",
+  "kind": "mixed",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 11|1 (shape:11uuce5.5)",
+  "town": "Apartments",
+  "value": "$1,271,500",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 300|2-4 (shape:1jymu0f.8)",
+  "town": "Charlotte · Condo building",
+  "value": "$716k–$805k",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "1709 Dilworth Rd West, A",
+    "1709 Dilworth Rd West, B",
+    "1709 Dilworth Rd West, C",
+    "1709 Dilworth Rd West, D"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700|2-4 (shape:1et19sr.13)",
+  "town": "Charlotte · Bar or club",
+  "value": "$3,589,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "115 E 5th St · Bar or club"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Durham 1|1 (shape:1set3fm.20)",
+  "town": "Durham · Government property",
+  "value": "—",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 317+466|5-20 (shape:1c8vexa.5)",
+  "town": "Commercial condo building",
+  "value": "$326k–$820k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "2 Wilson Aly",
+    "13 Eagle St",
+    "13 Eagle St",
+    "15 Eagle St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 9100|1 (shape:1cq3t0x.7)",
+  "town": "Nags Head · Use not listed",
+  "value": "$306,300",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 3|1 (shape:gkm4fn.12)",
+  "town": "Three-family",
+  "value": "$1,065,900",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 400|2-4 (shape:hbrl42.5)",
+  "town": "Charlotte · Office building",
+  "value": "$1,911,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "1012 East Bv · Single-family home"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700|1 (shape:1ec2jzd.7)",
+  "town": "Charlotte · Commercial",
+  "value": "$2,430,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Durham 2|1 (shape:n9rr7m.13)",
+  "town": "Durham · Commercial",
+  "value": "$3,210,448",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 414|1 (shape:yusuc9.6)",
+  "town": "Hotel",
+  "value": "—",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 2000|1 (shape:151ytlv.5)",
+  "town": "Nags Head · Store",
+  "value": "$896,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 33|1 (shape:f23ds4.8)",
+  "town": "Gas station or store",
+  "value": "$527,370",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 562|1 (shape:89z1gb.5)",
+  "town": "Charlotte · Multi-family home",
+  "value": "$993,700",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 9403|1 (shape:1yj1sa0.4)",
+  "town": "Charlotte · Use not listed",
+  "value": "$20,300",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 481|1 (shape:16gx22v.6)",
+  "town": "Store",
+  "value": "$1,643,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 60|1 (shape:ulcrdr.5)",
+  "town": "Nags Head · Vacant land",
+  "value": "$227,500",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 17|1 (shape:1wsh9wq.5)",
+  "town": "Commercial",
+  "value": "$100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 500|1 (shape:1or50v9.7)",
+  "town": "Charlotte · Multi-family home",
+  "value": "$837,700",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 424|21+ (shape:12uccjl.12)",
+  "town": "Charlotte · Commercial condo building",
+  "value": "$110k–$1.56M",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 51,
+  "heads": [
+   "51 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "112 S Tryon St, 100",
+    "112 S Tryon St, 101",
+    "112 S Tryon St, 200",
+    "112 S Tryon St, 300"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 438|1 (shape:15ysf6n.5)",
+  "town": "Vacant land",
+  "value": "$2,118,700",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 8000|1 (shape:h2wheu.12)",
+  "town": "Nags Head · Church",
+  "value": "$6,150,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 21|1 (shape:1eakify.7)",
+  "town": "Restaurant",
+  "value": "$730,160",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 424|5-20 (shape:zuowtm.5)",
+  "town": "Charlotte · Commercial condo building",
+  "value": "$217k–$471k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 7,
+  "heads": [
+   "7 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "1018 East Bv, 1",
+    "1018 East Bv, 2",
+    "1018 East Bv, 3",
+    "1018 East Bv, 4"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 8900|1 (shape:8b23lv.5)",
+  "town": "Charlotte · Government property",
+  "value": "$3,896,900",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 636|1 (shape:csfr3d.18)",
+  "town": "Use not listed",
+  "value": "$4,732,600",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 4000|1 (shape:89z96s.5)",
+  "town": "Nags Head · Restaurant",
+  "value": "$935,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 53|1 (shape:85vgyd.5)",
+  "town": "Office building",
+  "value": "$223,320",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 424|2-4 (shape:17cm72j.5)",
+  "town": "Charlotte · Commercial condo building",
+  "value": "$383k–$389k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "700 East Bv, 1",
+    "700 East Bv, 2",
+    "700 East Bv, 3",
+    "700 East Bv, 4"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 418+700|2-4 (shape:ymenvx.5)",
+  "town": "Charlotte · Single-family home",
+  "value": "$100,600,400",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "Unit · Auto service"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 340|1 (shape:1acrhxy.5)",
+  "town": "Vacant land",
+  "value": "$331,100",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 9900|1 (shape:tiph84.5)",
+  "town": "Nags Head · Outbuilding",
+  "value": "$573,100",
+  "kind": "accessory",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 18|1 (shape:1jfiia1.6)",
+  "town": "Residential",
+  "value": "$1,002,000",
+  "kind": "otherRes",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 500|2-4 (shape:mn9o1o.7)",
+  "town": "Charlotte · Multi-family home",
+  "value": "$103,059,400",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "225 S Poplar St · Apartments",
+    "Unit · Multi-family home"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 317+442+466|2-4 (shape:1apci6n.10)",
+  "town": "Commercial",
+  "value": "$2,874,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "21 Eagle St · Commercial condo",
+    "19 Eagle St · Common area (homeowners association)"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 47|1 (shape:to4c46.7)",
+  "town": "Use not listed",
+  "value": "$4,014,690",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 400+700+735+NaN|5-20 (shape:1c94477.9)",
+  "town": "Charlotte · Condo building · homes and businesses",
+  "value": "$20.2M–$212.5M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "101 S Tryon St",
+    "132 E Trade St",
+    "132 E Trade St",
+    "132 E Trade St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317|21+ (shape:ahqhb3.18)",
+  "town": "Condo building",
+  "value": "$472k–$1.08M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 67,
+  "heads": [
+   "67 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "55 Market St",
+    "55 Market St",
+    "55 Market St",
+    "55 Market St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 73|1 (shape:1y4c11f.10)",
+  "town": "Single-family home",
+  "value": "$1,592,370",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 300+735+NaN|21+ (shape:tjc8p9.6)",
+  "town": "Charlotte · Condo building · homes and businesses",
+  "value": "$411k–$6.51M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 66,
+  "heads": [
+   "66 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "127 N Tryon St, 1",
+    "127 N Tryon St, 2",
+    "127 N Tryon St, 301",
+    "127 N Tryon St, 302"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 317|1 (shape:kb49t8.17)",
+  "town": "Common area (homeowners association)",
+  "value": "—",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 99|1 (shape:5uyr8l.5)",
+  "town": "Single-family home",
+  "value": "$53,300",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 300+424|5-20 (shape:4r0zn0.7)",
+  "town": "Charlotte · Condo building · homes and businesses",
+  "value": "$1.72M–$4.47M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 9,
+  "heads": [
+   "9 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "139 S Tryon St, 1",
+    "139 S Tryon St, 2",
+    "139 S Tryon St, 3a",
+    "139 S Tryon St, 3b"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 621|1 (shape:uo96h.9)",
+  "town": "Church",
+  "value": "$14,418,300",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 6|1 (shape:12qpzw9.8)",
+  "town": "Condo common record",
+  "value": "$11,900",
+  "kind": "condoMaster",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 7100|5-20 (shape:dm7wsf.6)",
+  "town": "Charlotte · Church",
+  "value": "$46,019,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "200 W Trade St · Church",
+    "200 W Trade St · Church",
+    "200 W Trade St · Church",
+    "200 W Trade St · Church"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317+466|2-4 (shape:1h3mtxb.9)",
+  "town": "Condo building · homes and businesses",
+  "value": "$1.1M–$1.59M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "48 Biltmore Ave",
+    "48 Biltmore Ave"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 15|1 (shape:1mqkb6n.14)",
+  "town": "Restaurant",
+  "value": "$11,681,930",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700+9403|2-4 (shape:1qq9yqm.5)",
+  "town": "Charlotte · Restaurant",
+  "value": "$1,199,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "W Trade St · Other record"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317+466|21+ (shape:4g07ll.5)",
+  "town": "Condo building · homes and businesses",
+  "value": "$351k–$2.37M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 22,
+  "heads": [
+   "22 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "19 Patton Ave",
+    "19 Patton Ave",
+    "59 College St",
+    "59 College St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 97|1 (shape:x87p6c.5)",
+  "town": "Office building",
+  "value": "$1,594,790",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 9404|1 (shape:1dy91a2.11)",
+  "town": "Charlotte · Other property",
+  "value": "$8,000",
+  "kind": "other",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 464|1 (shape:1b4uj35.6)",
+  "town": "Office building",
+  "value": "$667,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 34|1 (shape:u4jns5.5)",
+  "town": "Gas station or store",
+  "value": "$401,120",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 8200|1 (shape:4h39ub.11)",
+  "town": "Charlotte · Use not listed",
+  "value": "$32,273,600",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317+466|5-20 (shape:6mo39t.6)",
+  "town": "Condo building · homes and businesses",
+  "value": "$325k–$933k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 10,
+  "heads": [
+   "10 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "19 Haywood St",
+    "21 Haywood St",
+    "21 Haywood St",
+    "21 Haywood St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700+9010|2-4 (shape:1ecehb5.9)",
+  "town": "Charlotte · Bank",
+  "value": "$4,471,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "205 S Church St · Auto service",
+    "209 S Church St · Commercial"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 341|1 (shape:1c9v40y.5)",
+  "town": "Commercial",
+  "value": "—",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 306+424|21+ (shape:ts7p9r.19)",
+  "town": "Charlotte · Condo building · homes and businesses",
+  "value": "$134k–$1.61M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 80,
+  "heads": [
+   "80 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "230 S Tryon St, 201",
+    "230 S Tryon St, 202",
+    "230 S Tryon St, 203",
+    "230 S Tryon St, 205"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 365|1 (shape:1rr1b9x.11)",
+  "town": "Government property",
+  "value": "$2,807,400",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 624|1 (shape:3576rf.5)",
+  "town": "Church",
+  "value": "$334,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 681|1 (shape:orphs0.12)",
+  "town": "Use not listed",
+  "value": "$6,488,800",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 411|1 (shape:1ieoyij.5)",
+  "town": "Apartments",
+  "value": "$5,738,200",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 650|1 (shape:13qgadi.5)",
+  "town": "Government property",
+  "value": "$1,481,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 317+466|2-4 (shape:ow3ci6.8)",
+  "town": "Commercial condo building",
+  "value": "$461k–$735k",
+  "kind": "comCondoBuilding",
+  "home": false,
+  "units": 2,
+  "heads": [
+   "2 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "4 Wall St",
+    "22 College St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 340+414+437|2-4 (shape:6ce9j0.6)",
+  "town": "Hotel",
+  "value": "$27,879,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "10 Broadway St · Vacant land",
+    "10 Broadway St · Auto service"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+122+317+466|5-20 (shape:ez64jg.5)",
+  "town": "Condo building · homes and businesses",
+  "value": "$15k–$1.1M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 14,
+  "heads": [
+   "14 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "35 Patton Ave",
+    "35 Patton Ave",
+    "35 Patton Ave",
+    "35 Patton Ave"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 682|1 (shape:bkmx36.4)",
+  "town": "Park",
+  "value": "$1,042,800",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 437+653|2-4 (shape:1ycq2hg.15)",
+  "town": "Auto service",
+  "value": "$7,858,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "16 Eagle St · Government property"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 462|1 (shape:wuyyxr.5)",
+  "town": "Bank",
+  "value": "—",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+307+317|21+ (shape:7s72bs.8)",
+  "town": "Condo building",
+  "value": "$722k–$1.05M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 14,
+  "heads": [
+   "14 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "61 Church St",
+    "61 Church St",
+    "61 Church St",
+    "61 Church St"
+   ],
+   [
+    "Church St · Vacant land",
+    "Church St · Vacant land",
+    "Church St · Vacant land",
+    "Church St · Vacant land"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 421|1 (shape:db6lqs.5)",
+  "town": "Restaurant",
+  "value": "$1,188,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 463|1 (shape:8x112j.6)",
+  "town": "Office building",
+  "value": "$4,297,300",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+122+317+466|21+ (shape:1ckiw72.12)",
+  "town": "Condo building · homes and businesses",
+  "value": "$9k–$1.08M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 30,
+  "heads": [
+   "30 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "43 Haywood St",
+    "43 Haywood St",
+    "84 Walnut St",
+    "84 Walnut St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 680|1 (shape:1xxnmm3.6)",
+  "town": "Use not listed",
+  "value": "$725,800",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317+414|21+ (shape:a3f5xo.7)",
+  "town": "Condo building",
+  "value": "$697k–$2.79M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 54,
+  "heads": [
+   "54 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "7 Patton Ave",
+    "7 Patton Ave",
+    "7 Patton Ave",
+    "7 Patton Ave"
+   ],
+   [
+    "7 Patton Ave · Hotel"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 437|1 (shape:1gu4ks0.5)",
+  "town": "Auto service",
+  "value": "$1,241,400",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 317+414+653|2-4 (shape:1h4ipeg.7)",
+  "town": "Hotel",
+  "value": "$27,643,500",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "51 Biltmore Ave · Common area (homeowners association)",
+    "60 Lexington Ave · Government property",
+    "61 Biltmore Ave · Hotel"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+317|5-20 (shape:wi579t.5)",
+  "town": "Condo building",
+  "value": "$824k–$2.31M",
+  "kind": "resCondoBuilding",
+  "home": true,
+  "units": 13,
+  "heads": [
+   "13 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "17 Market St",
+    "17 Market St",
+    "17 Market St",
+    "17 Market St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 662|1 (shape:nfi3ie.7)",
+  "town": "Use not listed",
+  "value": "$20,122,400",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 650+681|2-4 (shape:1mgcyyq.13)",
+  "town": "Use not listed",
+  "value": "$54,295,600",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "2 Pack Sq · Government property"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 120+307+317+466|5-20 (shape:1rpd9yq.6)",
+  "town": "Condo building · homes and businesses",
+  "value": "$53k–$1.32M",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 10,
+  "heads": [
+   "10 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "32 Broadway St",
+    "32 Broadway St",
+    "32 Broadway St",
+    "32 Broadway St"
+   ],
+   [
+    "32 Broadway St · Vacant land",
+    "32 Broadway St · Vacant land",
+    "32 Broadway St · Vacant land",
+    "32 Broadway St · Vacant land"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 512|1 (shape:3cbzub.6)",
+  "town": "Entertainment venue",
+  "value": "$1,007,100",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 635|1 (shape:fs4xb2.5)",
+  "town": "Use not listed",
+  "value": "$596,900",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Raleigh Five Points NaN|1 (shape:lc090w.9)",
+  "town": "Raleigh · Single-family home",
+  "value": "$721,572",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 100|1 (shape:1yy7b2e.6)",
+  "town": "Charlotte · Single-family home",
+  "value": "$1,328,600",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700|1 (shape:11rcee1.5)",
+  "town": "Charlotte · Commercial",
+  "value": "$1,411,900",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Durham NaN|5-20 (shape:5jf9k.7)",
+  "town": "Durham · Condo building · homes and businesses",
+  "value": "$100–$415k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 6,
+  "heads": [
+   "6 units · tap one for its details",
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "107 W Main St",
+    "109 205 W Main St",
+    "109 301 W Main St",
+    "109 302 W Main St"
+   ],
+   [
+    "109 201 W Main St · Commercial",
+    "109 202 W Main St · Commercial",
+    "109 203 W Main St · Commercial",
+    "109 204 W Main St · Commercial"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 653|1 (shape:1szp5tz.5)",
+  "town": "Government property",
+  "value": "$2,592,700",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Chapel Hill (no use codes) NaN|21+ (shape:1sewb0u.7)",
+  "town": "Use not listed",
+  "value": "$369,400",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "Unit · Other record",
+    "Unit · Other record",
+    "Unit · Other record",
+    "Unit · Other record"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 10|1 (shape:pw1j5d.5)",
+  "town": "Nags Head · Vacant land",
+  "value": "$24,500",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 20|1 (shape:1wkyi2l.5)",
+  "town": "Church",
+  "value": "$174,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 100|2-4 (shape:ac00re.5)",
+  "town": "Charlotte · Single-family home",
+  "value": "$1,447,100",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "820 E Worthington Av · Single-family home"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 700|2-4 (shape:1afu01r.8)",
+  "town": "Charlotte · Auto service",
+  "value": "$177,523,700",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [
+   "Also on this lot · tap for details"
+  ],
+  "lists": [
+   [
+    "201 S College St · Single-family home"
+   ]
+  ],
+  "codes": [
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Durham NaN|2-4 (shape:13x69lc.5)",
+  "town": "Durham · Condo building · homes and businesses",
+  "value": "$1–$886k",
+  "kind": "mixedCondoBuilding",
+  "home": true,
+  "units": 4,
+  "heads": [
+   "4 units · tap one for its details"
+  ],
+  "lists": [
+   [
+    "119 01 W Main St",
+    "119 02 W Main St",
+    "119 03 W Main St",
+    "119 W Main St"
+   ]
+  ],
+  "codes": [
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 481|1 (shape:18vhu4s.5)",
+  "town": "Store",
+  "value": "$660,800",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Nags Head 9100|1 (shape:1i7w3d5.5)",
+  "town": "Nags Head · Use not listed",
+  "value": "$412,700",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Boone 11|1 (shape:16xclbc.16)",
+  "town": "Apartments",
+  "value": "$15,208,830",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte Dilworth 400|1 (shape:124fvdj.5)",
+  "town": "Charlotte · Single-family home",
+  "value": "$1,607,400",
+  "kind": "single",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Charlotte uptown condos 9403|1 (shape:1yuy682.4)",
+  "town": "Charlotte · Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Durham 1|1 (shape:pacdxj.9)",
+  "town": "Durham · Government property",
+  "value": "$6,310,010",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NC Asheville downtown 414|1 (shape:h3bpxz.6)",
+  "town": "Hotel",
+  "value": "$4,948,600",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NJ Hoboken 2C|1 (shape:foz8uc.5)",
+  "town": "Hoboken City · Condo",
+  "value": "$369,100",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "2"
+  ]
+ },
+ {
+  "name": "NJ Newark downtown 4B|1 (shape:ar204b.11)",
+  "town": "Newark City · Industrial",
+  "value": "$5,160,300",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4B"
+  ]
+ },
+ {
+  "name": "NJ Princeton 15E|1 (shape:1w2owz1.15)",
+  "town": "Princeton · Cemetery",
+  "value": "$1,144,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15E"
+  ]
+ },
+ {
+  "name": "NJ Sussex County (rural) 3B|1 (shape:kgyj80.7)",
+  "town": "Frankford Twp · Farmland",
+  "value": "$700",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3B"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4AC|1 (shape:1elcezv.5)",
+  "town": "Hoboken City · Commercial condo",
+  "value": "$247,000",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4A"
+  ]
+ },
+ {
+  "name": "NJ Princeton 4CC|1 (shape:1rh4772.5)",
+  "town": "Princeton · Apartments",
+  "value": "$18,000,000",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4C"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4C|1 (shape:k1x6cw.5)",
+  "town": "Hoboken City · Apartments",
+  "value": "$27,862,200",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4C"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15C|1 (shape:1j8ndfj.13)",
+  "town": "Hoboken City · Public property",
+  "value": "$20,544,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15C"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15F|1 (shape:nkrnx9.12)",
+  "town": "Hoboken City · Tax-exempt property",
+  "value": "Condo",
+  "kind": "condoMaster",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15F"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 2|1 (shape:1r6pye1.6)",
+  "town": "Hoboken City · Four-family",
+  "value": "$1,515,900",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "2"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4A|1 (shape:4r8lav.5)",
+  "town": "Hoboken City · Commercial",
+  "value": "$48,000,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4A"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15D|1 (shape:yob2dw.5)",
+  "town": "Hoboken City · Church or charity",
+  "value": "$15,171,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15D"
+  ]
+ },
+ {
+  "name": "NJ Hoboken ?|1 (shape:1mg4rma.5)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NJ Hoboken 1|1 (shape:111t6np.11)",
+  "town": "Hoboken City · Vacant land",
+  "value": "$11,400",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15A|1 (shape:b1euj5.6)",
+  "town": "Hoboken City · Public school",
+  "value": "$20,253,500",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15A"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15B|1 (shape:12d1zzx.7)",
+  "town": "Hoboken City · School",
+  "value": "$5,268,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15B"
+  ]
+ },
+ {
+  "name": "NJ Hoboken ?C|1 (shape:vdnv9u.5)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NJ Hoboken 2C|1 (shape:19d7fae.5)",
+  "town": "Hoboken City · Condo",
+  "value": "$374,500",
+  "kind": "resCondo",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "2"
+  ]
+ },
+ {
+  "name": "NJ Princeton 15B|1 (shape:1ni726d.37)",
+  "town": "Princeton · School",
+  "value": "$860,100",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15B"
+  ]
+ },
+ {
+  "name": "NJ Sussex County (rural) 3B|1 (shape:124ar4p.36)",
+  "town": "Frankford Twp · Farmland",
+  "value": "$21,000",
+  "kind": "farmForest",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "3B"
+  ]
+ },
+ {
+  "name": "NJ Hammonton (farms) 15E|1 (shape:1a57fcj.7)",
+  "town": "Hammonton Town · Cemetery",
+  "value": "$199,200",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15E"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4AC|1 (shape:he0wr9.5)",
+  "town": "Hoboken City · Commercial condo",
+  "value": "$322,000",
+  "kind": "comCondo",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4A"
+  ]
+ },
+ {
+  "name": "NJ Princeton 4CC|1 (shape:hwnb35.5)",
+  "town": "Princeton · Apartments",
+  "value": "$2,857,700",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4C"
+  ]
+ },
+ {
+  "name": "NJ Hammonton (farms) 4B|1 (shape:1dd6v81.7)",
+  "town": "Hammonton Town · Industrial",
+  "value": "$112,300",
+  "kind": "industrial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4B"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15F|1 (shape:i82ewf.10)",
+  "town": "Hoboken City · Tax-exempt property",
+  "value": "Condo",
+  "kind": "condoMaster",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15F"
+  ]
+ },
+ {
+  "name": "NJ Princeton ?C|1 (shape:1mwq00k.5)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4C|1 (shape:ehkbjq.6)",
+  "town": "Hoboken City · Apartments",
+  "value": "$941,300",
+  "kind": "apartments",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4C"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 2|1 (shape:ljonyh.5)",
+  "town": "Hoboken City · Four-family",
+  "value": "$990,000",
+  "kind": "multi",
+  "home": true,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "2"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15C|1 (shape:wkc99k.5)",
+  "town": "Hoboken City · Public property",
+  "value": "$14,355,600",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15C"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 4A|1 (shape:fplv63.5)",
+  "town": "Hoboken City · Commercial",
+  "value": "$940,000",
+  "kind": "commercial",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "4A"
+  ]
+ },
+ {
+  "name": "NJ Hoboken ?|1 (shape:1b96k6c.7)",
+  "town": "Use not listed",
+  "value": "—",
+  "kind": "unknown",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   null
+  ]
+ },
+ {
+  "name": "NJ Hoboken 1|1 (shape:1kuip4x.5)",
+  "town": "Hoboken City · Vacant land",
+  "value": "$439,400",
+  "kind": "vacant",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "1"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15A|1 (shape:9ejzcs.6)",
+  "town": "Hoboken City · Public school",
+  "value": "$6,407,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15A"
+  ]
+ },
+ {
+  "name": "NJ Hoboken 15D|1 (shape:2c797r.5)",
+  "town": "Hoboken City · Church or charity",
+  "value": "$1,845,000",
+  "kind": "exempt",
+  "home": false,
+  "units": null,
+  "heads": [],
+  "lists": [],
+  "codes": [
+   "15D"
+  ]
+ }
+]

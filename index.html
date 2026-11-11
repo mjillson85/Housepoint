@@ -725,10 +725,11 @@ function ncKind(r) {
   const d = ncText(r);
   if (!d) return 'unknown';
   const built = hasBuilding(r);
-  if (/\bUTIL|RAILROAD|\bRR\b|TELECOM|CELL TOWER|PIPELINE/.test(d)) return 'other';
-  if (/\bXMT\b|EXEMPT|\bEXMT|\bEX\b|GOVERN|\bGOVT?\b|GOV OWNED|\bMUNC|MUNICIP|STATE OF NC|FEDERAL|CMNTY SVC|CHURCH|RELIG|CEMET|SCHOOL|COLLEGE|UNIVERS|HOSPITAL|LIBRARY|\bPUBLIC\b|INSTITUT/.test(d)) return 'exempt';
-  if (/\bHOA\b|COMMON AREA|OWNERS ASSOC|\bOAC\b/.test(d)) return /CONDO|ELEV APT|\bAPT\b/.test(d) ? 'condoMaster' : 'other';
-  if (/CONDO|\bCND\b/.test(d)) return /OFFICE|\bOFC\b|COMM|RETAIL|\bCOM\b|INDUST|WAREH|MEDICAL|BOAT/.test(d) ? 'comCondo' : 'resCondo';
+  if (/\bUTIL|RAILROAD|\bRR\b|TELECOM|CELL TOWER|PIPELINE|AIR RIGHTS/.test(d)) return 'other';
+  if (/\bXMT\b|EXEMPT|\bEXMT|\bEX\b|GOVERN|\bGOVT?\b|GOV OWNED|\bMUNC|MUNICIP|STATE OF N(ORTH )?C|FEDERAL|CMNTY SVC|CHURCH|RELIG|CEMET|SCHOOL|COLLEGE|UNIVERS|HOSPITAL|LIBRARY|\bPUBLIC\b|INSTITUT|CHARITABLE|POLICE|FIRE DEPT|CULTURAL|LOW INCOME HOUSING/.test(d)) return 'exempt';
+  if (/\bHOA\b|COMMONE? AREA|OWNERS ASSO|CONDO ASSOC|\bOAC\b|EXCLUSION/.test(d)) return /CONDO|ELEV APT|\bAPT\b/.test(d) ? 'condoMaster' : 'other';
+  if (/CONDO STORAGE|STORAGE UNIT|BOAT SLIP|\bSLIP\b/.test(d)) return 'accessory';
+  if (/CONDO|\bCND\b/.test(d)) return /OFFICE|\bOFC\b|COMM(?!ON)|RETAIL|\bCOM\b|INDUST|WAREH|MEDICAL|BOAT/.test(d) ? 'comCondo' : 'resCondo';
   if (/SECONDARY IMPROVEMENT|OUTBUILDING|ACCESSORY/.test(d)) return 'accessory';
   if (/MOBILE|MANUFACTURED|MANUF\b|MANUFHM|MFGD|DOUBLE ?WIDE|SINGLE ?WIDE|\bMH\b|MOHO|MULTI-SECTION/.test(d)) return /PARK|\bLOT\b/.test(d) && !built ? 'vacant' : 'mobile';
   if (/VACANT|\bVAC\b|UNUSED LAND|BUILDING (SITE|LOT)|NOT IMPROVED|NO ADDRESSES|UNDEV|RESIDUAL|MARSH|SEPTIC LOT|\bLOT\b/.test(d) && !(built && /SINGL|FAMILY|DWELL/.test(d))) return 'vacant';
@@ -737,14 +738,19 @@ function ncKind(r) {
   if (/APART|\bAPTS?\b/.test(d)) return 'apartments';
   if (/TWOFAM|THREEFAM|FOURFAM|DUPLEX|TRIPLEX|QUAD|\b[234][ -]?FAM|TWO FAM|THREE FAM|FOUR FAM|MULTI[ -]?FAM|MULTIPLE FAM/.test(d)) return 'multi';
   if (/ROOMING|BOARDING|GROUP HOME|DORM|ASSISTED/.test(d)) return 'otherRes';
-  if (/SINGL|\bSFR\b|1[ -]FAM|ONE FAM|DWELL|RESIDENCE|TOWN ?HOUSE|TOWN ?HOME|RANCH|CONVENTIONAL|BUNGALOW|COLONIAL|CAPE COD|CONTEMPORARY|SPLIT|COTTAGE|BEACH HOUSE|CUSTOM HOME|STOR(Y|IES)\b|MODULAR|\bRHS\b|WATERFRONT|OCEANFRONT|SOUNDFRONT|CANALFRONT|\bR1\b|RESIDENTIAL/.test(d)) return built ? 'single' : 'vacant';
+  // Business words before home words: "RETAIL - SINGLE OCCUPANCY" and "OFFICE HI-RISE > 4 STORIES" aren't homes.
   if (/\bIND\b|INDUST|WAREH|FACTORY|FLEX|PREFAB|MANUFACTUR/.test(d)) return 'industrial';
-  if (/\bCOM\b|COMM|RETAIL|OFFICE|\bOFC\b|STORE|RESTAUR|EATING|BAR\/CLUB|HOTEL|MOTEL|BANK|SERVICE|GARAGE|SHOPPING|BUSINESS|PARKING|STADIUM|\bTEN\b|CLUB|LODGE|THEAT|NURSING|MEDICAL|FUNERAL|DAY ?CARE|AUTO|\bGAS\b|CONVENIEN/.test(d)) return 'commercial';
+  if (/\bCOM\b|COMM(?!ON)|RETAIL|OFFICE|\bOFC\b|STORE|SUPERMARKET|GROCERY|RESTAUR|EATING|BAR\/CLUB|NIGHTCLUB|HOTEL|MOTEL|BANK/.test(d)) return 'commercial';
+  if (/SINGL|\bSFR\b|1[ -]FAM|ONE FAM|DWELL|RESIDENCE|TOWN ?HOUSE|TOWN ?HOME|\bRHS\b|\bR1\b|RESIDENTIAL/.test(d)) return built ? 'single' : 'vacant';
+  if (/SERVICE|GARAGE|SHOPPING|BUSINESS|PARKING|STADIUM|\bTEN\b|CLUB|LODGE|THEAT|NURSING|MEDICAL|FUNERAL|DAY ?CARE|AUTO|\bGAS\b|CONVENIEN/.test(d)) return 'commercial';
+  if (/REC AREA|RECREATION|GOLF/.test(d)) return 'other';
+  // Building-style words that some counties send instead of a use ("RANCH", "1-1.0 Story"): a house.
+  if (/RANCH|CONVENTIONAL|BUNGALOW|COLONIAL|CAPE COD|CONTEMPORARY|SPLIT|COTTAGE|BEACH HOUSE|CUSTOM HOME|STOR(Y|IES)\b|MODULAR|WATERFRONT|OCEANFRONT|SOUNDFRONT|CANALFRONT/.test(d)) return built ? 'single' : 'vacant';
   return 'unknown';
 }
 const NC_BIZ = [[/OFFICE|\bOFC\b/, 'Office building'], [/RESTAUR|EATING|FAST FOOD/, 'Restaurant'], [/HOTEL|MOTEL|\bINN\b/, 'Hotel'], [/BANK/, 'Bank'],
-  [/WAREH/, 'Warehouse'], [/SHOPPING|STRIP/, 'Shopping center'], [/RETAIL|STORE/, 'Store'], [/BAR\/CLUB|\bBAR\b|NIGHT/, 'Bar or club'], [/CLUB|LODGE/, 'Club or lodge'],
-  [/\bGAS\b|SERVICE STA|CONVENIEN/, 'Gas station or store'], [/GARAGE|AUTO/, 'Auto service'], [/PARKING/, 'Parking'], [/NURSING|ASSISTED/, 'Care home'],
+  [/WAREH/, 'Warehouse'], [/SHOPPING|STRIP/, 'Shopping center'], [/RETAIL|STORE|SUPERMARKET|GROCERY/, 'Store'], [/BAR\/CLUB|\bBAR\b|NIGHT/, 'Bar or club'], [/CLUB|LODGE/, 'Club or lodge'],
+  [/\bGAS\b|SERVICE STA|CONVENIEN/, 'Gas station or store'], [/PARKING/, 'Parking'], [/GARAGE|AUTO/, 'Auto service'], [/NURSING|ASSISTED/, 'Care home'],
   [/MEDICAL|CLINIC/, 'Medical office'], [/STADIUM|ARENA|THEAT/, 'Entertainment venue'], [/DAY ?CARE/, 'Day care'], [/FUNERAL/, 'Funeral home']];
 function ncUseLabel(r) {
   const d = r ? ncText(r) : ''; if (!d) return null;
@@ -752,19 +758,26 @@ function ncUseLabel(r) {
   if (k === 'single' && /TOWN ?HOUSE|TOWN ?HOME/.test(d)) return 'Townhouse';
   if (k === 'multi') return /DUPLEX\/TRIPLEX|DUPLEX-TRIPLEX/.test(d) ? 'Multi-family home' : /TWO|\b2[ -]?FAM|DUPLEX/.test(d) ? 'Two-family' : /THREE|\b3[ -]?FAM|TRIPLEX/.test(d) ? 'Three-family'
     : /FOUR|\b4[ -]?FAM|QUAD/.test(d) ? 'Four-family' : 'Multi-family home';
-  if (k === 'other') return /COMMON|\bHOA\b|OWNERS ASSOC|\bOAC\b/.test(d) ? 'Common area (homeowners association)' : /UTIL/.test(d) ? 'Utility property' : 'Other property';
+  if (k === 'other') return /COMMON|\bHOA\b|OWNERS ASSO|\bOAC\b|EXCLUSION/.test(d) ? 'Common area (homeowners association)' : /UTIL/.test(d) ? 'Utility property'
+    : /AIR RIGHTS/.test(d) ? 'Air rights' : /\bRR\b|RAIL/.test(d) ? 'Railroad property' : /REC AREA|RECREATION|GOLF/.test(d) ? 'Recreation area' : 'Other property';
+  if (k === 'otherRes') return /BOARD|ROOMING/.test(d) ? 'Rooming house' : /GROUP HOME/.test(d) ? 'Group home' : /ASSISTED/.test(d) ? 'Assisted living' : 'Residential';
   if (k === 'exempt') return /CHURCH|RELIG/.test(d) ? 'Church' : /SCHOOL|COLLEGE|UNIVERS/.test(d) ? 'School' : /CEMET/.test(d) ? 'Cemetery' : /\bPARK\b|\bPRK\b/.test(d) ? 'Park'
+    : /POLICE|FIRE DEPT/.test(d) ? 'Police or fire station' : /CULTURAL/.test(d) ? 'Cultural facility' : /CHARITABLE/.test(d) ? 'Charity'
     : /GOV|MUNC|MUNICIP|STATE|FEDERAL|PUBLIC|CMNTY SVC/.test(d) ? 'Government property' : 'Tax-exempt property';
   if (k === 'commercial' || k === 'industrial') { for (const [re, l] of NC_BIZ) if (re.test(d)) return l; return k === 'industrial' ? 'Industrial' : 'Commercial'; }
-  return { mobile: 'Manufactured home', accessory: 'Outbuilding' }[k] || KIND_LABEL[k] || null;
+  if (k === 'accessory') return /STORAGE/.test(d) ? 'Storage unit' : /SLIP/.test(d) ? 'Boat slip' : 'Outbuilding';
+  return { mobile: 'Manufactured home' }[k] || KIND_LABEL[k] || null;
 }
-// Counties write addresses their own way: Mecklenburg adds the city and state, some pad with double spaces, and 0 or 99999 stands
-// for no house number. Sale dates: January 1 and 1899 stand for "unknown" in some counties.
+// Counties write addresses their own way: Mecklenburg adds the city and state, some pad with double spaces, 0 or 99999 stands
+// for no house number, and Durham puts a condo unit's number right after the house number. Sale dates: January 1 and 1899 stand for "unknown" in some counties.
 function ncDerive(o) {
   let a = String(o.SITE_ADDR ?? '').replace(/\s+/g, ' ').trim();
   const city = String(o.CITY ?? '').replace(/\s+/g, ' ').trim();
   if (city) a = a.replace(new RegExp(`\\s+${reEsc(city)}(\\s+NC)?$`, 'i'), '');
   a = a.replace(/\s+NC$/i, '').replace(/^(0|99999)\s+/, '').trim();
+  // Durham writes a unit between the house number and the street: "110 2101 N CORCORAN ST" is unit 2101 of 110 N Corcoran St.
+  const mid = /^(\d+[A-Z]?)\s+(\d+[A-Z]?)\s+((?:[NSEW]\s+)?[A-Z].*)$/.exec(a);
+  if (mid && STREET_WORD.test(mid[3])) a = `${mid[1]} ${mid[3]} UNIT ${mid[2]}`;
   if (/^0*$/.test(a)) a = '';
   const u = String(o.UNIT ?? '').trim();
   if (a && u && !hasUnitNo(a) && !new RegExp(`\\b${reEsc(u)}$`, 'i').test(a)) a = `${a} UNIT ${u}`;
@@ -1138,6 +1151,7 @@ const REGIONS = {
     },
     derive: (o) => ncDerive(o),
     noSalePrice: true,  // the state layer has the date of the last sale but not its price
+    onePerId: true,     // some counties list a parcel once per building on it
     valueLabel: 'County tax value', deltaWord: 'tax value', valueWord: 'Tax value', valueTitle: 'Tax value',
     yearLabel: () => '',
     source: () => 'Source: county tax offices via NC OneMap’s statewide parcels. Counties reappraise every 4 to 8 years, so the tax value can trail today’s market.',
@@ -1294,6 +1308,13 @@ function buildParcels(features, rid = 'MA') {
     const key = rec.LOC_ID || `${rid}:${shapeHash(g.rings)}`;
     let p = byKey.get(key);
     if (!p) { p = { key, region: rid, ringsLL: g.rings, records: [], raw: [] }; byKey.set(key, p); }
+    // Mecklenburg County repeats a parcel once per building section (the tower, its garage, the shops), each with the same value and
+    // sale: one parcel, one record, keeping the copy with the address. (Durham's condo units share their building's parcel number,
+    // but each has its own address and value, so they stay.)
+    const same = (r) => r.PROP_ID === rec.PROP_ID && num(r.TOTAL_VAL) === num(rec.TOTAL_VAL) && (r.LS_DATE || '') === (rec.LS_DATE || '')
+      && (!String(r.SITE_ADDR || '').trim() || !String(rec.SITE_ADDR || '').trim() || r.SITE_ADDR === rec.SITE_ADDR);
+    const dup = REGIONS[rid] && REGIONS[rid].onePerId && rec.PROP_ID ? p.records.findIndex(same) : -1;
+    if (dup >= 0) { if (!String(p.records[dup].SITE_ADDR || '').trim() && String(rec.SITE_ADDR || '').trim()) { p.records[dup] = rec; p.raw[dup] = ft.attributes || {}; } continue; }
     p.records.push(rec); p.raw.push(ft.attributes || {});
   }
   return [...byKey.values()].map((p) => {
@@ -2063,7 +2084,7 @@ function summarize(p) {
   }).filter((s) => s.d).sort((a, b) => b.d - a.d);
   const vals = unitRecs.map((r) => num(r.TOTAL_VAL)).filter((v) => v && v > 0);
   let rawAddr = r0.SITE_ADDR || [r0.ADDR_NUM, r0.FULL_STR].filter(Boolean).join(' ') || r0.LOCATION || '';
-  if (lot.condo && !String(rawAddr).trim()) { const u = unitRecs.find((x) => String(x.SITE_ADDR || '').trim()); if (u) rawAddr = u.SITE_ADDR; }   // a master record without an address
+  if (!String(rawAddr).trim()) { const u = (lot.condo ? unitRecs : recs).find((x) => String(x.SITE_ADDR || '').trim()); if (u) rawAddr = u.SITE_ADDR; }   // a master (or main) record without an address
   if (lot.condo) rawAddr = stripUnitNo(rawAddr);
   const addr = titleCase(rawAddr) || 'Address not listed';
   const town = titleCase(r0.CITY || '');
@@ -2306,7 +2327,7 @@ function shareText(cand) {
   const vw = s.region.valueWord || 'Assessed';
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? `Whole park ${vw.toLowerCase()}` : vw} ${moneyFull(r.TOTAL_VAL)}`);
   if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
-  const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo > 0) bits.push(tx.actual ? `Property tax ${moneyFull(tx.lo)}/yr` : `Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
+  const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo >= 5) bits.push(tx.actual ? `Property tax ${moneyFull(tx.lo)}/yr` : `Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
   const link = houseLink(cand);
   return bits.join('\n') + '\n\nFound with Housepoint' + (link ? `\n${link}` : '');
 }
