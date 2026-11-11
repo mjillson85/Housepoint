@@ -16,30 +16,22 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8799/');
 
+// Wisconsin and Washington are in git history (November 11, 2026).
 const STATES = {
-  WI: {
-    layer: 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0',
-    want: ['OBJECTID', 'STATEID', 'PARCELID', 'TAXPARCELID', 'PARCELDATE', 'TAXROLLYEAR', 'SITEADRESS', 'ADDNUMPREFIX', 'ADDNUM', 'ADDNUMSUFFIX', 'PREFIX', 'STREETNAME',
-      'STREETTYPE', 'SUFFIX', 'LANDMARKNAME', 'UNITTYPE', 'UNITID', 'PLACENAME', 'ZIPCODE', 'ZIP4', 'STATE', 'SCHOOLDIST', 'SCHOOLDISTNO', 'CNTASSDVALUE', 'LNDVALUE',
-      'IMPVALUE', 'MFLVALUE', 'ESTFMKVALUE', 'NETPRPTA', 'GRSPRPTA', 'PROPCLASS', 'AUXCLASS', 'ASSDACRES', 'DEEDACRES', 'GISACRES', 'CONAME', 'LOADDATE', 'PARCELFIPS',
-      'PARCELSRC', 'SITEADRESS_STAND'],
-    group: [['PROPCLASS'], ['AUXCLASS'], ['TAXROLLYEAR']],
-    codes: ['PROPCLASS', 'AUXCLASS'],
-    county: ['CONAME'],
-    spots: [[43.0790, -89.3800, 'Madison isthmus houses'], [43.0700, -89.4300, 'Madison Near West'], [43.0730, -89.3870, 'Madison downtown condos'],
-      [42.9980, -87.8980, 'Milwaukee Bay View'], [43.0400, -87.9050, 'Milwaukee downtown condos'], [44.5133, -88.0133, 'Green Bay'],
-      [45.1300, -87.2400, 'Fish Creek (Door County)'], [43.5600, -90.8900, 'Vernon County (rural)'], [44.8113, -91.4985, 'Eau Claire'], [44.9591, -89.6301, 'Wausau']],
-  },
-  WA: {
-    layer: 'https://services.arcgis.com/jsIt88o09Q0r1j8h/arcgis/rest/services/Current_Parcels/FeatureServer/0',
-    want: ['OBJECTID', 'FIPS_NR', 'COUNTY_NM', 'PARCEL_ID_NR', 'ORIG_PARCEL_ID', 'SITUS_ADDRESS', 'SUB_ADDRESS', 'SITUS_CITY_NM', 'SITUS_ZIP_NR', 'LANDUSE_CD',
-      'ORIG_LANDUSE_CD', 'VALUE_LAND', 'VALUE_BLDG', 'DATA_LINK', 'FILE_DATE'],
-    group: [['LANDUSE_CD'], ['COUNTY_NM']],
-    codes: ['LANDUSE_CD', 'ORIG_LANDUSE_CD'],
-    county: ['COUNTY_NM'],
-    spots: [[47.6680, -122.3850, 'Seattle Ballard houses'], [47.6090, -122.3400, 'Seattle downtown condos'], [47.6101, -122.2015, 'Bellevue'],
-      [47.2529, -122.4443, 'Tacoma'], [47.6588, -117.4260, 'Spokane'], [45.6387, -122.6615, 'Vancouver'], [46.6021, -120.5059, 'Yakima'],
-      [47.0379, -122.9007, 'Olympia'], [48.5343, -123.0171, 'Friday Harbor'], [48.3600, -119.5800, 'Okanogan (rural)']],
+  NE: {
+    layer: 'https://giscat.ne.gov/enterprise/rest/services/StatewideParcelsExternal/MapServer/0',
+    want: ['OBJECTID', 'State_PID', 'Parcel_ID', 'Situs_Address', 'Ph_Rd_Num', 'Ph_Pre_Dir', 'Ph_Rd_Name', 'Ph_Rd_Type', 'Ph_Suf_Dir', 'Ph_City', 'Ph_Zip5',
+      'Ph_Full_Address', 'Acres_Deeded', 'GIS_Acres', 'County_ID', 'ASSRLOC', 'Total_Assessed_Value', 'Land_Value', 'Improvements_Value', 'Other_Impr_Value',
+      'Ag_Land_Value', 'Classification_Code', 'Property_Parcel_Status', 'Property_Parcel_Type', 'Zoning', 'Location', 'City_Size', 'Parcel_Size',
+      'Property_SubClass', 'Ownership_Type', 'TAXDIST', 'School_District_Name', 'Sales_Date', 'Sales_Value', 'Sale_Useability', 'CAMAUpdate', 'ShapeUpdate',
+      'Parcel_URL', 'BuildingYear', 'RCN', 'ImpSF', 'QualImp', 'CondImp', 'Neighborhood'],
+    group: [['Property_Parcel_Type'], ['Property_Parcel_Status'], ['Ownership_Type'], ['Property_SubClass'], ['Sale_Useability'], ['Location']],
+    codes: ['Property_Parcel_Type', 'Property_SubClass', 'Ownership_Type'],
+    county: ['County_ID'],
+    spots: [[41.2611, -95.9850, 'Omaha Dundee houses'], [41.2565, -95.9345, 'Omaha downtown condos'], [41.2340, -96.0100, 'Omaha Aksarben'],
+      [40.7990, -96.6850, 'Lincoln near south'], [40.8136, -96.7026, 'Lincoln downtown'], [41.1370, -95.8908, 'Bellevue (Sarpy)'],
+      [40.9250, -98.3420, 'Grand Island'], [40.6993, -99.0832, 'Kearney'], [41.1239, -100.7654, 'North Platte'], [41.8666, -103.6672, 'Scottsbluff'],
+      [41.4000, -99.6400, 'Custer County (rural)']],
   },
 };
 

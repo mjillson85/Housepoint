@@ -27,6 +27,12 @@ jobs:
       # Run by hand when needed: probe/states.mjs (which states have free parcel services), probe/state-fields.mjs (a new state's
       # fields and use codes), probe/nc-tax-rates.py and probe/wa-tax-rates.py (North Carolina's and Washington's tax rate tables;
       # need pip install openpyxl), probe/wi-speed.mjs (Wisconsin lot query timings).
+      - name: The next state's fields and property types
+        working-directory: tests
+        continue-on-error: true
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node probe/state-fields.mjs
       - name: The newest state against its real service
         working-directory: tests
         continue-on-error: true
