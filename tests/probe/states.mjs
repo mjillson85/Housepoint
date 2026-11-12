@@ -1,7 +1,7 @@
 // Tries the free statewide parcel services of states Housepoint doesn't cover yet, from a real browser page (as the phone
 // would ask, with its cross-site rules), and logs which useful fields each one has and fills in near a test spot. Used to
 // plan which states to add next. Run by the "probe services" workflow; nothing is saved.
-// Owner and mailing fields are never printed: only field names, and values of a short list of property fields.
+// Owner and mailing fields are never requested: the spot queries ask only for the layer's property fields (SHOW, not HIDE).
 //   cd tests && node probe/states.mjs
 import puppeteer from 'puppeteer-core';
 import http from 'http';
@@ -58,10 +58,12 @@ const res = await page.evaluate(async (LAYERS, DIRS, AGOL) => {
       const fields = (j.fields || []).map((f) => f.name);
       return { name: j.name, geom: j.geometryType || j.type, max: j.maxRecordCount, n: fields.length, useful: fields.filter((f) => SHOW.test(f) && !HIDE.test(f)).join(','), hidden: fields.filter((f) => HIDE.test(f)).length, caps: j.capabilities };
     });
+    // Only the property fields are asked for: owner and mailing fields are never requested, not just never printed
+    const ask = row.meta.useful || 'OBJECTID';
     row.spots = [];
     for (const [lat, lon, name] of spots) {
       row.spots.push(await timed(async () => {
-        const q = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', distance: '60', units: 'esriSRUnit_Meter', outFields: '*', returnGeometry: 'false', resultRecordCount: '5', f: 'json' });
+        const q = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', distance: '60', units: 'esriSRUnit_Meter', outFields: ask, returnGeometry: 'false', resultRecordCount: '5', f: 'json' });
         const j = await get(url + '/query?' + q);
         if (!j || j.error || j.notJson) return { name, err: JSON.stringify(j && (j.error || j)).slice(0, 200) };
         const fs = j.features || [], score = (x) => Object.entries(x.attributes || {}).filter(([k, v]) => SHOW.test(k) && !HIDE.test(k) && v !== null && v !== '' && v !== 0 && v !== ' ').length;

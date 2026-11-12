@@ -321,11 +321,12 @@ await unslow();
 reset();
 r = await search(page, '36 oak street holbrook');
 console.log('no comma:', seen.where.slice(0, 1).join(''));
-check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 133\b/.test(w) && /'36 OAK ST%'/.test(w)) && seen.where.some((w) => /'36 OAK ST%'/.test(w) && /'36 OAK STREET HOLBROOK%'/.test(w)), 'no comma: lot found; the other states asked both ways in one request');
+// (Only the state the map is in and a known town's state are asked: not every state at once.)
+check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 133\b/.test(w) && /'36 OAK ST%'/.test(w)) && seen.where.every((w) => seen.state.includes(w)), 'no comma: lot found on the state’s server, by town; no other state searched');
 reset();
 r = await search(page, '36 Oak St, Holbrok');
-check(r.selected === 'O36' && seen.where.some((w) => /'HOLBROK%'/.test(w) && !/'HOLBROOK%'/.test(w)) && seen.state.some((w) => /TOWN_ID = 133\b/.test(w)),
-  'misspelled town with a house number: asked as typed, and separately with the corrected spelling, which finds the lot');
+check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 133\b/.test(w)) && seen.where.every((w) => seen.state.includes(w)),
+  'misspelled town with a house number: the corrected spelling finds the lot on the state’s server');
 reset();
 r = await search(page, '12 Main St, Washington');
 check(/^Couldn’t find that address, so here’s Washington, NJ\. Tap a house\.$/.test(r.help), '"12 Main St, Washington" isn’t sent off to Washington state');

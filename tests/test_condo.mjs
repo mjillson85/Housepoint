@@ -38,5 +38,7 @@ await page.click('.grab'); await new Promise(r => setTimeout(r, 400));
 await page.click('#toMap'); await new Promise(r => setTimeout(r, 600));
 await page.click('#mapToPoint'); await new Promise(r => setTimeout(r, 600));
 console.log('back in point mode:', await page.evaluate(() => window.__hp.S.mode), '| fakecam/cam visible:', await page.evaluate(() => !document.querySelector('#fakecam').classList.contains('hidden') || !document.querySelector('#cam').classList.contains('hidden')));
-console.log('errors:', errors.length ? errors : 'none');
+const backMode = await page.evaluate(() => window.__hp.S.mode);
+console.log(backMode === 'point' ? 'PASS back in point mode after the map' : 'FAIL mode after the map: ' + backMode);
+console.log(errors.length ? 'FAIL page errors: ' + errors.join(' | ') : 'errors: none');
 await browser.close();

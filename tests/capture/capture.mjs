@@ -11,6 +11,7 @@ import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
+import { isOwnerish } from '../owner-fields.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 const OUT = `${ROOT}/tests/fixtures`;
@@ -22,7 +23,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 // Sample spots: [name, lat, lon, radius in meters]
 const SPOTS = {
-  MA: [['Dedham Square', 42.2493, -71.1752, 350], ['Boston Back Bay', 42.3505, -71.0810, 250], ['Boston Downtown', 42.3555, -71.0605, 250],
+  MA: [['Boston Back Bay', 42.3505, -71.0810, 250], ['Boston Downtown', 42.3555, -71.0605, 250],
     ['Cambridge Central Sq', 42.3650, -71.1035, 300], ['Holbrook center', 42.1550, -71.0090, 450], ['Hyannis', 41.6528, -70.2830, 400],
     ['Springfield downtown', 42.1015, -72.5898, 350], ['Worcester Canal District', 42.2585, -71.7980, 350], ['Hawley (rural)', 42.5800, -72.8900, 1500],
     ['Plymouth (shore, parks)', 41.9050, -70.6300, 900], ['Nantucket town', 41.2835, -70.0995, 350]],
@@ -102,8 +103,8 @@ const SPOTS = {
   DE: [['Wilmington', 39.7500, -75.5500, 250], ['Dover', 39.1580, -75.5240, 300]],
   VA: [['Richmond', 37.5500, -77.4600, 250], ['Arlington', 38.8800, -77.1000, 250], ['Norfolk', 36.8500, -76.2900, 300]],
 };
-// Lots that have shown problems on Matt's walks, found by their MassGIS LOC_ID through the state's own server (indexed there).
-const NAMED = { MA: [['47-49 River St, Dedham (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
+// Lots that have shown problems before, found by their MassGIS LOC_ID through the state's own server (indexed there).
+const NAMED = { MA: [['47-49 River St (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
 const MA_STATE_PARCELS = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer/1';
 const PER_STATE = 120, PER_KIND = 2, MAX_RECS = 80;
 
@@ -128,7 +129,7 @@ function shapeHash(rings) {
   for (const r of rings) for (const [x, y] of r) { const t = `${x.toFixed(6)},${y.toFixed(6)};`; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; }
   return (h >>> 0).toString(36) + '.' + rings.reduce((n, r) => n + r.length, 0);
 }
-const OWNERISH = /(^|_)OWN|OWNER|MAIL|PSTL|^NAME|_NAME1|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|ASRNAME|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i, KEEP_NAME = /^(MUN_NAME|Town_Name|Ownership_Type|ownership|CityStateZip|OwnDate)$/i;   // Minnesota's ownership is Private; Nashville's OwnDate is the last sale's date, State, Federal…   // Nebraska's ownership type is Private, Exempt, State…: no names   // TOWN_ID is fine
+// Owner-like fields: the one shared list (tests/owner-fields.mjs)
 
 async function main() {
   // "new": only the states that don't have a fixture file yet (what a push runs, so adding a state doesn't recapture the rest)
@@ -147,7 +148,7 @@ async function captureState(page, st) {
     log(st, 'finding the service the way the app does');
     const sv = await page.evaluate(async (id) => { const hp = window.__hp; await hp.initService(hp.REGIONS[id]); const s = hp.SVC[id];
       return { layerUrl: s.layerUrl, outFields: s.outFields, oid: s.oid, pageSize: s.pageSize, canon: [...s.canon.entries()], lotWhere: hp.REGIONS[id].lotWhere || null }; }, st);
-    const bad = sv.outFields.filter((f) => OWNERISH.test(f) && !KEEP_NAME.test(f));
+    const bad = sv.outFields.filter(isOwnerish);
     if (bad.length) throw new Error(`${st}: the app asks for owner-like fields ${bad.join(', ')}; stopping`);
     const meta = await getJSON(sv.layerUrl + '?f=json');
     const fields = (meta.fields || []).filter((f) => sv.outFields.includes(f.name) || f.name === meta.objectIdField).map((f) => ({ name: f.name, type: f.type }));
@@ -249,8 +250,10 @@ async function captureState(page, st) {
         } catch (e) { log('  re-fetch failed, keeping the first copy', k); }
       }
       const total = feats.length;
-      feats = feats.slice(0, MAX_RECS).map((f) => {
-        const a = {}; for (const [n, val] of Object.entries(f.attributes || {})) if (!(OWNERISH.test(n) && !KEEP_NAME.test(n))) a[n] = val;
+      // Free-text fields reduced to the one word the app keeps (Vermont's property description), the way the app does on arrival
+      const clean = await page.evaluate((id, list) => list.map((a) => window.__hp.scrubAttrs(id, a)), st, feats.slice(0, MAX_RECS).map((f) => f.attributes || {}));
+      feats = feats.slice(0, MAX_RECS).map((f, i) => {
+        const a = {}; for (const [n, val] of Object.entries(clean[i])) if (!isOwnerish(n)) a[n] = val;
         // A huge outline (a river, a highway, a county forest) becomes its bounding box: it's never a house, and it keeps the files small.
         let rings = f.geometry.rings;
         if (rings.reduce((n, r) => n + r.length, 0) > 1500) {

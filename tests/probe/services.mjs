@@ -31,8 +31,8 @@ const raw = await page.evaluate(async () => {
 log('== school and district services, asked from a web page');
 for (const r of raw) log(JSON.stringify(r));
 
-// 2. The app's own lookups, for Dedham Square and Holbrook
-for (const [name, lat, lon] of [['Dedham Square', 42.2493, -71.1752], ['Holbrook', 42.1606, -70.9959]]) {
+// 2. The app's own lookups, for Boston's Back Bay and Holbrook
+for (const [name, lat, lon] of [['Boston Back Bay', 42.3505, -71.0810], ['Holbrook', 42.1606, -70.9959]]) {
   log(`== the app's lookups at ${name}`);
   const r = await page.evaluate(async (lat, lon) => {
     const hp = window.__hp, out = {};
@@ -53,7 +53,7 @@ const variants = await page.evaluate(async () => {
   const names = (meta.fields || []).map((f) => f.name);
   const want = ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT', 'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'];
   const up = new Map(names.map((n) => [n.toUpperCase(), n])), have = want.map((n) => up.get(n)).filter(Boolean);
-  const base = { geometry: '-71.1752,42.2493', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json' };
+  const base = { geometry: '-71.0810,42.3505', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json' };
   const tries = {
     app: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400', distance: '6500', units: 'esriSRUnit_Meter' },
     noRecordCount: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', distance: '6500', units: 'esriSRUnit_Meter' },
@@ -77,7 +77,7 @@ const nces = await page.evaluate(async () => {
   for (const svc of ['https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer/1',
     'https://nces.ed.gov/opengis/rest/services/School_District_Boundaries/EDGE_ADMINDATA_SCHOOLDISTRICTS_SY2324/MapServer/1']) {
     const meta = await (await fetch(svc + '?f=json')).json();
-    const q = { geometry: '-71.1752,42.2493', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: '*', returnGeometry: 'true', outSR: '4326', distance: /PUBLICSCH/.test(svc) ? '6500' : '0', units: 'esriSRUnit_Meter' };
+    const q = { geometry: '-71.0810,42.3505', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: '*', returnGeometry: 'true', outSR: '4326', distance: /PUBLICSCH/.test(svc) ? '6500' : '0', units: 'esriSRUnit_Meter' };
     const t0 = performance.now(); let r;
     try { const j = await (await fetch(svc + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(q).toString() })).json();
       r = { ms: Math.round(performance.now() - t0), n: j.features ? j.features.length : null, err: j.error ? JSON.stringify(j.error).slice(0, 200) : null, sample: j.features && j.features[0] ? JSON.stringify(j.features[0].attributes).slice(0, 500) : null }; }

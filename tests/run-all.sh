@@ -4,8 +4,9 @@
 cd "$(dirname "$0")" || exit 1
 fail=0
 for t in test_*.mjs; do
-  out=$(node "$t" 2>&1)
-  if echo "$out" | grep -q "FAIL" || ! echo "$out" | grep -qi "ALL PASSED\|errors: none"; then
+  out=$(node "$t" 2>&1); code=$?
+  # a test fails on a FAIL line, a non-zero exit (a crash after printing "errors: none" too), or no verdict at all
+  if [ "$code" != 0 ] || echo "$out" | grep -q "FAIL" || ! echo "$out" | grep -qi "ALL PASSED\|errors: none"; then
     echo "FAILED  $t"; echo "$out" | grep "FAIL" | head -5; fail=1
   else
     echo "ok      $t"

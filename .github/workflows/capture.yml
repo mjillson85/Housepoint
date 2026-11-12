@@ -31,10 +31,23 @@ jobs:
         working-directory: tests
         env:
           CHROME: /usr/bin/google-chrome
-        # A push captures only states without records yet; "Run workflow" with no states refreshes them all.
-        run: node capture/capture.mjs ${{ github.event_name == 'push' && 'new' || github.event.inputs.states }}
-      - name: Commit the records
+          # A push captures only states without records yet; "Run workflow" with no states refreshes them all.
+          # Passed through the environment, never pasted into the script, and only region ids get through.
+          STATES: ${{ github.event_name == 'push' && 'new' || github.event.inputs.states }}
+        run: |
+          case "$STATES" in *[!A-Za-z_\ ,]*) echo "states must be region ids like NC or TX_HARRIS"; exit 1;; esac
+          node capture/capture.mjs $STATES
+      # A push made with this workflow's token doesn't start the tests workflow, so the new records are tested here, before they're
+      # committed: the real-record test (owner fields included) and the owner-field check.
+      - name: Test the new records
+        id: test
         if: always()
+        working-directory: tests
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node test_real.mjs && node test_owner.mjs
+      - name: Commit the records
+        if: always() && steps.test.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

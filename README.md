@@ -67,7 +67,7 @@ Point your phone at a house and see its story: when it was built, what it last s
 - Add `?health=1` to check the data services: each state's property records and the address lookups, how fast they answer, and whether one has moved.
 - Add `?aimpow=0.25` to change how much a house's on-screen width is discounted when picking (0 favors big near houses, 1 treats every house alike; 0.25 tested best).
 - Add `?debug=1` to see the compass, GPS and camera view readings. On an iPhone the first line also shows the compass accuracy (`acc ±N°`); the app warns when it's worse than ±30°.
-- If the floating tags are all shifted to one side of the houses, that's compass error: `?decl=` sets the compass correction (about −14 in Massachusetts, −13 in Connecticut, −12 in New Jersey, −7 in Florida, −9 in Raleigh, −3 in Madison, +15 in Seattle, +2 in Omaha). If tags are spread too far apart or bunched together, `?fov=` sets how wide the camera view is, in degrees (about 34 on an iPhone held upright).
+- If the floating tags are all shifted to one side of the houses, that's compass error: `?decl=` sets the compass correction (about −14 in Massachusetts and Connecticut, −12 in New Jersey, −7 in Florida, −9 in Raleigh, −3 in Madison, +15 in Seattle, +2 in Omaha). If tags are spread too far apart or bunched together, `?fov=` sets how wide the camera view is, in degrees (about 34 on an iPhone held upright).
 
 It's a single file (`index.html`), no build step.
 

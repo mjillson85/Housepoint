@@ -17,14 +17,17 @@ const dataUrl = await page.evaluate(async () => { const S = window.__hp.S; const
 fs.writeFileSync('n_share.png', Buffer.from(dataUrl.split(',')[1], 'base64'));
 // share button path (no navigator.share in headless) -> preview overlay
 await page.click('#shareC'); await new Promise(r => setTimeout(r, 1500));
-console.log('share overlay visible:', await page.$eval('#shareView', el => !el.classList.contains('hidden')));
+const shareOn = await page.$eval('#shareView', el => !el.classList.contains('hidden'));
+console.log(shareOn ? 'PASS sharing shows the preview' : 'FAIL sharing didn’t show the preview');
 await page.click('#svClose');
 // panel
 await page.evaluate(() => window.__hp.openPanel('near')); await new Promise(r => setTimeout(r, 500));
 await page.screenshot({ path: 'n_panel.png' });
 console.log('panel text:\n' + (await page.$eval('#panelBody', el => el.innerText)).slice(0, 600));
 await page.click('#panelBody .item'); await new Promise(r => setTimeout(r, 500));
-console.log('after tap, card addr:', await page.$eval('#cardBody .addr', el => el.innerText), '| sheet open:', await page.$eval('#sheet', el => el.classList.contains('open')));
+const tapAddr = await page.$eval('#cardBody .addr', el => el.innerText), tapOpen = await page.$eval('#sheet', el => el.classList.contains('open'));
+console.log('after tap, card addr:', tapAddr, '| sheet open:', tapOpen);
+console.log(tapOpen && /\d+ \S/.test(tapAddr) ? 'PASS a nearby house opens its card' : 'FAIL nearby tap: ' + tapAddr);
 await page.evaluate(() => window.__hp.openPanel('mine')); await new Promise(r => setTimeout(r, 300));
 console.log('history:\n' + (await page.$eval('#panelBody', el => el.innerText)));
 // map mode
@@ -34,5 +37,5 @@ await page.mouse.click(195, 420); await new Promise(r => setTimeout(r, 500));
 await page.evaluate(() => document.querySelector('#sheet').classList.remove('open'));
 await new Promise(r => setTimeout(r, 400));
 await page.screenshot({ path: 'n_map.png' });
-console.log('ERRORS:', errors.length ? errors.join('\n') : 'none');
+console.log(errors.length ? 'FAIL page errors: ' + errors.join(' | ') : 'errors: none');
 await browser.close();

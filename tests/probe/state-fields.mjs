@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
+import { OWNERISH, KEEP_NAME } from '../owner-fields.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 const html = fs.readFileSync(`${ROOT}/index.html`);
@@ -31,11 +32,11 @@ const STATES = {   // Earlier rounds are in git history (November 11, 2026). Rou
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 // (also "original" and "unmodified" copies of a record, which can hold the owner's name and mailing address: Alabama's do)
-const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid|orig|unmod|raw|json|own|mail|legal|lgl|user|editor|creat|signed|comment|addr_line|propertydesc/i;
+const AUTO_SKIP = /name|nam\d|nm\d|party|person|phone|email|contact|grant|deed|book|page|instr|legaldesc|^descr?(iption)?$|(prop|tax|parcel|leg|lgl)_?descr?(iption)?|descr?_?prop|careof|^c_?o$|attn|^addr(ess)?[12]$|shape|globalid|orig|unmod|raw|json|own|mail|legal|lgl|user|editor|creat|signed|comment|addr_line|propertydesc/i;
 const BAD = /(?<!t)own|mail|madd|^m(unit|city|state|zip|addr|stname)|legdec|legal|careof|grantee|grantor|grntnam|namekey|mortg|po_box|tax_name|tax_add|^address\d|citystzip|asrname|nys_name|buyer|seller|taxpayer/i;
 
 for (const [st, cfg] of Object.entries(STATES)) {
-  const out = await page.evaluate(async (cfg, BADsrc, AUTOsrc) => {
+  const out = await page.evaluate(async (cfg, BADsrc, AUTOsrc, OWNsrc, KEEPsrc) => {
     const BAD = new RegExp(BADsrc, 'i');
     const get = async (u, ms = 30000, body) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); const t0 = performance.now();
       try { const r = await fetch(u, body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, signal: c.signal } : { signal: c.signal });
@@ -48,12 +49,12 @@ for (const [st, cfg] of Object.entries(STATES)) {
     const oidF = m.j.objectIdField || (fields.find((f) => f.type === 'esriFieldTypeOID') || {}).name || 'objectid';
     res.fields = fields.map((f) => `${f.name}:${f.type.replace('esriFieldType', '')}${f.alias && f.alias !== f.name ? `(${f.alias})` : ''}`);
     res.max = m.j.maxRecordCount; res.sr = m.j.extent && m.j.extent.spatialReference; res.adv = m.j.advancedQueryCapabilities;
-    const AUTO = new RegExp(AUTOsrc, 'i');
+    const AUTO = new RegExp(AUTOsrc, 'i'), OWN = new RegExp(OWNsrc, 'i'), KEEP = new RegExp(KEEPsrc, 'i');   // and the shared owner list
     const have = new Set(fields.map((f) => f.name));
     // a field is skipped when its name or its alias looks like an owner, mailing, name, deed or legal field ("ADDRGL1" is Vermont's
     // "Mailing Address 1")
     const alias = Object.fromEntries(fields.map((f) => [f.name, f.alias || '']));
-    const ok = (f) => !BAD.test(f) && !BAD.test(alias[f] || '') && !/mailing|owner|taxpayer|grantee|grantor/i.test(alias[f] || '');
+    const ok = (f) => !BAD.test(f) && !BAD.test(alias[f] || '') && !/mailing|owner|taxpayer|grantee|grantor/i.test(alias[f] || '') && (!OWN.test(f) || KEEP.test(f));
     // auto: only fields that look like property facts (values, sizes, years, types, the property's own address), never a bare
     // "address" or "line 2" (Bexar's addr_line2 is the owner's mailing address) or anything signed by a person
     const FACT = /val|appr|mkt|market|land|impr|imps|bldg|bld|build|year|yr|built|sqft|area|acre|class|cls|use|luc|type|situs|site|prop|city|zip|unit|room|bed|bath|stor|sale|price|tax|county|parcel|pin|apn|acct|account|^id$|_id$|link|url|web/i;
@@ -99,7 +100,7 @@ for (const [st, cfg] of Object.entries(STATES)) {
       spot.codes = codes.j && !codes.j.error ? (codes.j.features || []).slice(0, 40).map((f) => Object.values(f.attributes).join(' | ')) : (codes.err || JSON.stringify(codes.j && codes.j.error).slice(0, 200));
     }
     return res;
-  }, cfg, BAD.source, AUTO_SKIP.source);
+  }, cfg, BAD.source, AUTO_SKIP.source, OWNERISH.source, KEEP_NAME.source);
   log(`==== ${st}  ${cfg.layer}`);
   if (out.metaErr) { log('meta error', out.metaErr); continue; }
   log(`max ${out.max}  sr ${JSON.stringify(out.sr)}`);

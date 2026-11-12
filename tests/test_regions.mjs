@@ -2,6 +2,8 @@ import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
+import { isOwnerish } from './owner-fields.mjs';
+const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8765);
@@ -13,6 +15,10 @@ const FL_FIELDS = ['OBJECTID','CO_NO','PARCEL_ID','MULTI_PAR_SAL1','ASMNT_YR','D
 const MA_FIELDS = ['OBJECTID','LOC_ID','POLY_TYPE','SITE_ADDR','CITY','FY','TOTAL_VAL','LAND_VAL','LS_DATE','LS_PRICE','USE_CODE','YEAR_BUILT','RES_AREA','STYLE','STORIES','NUM_ROOMS','UNITS','OWNER1','OWN_ADDR'];
 const seen = { flQueryBodies: [], maQueryBodies: [], itemLookups: 0 };
 
+// Like the real services, the fakes answer with only the fields asked for (and the object id): the owner fields they hold come
+// back only if the app asks for them.
+const only = (body, feats) => { const want = new Set(String(body.get('outFields') || '').split(',').concat('OBJECTID'));
+  return feats.map((f) => ({ ...f, attributes: Object.fromEntries(Object.entries(f.attributes).filter(([k]) => want.has(k) || want.has('*'))) })); };
 function lots(lon, lat, make) {
   const kx = Math.cos(lat * Math.PI / 180) * 111320, ky = 110540;
   const feats = [];
@@ -43,14 +49,14 @@ async function run(lat, lon, tag) {
     if (u.startsWith(FL_SVC + '/0/query')) {
       const body = new URLSearchParams(req.postData() || ''); seen.flQueryBodies.push(body.get('outFields'));
       const [qlon, qlat] = body.get('geometry').split(',').map(Number);
-      return json({ features: lots(qlon, qlat, (j) => ({ OBJECTID: j + 1, PARCEL_ID: 'FL' + j, ASMNT_YR: 2025, MULTI_PAR_SAL1: j === 1 ? 'M' : '', DOR_UC: j === 5 ? '009' : j === 2 ? '004' : '0001', JV: j === 5 ? 0 : 450000 + j * 10000, LND_VAL: 200000, SALE_PRC1: 389000 + j * 1000, SALE_YR1: 2021, SALE_MO1: 6, ACT_YR_BLT: (j === 4 || j === 5) ? 0 : 1926 + j, EFF_YR_BLT: j === 2 ? 1998 : j === 4 ? 1955 : j === 5 ? 0 : 1926 + j, TOT_LVG_AREA: j === 5 ? 0 : 1800 + j * 10, NO_RES_UNTS: j === 2 ? 12 : j === 5 ? 40 : 1, NO_BULDNG: j === 5 ? 3 : 1, PHY_ADDR1: `${12 + j * 2} AVILES ST`, PHY_CITY: 'ST AUGUSTINE', OWN_NAME: 'SECRET OWNER' })), exceededTransferLimit: false });
+      return json({ features: only(body, lots(qlon, qlat, (j) => ({ OBJECTID: j + 1, PARCEL_ID: 'FL' + j, ASMNT_YR: 2025, MULTI_PAR_SAL1: j === 1 ? 'M' : '', DOR_UC: j === 5 ? '009' : j === 2 ? '004' : '0001', JV: j === 5 ? 0 : 450000 + j * 10000, LND_VAL: 200000, SALE_PRC1: 389000 + j * 1000, SALE_YR1: 2021, SALE_MO1: 6, ACT_YR_BLT: (j === 4 || j === 5) ? 0 : 1926 + j, EFF_YR_BLT: j === 2 ? 1998 : j === 4 ? 1955 : j === 5 ? 0 : 1926 + j, TOT_LVG_AREA: j === 5 ? 0 : 1800 + j * 10, NO_RES_UNTS: j === 2 ? 12 : j === 5 ? 40 : 1, NO_BULDNG: j === 5 ? 3 : 1, PHY_ADDR1: `${12 + j * 2} AVILES ST`, PHY_CITY: 'ST AUGUSTINE', OWN_NAME: 'SECRET OWNER' }))), exceededTransferLimit: false });
     }
     if (u.startsWith(MA_SVC + '?f=json')) return json({ layers: [{ id: 0, geometryType: 'esriGeometryPolygon' }] });
     if (u.startsWith(MA_SVC + '/0?f=json')) return json({ objectIdField: 'OBJECTID', maxRecordCount: 2000, fields: MA_FIELDS.map((name) => ({ name })) });
     if (u.startsWith(MA_SVC + '/0/query')) {
       const body = new URLSearchParams(req.postData() || ''); seen.maQueryBodies.push(body.get('outFields'));
       const [qlon, qlat] = body.get('geometry').split(',').map(Number);
-      return json({ features: lots(qlon, qlat, (j) => ({ OBJECTID: j + 1, LOC_ID: 'MA' + j, POLY_TYPE: 'FEE', SITE_ADDR: `${20 + j} CHESTNUT ST`, CITY: 'SALEM', FY: 2026, TOTAL_VAL: 1200000 + j, LAND_VAL: 500000, LS_DATE: '20190315', LS_PRICE: 900000, USE_CODE: '1010', YEAR_BUILT: 1810 + j, RES_AREA: 3000, STYLE: 'FEDERAL', STORIES: 3, NUM_ROOMS: 10, UNITS: 1, OWNER1: 'SECRET OWNER' })) });
+      return json({ features: only(body, lots(qlon, qlat, (j) => ({ OBJECTID: j + 1, LOC_ID: 'MA' + j, POLY_TYPE: 'FEE', SITE_ADDR: `${20 + j} CHESTNUT ST`, CITY: 'SALEM', FY: 2026, TOTAL_VAL: 1200000 + j, LAND_VAL: 500000, LS_DATE: '20190315', LS_PRICE: 900000, USE_CODE: '1010', YEAR_BUILT: 1810 + j, RES_AREA: 3000, STYLE: 'FEDERAL', STORIES: 3, NUM_ROOMS: 10, UNITS: 1, OWNER1: 'SECRET OWNER' }))) });
     }
     if (/fonts\.|arcgisonline|nationalmap/.test(u)) return req.abort();
     return req.abort();
@@ -66,6 +72,9 @@ async function run(lat, lon, tag) {
   const anyOwner = await page.evaluate(() => JSON.stringify(window.__hp.S.parcels).includes('SECRET'));
   await page.screenshot({ path: `region_${tag}.png` });
   console.log(`\n=== ${tag} ===\nlabel: ${live}\ncard: ${card}\ndebug: ${debug}\nowner data on phone: ${anyOwner}\nerrors: ${errors.length ? errors.join('; ') : 'none'}`);
+  check(!anyOwner, `${tag}: the faked owner names never reach the phone's memory`);
+  check(/\d+ \S/.test(card), `${tag}: the card shows a house`);
+  check(!errors.length, `${tag}: no page errors`);
   return page;
 }
 const flPage = await run(29.8934, -81.3133, 'FL');
@@ -84,4 +93,12 @@ const outside = await browser.newPage(); await outside.setRequestInterception(tr
 await outside.setGeolocation({ latitude: 40.75, longitude: -73.99, accuracy: 5 });
 await outside.goto(ORIGIN + '/'); await outside.click('#goPoint'); await new Promise((r) => setTimeout(r, 1200));
 console.log('\nNew York hint:', await outside.$eval('#hint', (el) => el.innerText));
+// The fields asked of each service: none owner-like (the fakes above hold owner fields, so asking for one would bring it back)
+for (const [st, list] of [['FL', seen.flQueryBodies], ['MA', seen.maQueryBodies]]) {
+  check(list.length > 0, `${st}: the lots were asked for`);
+  const bad = [...new Set(list.flatMap((b) => String(b || '').split(',')).filter(isOwnerish))];
+  check(!bad.length, `${st}: no owner-like field asked for${bad.length ? ': ' + bad.join(', ') : ''}`);
+}
 await browser.close(); srv.close();
+console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');
+process.exit(fails.length ? 1 : 0);

@@ -118,7 +118,7 @@ await page.reload(); await sleep(400);
 const unit = await page.evaluate(() => {
   const h = window.__hp;
   const months = (v) => Object.fromEntries([1, 2, 3].map((m) => [`0${m}-2024`, v]));
-  const s1 = h.cdeSeries({ offenses: { rates: { 'Dedham Police Department Offenses': months(20), 'Massachusetts Offenses': months(25), 'United States Offenses': months(30) } } }, 'Massachusetts');
+  const s1 = h.cdeSeries({ offenses: { rates: { 'Salem Police Department Offenses': months(20), 'Massachusetts Offenses': months(25), 'United States Offenses': months(30) } } }, 'Massachusetts');
   const gaps = { '01-2024': 100, '02-2024': 100, '03-2024': 100 }; for (let m = 4; m <= 12; m++) gaps[`${String(m).padStart(2, '0')}-2024`] = null;
   const s2 = h.cdeSeries({ offenses: { rates: { 'Florida City Police Department Offenses': gaps, 'Florida Offenses': months(30), 'United States Offenses': months(30) } } }, 'Florida');
   const s3 = h.cdeSeries({ offenses: { rates: { 'Quiet Police Department Offenses': { '01-2024': null, '02-2024': '' }, 'Florida Offenses': months(30) } } }, 'Florida');

@@ -92,6 +92,19 @@ check(/PROPERTY RECORD \| Not in Housepoint yet/i.test(h1.card) && /doesn’t ha
 check(/FOOTPRINT \| 1,650 ft²/i.test(h1.card) && /HEIGHT \| ≈ 24 ft/i.test(h1.card) && !/\bLOT\b \|/i.test(h1.card), 'house: footprint and height, not a lot size');
 check(/^https:\/\/www\.google\.com\/search\?q=Richland%20County%20South%20Carolina%20property%20assessor%20parcel%20search$/.test(h1.link || ''), `house: a search for the county’s record: ${h1.link}`);
 check(/Thinking of buying\?/.test(h1.card), 'house: the buyer’s box (schools, neighborhood, safety, nearby) is there');
+// Save and "Thinking of buying?" use the address and town the map lookup found, not "Address not listed" (the card's first draw)
+const sv = await page.evaluate(async () => {
+  const hp = window.__hp, S = hp.S;
+  const L = S.local.find((l) => l.p.records.some((r) => String(r.PROP_ID) === '101'));
+  hp.selectLot(L); await new Promise((r) => setTimeout(r, 600));
+  document.querySelector('#saveBtn').click();
+  const saved = hp.loadSaved().find((x) => x.key === L.p.key);
+  const bb = document.querySelector('#buyBtn'); if (bb) bb.click();
+  await new Promise((r) => setTimeout(r, 400));
+  return { saved, links: [...document.querySelectorAll('#buyBox .blinks a')].map((a) => a.href) };
+});
+check(sv.saved && sv.saved.addr === '1720 Pickens Street' && sv.saved.town === 'Columbia', `Save keeps the address and town from the map: ${JSON.stringify(sv.saved && { addr: sv.saved.addr, town: sv.saved.town })}`);
+check(sv.links.length === 2 && sv.links.every((u) => /1720.Pickens.Street.*Columbia.*SC/.test(decodeURIComponent(u)) && !/Address.not.listed|Near/.test(decodeURIComponent(u))), `the listing links search the address: ${sv.links.join(' ')}`);
 const h2 = await card('102');
 check(/1712 Pickens St \|/.test(h2.card) && /Columbia · House/.test(h2.card) && !/nearest one on OpenStreetMap/.test(h2.card), `an outline with its own address uses it: ${h2.card.slice(0, 200)}`);
 const ap = await card('104');

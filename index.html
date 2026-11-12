@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Housepoint">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="Point your phone at any house in Massachusetts, Connecticut, New Jersey or Florida and see when it was built, what it last sold for and what it’s valued at. Public records only; no owner names.">
+<meta name="description" content="Point your phone at any house in the US and see what’s on file: when it was built, what it last sold for and what it’s valued at, wherever the state or county shares them. Public records only; no owner names.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Housepoint: point at any house, get its story">
 <meta property="og:description" content="Year built, value, last sale and more, from public records. No owner names, no accounts, no tracking.">
@@ -387,14 +387,14 @@
     Housepoint
   </div>
   <h1>Point at any house.<br><em>Get its story.</em></h1>
-  <p>Hold your phone up at a house in Massachusetts, Connecticut, New Jersey or Florida and see when it was built, what it last sold for and what it’s valued at.</p>
+  <p>Hold your phone up at a house anywhere in the US and see what’s on file: when it was built, what it last sold for and what it’s valued at, wherever the state or county shares them.</p>
   <button class="btn-primary" id="goPoint">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
     Start pointing
   </button>
   <button class="btn-ghost" id="goMap">Use the map instead</button>
   <button class="btn-link" id="goDemo">Try a sample neighborhood</button>
-  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera and compass stay on this device; only map locations go to public record services. Covers Massachusetts, Connecticut, New Jersey and Florida.
+  <div class="fine"><b>Public records only. No owner names, ever.</b> Your camera and compass stay on this device; only map locations go to public record services. Covers the 50 states and DC; how much a card shows depends on what each state or county shares.
     <a href="#" id="openAbout">About &amp; sources</a> · <a href="privacy.html">Privacy</a></div>
 </section>
 
@@ -948,7 +948,7 @@ function waDerive(o) {
   const z = String(o.ZIP ?? '').trim(); o.ZIP = /^\d{5}/.test(z) && !/^0+$/.test(z.slice(0, 5)) ? z.slice(0, 5) : null;
   const has = (v) => v != null && String(v).trim() !== '';
   o.TOTAL_VAL = has(o.LAND_VAL) || has(o.BLDG_VAL) ? (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0) : null;
-  o.RECORD_URL = /^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
+  o.RECORD_URL = t2url(o.RECORD_URL);   // https, or http where the county's site has nothing else (Okanogan County, Washington)
 }
 // Nebraska: the state's property classification code, the same in every county: status (1 improved, 2 vacant, 3 a building on
 // leased land), then the parcel type (1 single family, 2 multi-family, 3 commercial, 4 industrial, 5 farmland, 6 recreational,
@@ -1007,7 +1007,7 @@ function neDerive(o) {
   if (!(num(o.BLD_AREA) > 0)) o.BLD_AREA = null;
   const c = parseInt(String(o.COUNTY ?? '').replace(/\D/g, '') || 'x', 10);
   o.COUNTY = c > 0 && c % 2 ? NE_COUNTIES[(c - 1) / 2] || null : null;
-  o.RECORD_URL = /^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(String(o.RECORD_URL || '').trim()) ? String(o.RECORD_URL).trim() : null;
+  o.RECORD_URL = t2url(o.RECORD_URL);   // https, or http where the county's site has nothing else (Okanogan County, Washington)
 }
 // Douglas County (Omaha) splits a lot inside a tax-increment financing district into two records on the same outline: one
 // without an address (parcel number ending 01) and one with it (ending 03). Together they are the lot's value.
@@ -1836,7 +1836,8 @@ function attachImageryFallback(group, set, credit) {
 /* ---------- Tier 2 states (November 11, 2026): Montana, Arkansas, Vermont, Cook County (Illinois), Colorado, Wyoming, Utah, Alaska ---------- */
 const t2clean = (a) => String(a ?? '').replace(/\s+/g, ' ').trim();
 const t2year = (y) => (num(y) > 1600 && num(y) <= THIS_YEAR ? num(y) : null);
-const t2url = (u) => (/^https:\/\/[\w.-]+\.[a-z]{2,}\//i.test(t2clean(u)) ? t2clean(u) : null);
+// A county's own page for the record, as a link out: https, or http where that's all the county's site offers (a link, not a fetch)
+const t2url = (u) => (/^https?:\/\/[\w.-]+\.[a-z]{2,}(\/|$)/i.test(t2clean(u)) ? t2clean(u) : null);
 
 // Montana: the Department of Revenue's records via the State Library's cadastral parcels. Its property type is broad: a house
 // and a store are both "Improved Property", so those stay "use not listed" unless the lot is mostly farm or ranch land.
@@ -1917,6 +1918,9 @@ function vtDescFlag(d) {
   if (/\b([5-9]|\d\d+) ?(UNITS?|APTS?|U)\b|APARTMENT/.test(d)) return 'apartments';
   return null;
 }
+// What the app keeps of the description: one word for what it says about the building. The town's free text itself is never kept
+// (in memory, the copied records or the test files), since a lister can write anything there.
+function vtDescWord(d) { return { multi: '2 FAMILY', condo: 'CONDO', apartments: 'APARTMENTS' }[vtDescFlag(d)] || ''; }
 function vtKind(r) {
   const c = t2clean(r.USE_CODE).toUpperCase(), flag = r.VT_DESC || vtDescFlag(r.PROP_DESC), condo = flag === 'condo';
   // A home category with an improvement value of exactly 0 (and land valued) is a vacant lot; no value at all says nothing.
@@ -2323,7 +2327,10 @@ function posAddrFor(p) {
         const inside = p.ringsLL.some((rr) => inPoly(+a.lon, +a.lat, rr)) || ((REGIONS[p.region] || {}).basic && a.distance <= 25);   // a building's address point sits by the street
         p.posAddr = `${inside ? '' : 'Near '}${a.housenumber} ${a.street}`;
       }
-    } catch (e) { /* the card keeps "Address not listed" */ }
+    } catch (e) {
+      // the card keeps "Address not listed" for now; a timeout or a busy service is asked again the next time the card opens
+      p.posAddrP = undefined; p.posAddr = undefined; return null;
+    }
     return p.posAddr;
   })();
   return p.posAddrP;
@@ -2970,9 +2977,9 @@ const REGIONS = {
       TOTAL_VAL: ['REAL_FLV'], LAND_VAL: ['LAND_LV'], BLDG_VAL: ['IMPRV_LV'],
     },
     extraFields: ['LOC', 'PROP_DESC', 'VT_DESC'],
-    // The grand list's description is the town's free text: read for what it says about the building (condo, apartments), then
-    // dropped, and never in the copied records.
-    noCopy: ['DESCPROP'],
+    // The grand list's description is the town's free text: read for what it says about the building (condo, apartments) and
+    // replaced by that one word as soon as it arrives (scrub), so the text itself is never kept or copied.
+    scrub: { DESCPROP: vtDescWord },
     derive: (o) => vtDerive(o),
     stackedUnits: true, noSales: true, addrByPosition: true,
     valueLabel: 'Town listed value', deltaWord: 'value', valueWord: 'Listed value', valueTitle: 'Listed value',
@@ -3514,6 +3521,9 @@ const REGIONS = {
     detect: ['STATE_ID', 'PROP_LOC', 'MAP_BK_LOT'],
     fields: { PROP_ID: ['STATE_ID'], SITE_ADDR: ['PROP_LOC'], CITY: ['TOWN'], COUNTY: ['COUNTY'] },
     expand: (feats, sv) => meExpand(feats, sv),
+    // The towns' tables carry the last sale (LS_DATE, LS_PRICE). A parcel the map draws in pieces comes once per piece with the
+    // same id: one record, not identical "units".
+    noSales: false, onePerId: true,
     // Portland writes "00341 CUMBERLAND AVE"
     searchForms: (a) => [String(a).replace(/^(\d+)/, (m) => m.padStart(5, '0'))],
     kindOf: (r) => kindFromWords(r.USE_DESC, r), labelOf: (r) => wordsLabel(kindFromWords(r.USE_DESC, r), r.USE_DESC),
@@ -3625,10 +3635,16 @@ function wmmDeclination(glat, glon, year = 1970 + Date.now() / 3.15576e10) {
   bp = st === 0 ? bpp : bp / st;
   return Math.atan2(bp, -bt * ca - br * sa) / dtr;
 }
+// Asked on every compass reading (dozens a second): worked out once per kilometer or so, since it changes far more slowly than that.
 function declinationAt(pos) {
   if (Number.isFinite(DECL_OVERRIDE)) return DECL_OVERRIDE;
-  const r = pos && regionFor(pos.lat, pos.lon);
-  return r ? r.declination(pos.lat, pos.lon) : pos ? wmmDeclination(pos.lat, pos.lon) : DECLINATION;   // anywhere else: the World Magnetic Model
+  if (!pos) return DECLINATION;
+  const k = `${Math.round(pos.lat * 100)},${Math.round(pos.lon * 100)}`, c = declinationAt.c;
+  if (c && c.k === k) return c.v;
+  const r = regionFor(pos.lat, pos.lon);
+  const v = r ? r.declination(pos.lat, pos.lon) : wmmDeclination(pos.lat, pos.lon);   // anywhere else: the World Magnetic Model
+  declinationAt.c = { k, v };
+  return v;
 }
 
 const SVC = {};   // region id -> { layerUrl, rev (service field -> our name), canon (our name -> service field), outFields, oid, pageSize, ready }
@@ -3715,9 +3731,10 @@ function initService(region) {
         try { if (await tryLayer(region, it.url)) return true; } catch (e) { /* keep looking */ }
       }
     } catch (e) { console.warn(region.id, 'discovery failed', e); }
-    // Only the state you're looking at gets a message: a search also asks the other states, and one of them being down is no news.
+    // Only the state you're looking at gets a message: a search also asks other states, and one of them being down is no news
+    // (nor, with nowhere on the map yet, is any state's).
     const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
-    if (!here || here === region) notifyServiceDown(region);
+    if (here === region) notifyServiceDown(region);
     throw new Error(`Could not reach the ${region.name} parcel service`);
   })();
   sv.ready.catch(() => { sv.ready = null; });
@@ -3751,9 +3768,16 @@ function shapeHash(rings) {
 }
 
 // Turn features into parcels: one per lot, holding every record on it (condo units stack on one lot).
+// A region's free-text fields, reduced to what the card reads from them the moment they arrive (Vermont's property description).
+function scrubAttrs(rid, a) {
+  const sc = REGIONS[rid] && REGIONS[rid].scrub; if (!sc || !a) return a || {};
+  const o = { ...a }; for (const [k, f] of Object.entries(sc)) if (k in o) o[k] = f(o[k]);
+  return o;
+}
 function buildParcels(features, rid = 'MA') {
   const byKey = new Map();
-  for (const ft of features) {
+  for (const ft0 of features) {
+    const ft = { ...ft0, attributes: scrubAttrs(rid, ft0.attributes) };
     const g = ft.geometry; if (!g || !g.rings || !g.rings.length) continue;
     const rec = normalizeRecord(ft.attributes || {}, rid);
     const pt = String(rec.POLY_TYPE || '').toUpperCase();
@@ -3869,7 +3893,8 @@ const STATE_FIPS = { 25: 'MA', '09': 'CT', 34: 'NJ', 12: 'FL', 37: 'NC', 55: 'WI
   48: '*', '06': '*', 39: '*', 47: '*', 38: '*', 41: '*', 16: '*', 26: '*', 20: '*', 13: '*', '04': '*',   // states covered county by county
   '01': '*', 19: '*', 21: '*', 22: '*', 28: '*', 29: '*', 35: '*', 40: '*', 42: '*', 44: '*', 45: '*', 46: '*' };   // and the basic card's states
 // The state a region is in: its own id, or (a county's region) its state's.
-const stateOf = (rid) => (REGIONS[rid] && REGIONS[rid].state) || rid;
+// A county region's state (TX_HARRIS → TX); the basic card's ids say theirs (US_SC → SC) even before the region is made this session
+const stateOf = (rid) => (REGIONS[rid] && REGIONS[rid].state) || (/^US_[A-Z]{2}$/.test(rid) ? rid.slice(3) : rid);
 // The regions in a state: the state's own, or its counties' (Texas: Harris and Tarrant), in REGION_ORDER.
 // Why a card has no sale: the state keeps prices private (Texas, Idaho, Kansas…), or the records just don't carry them.
 const noSalesLine = (rg) => rg.noSalesText || (rg.state ? 'The county’s records don’t include sales' : 'The state’s records don’t include sales');
@@ -4002,9 +4027,14 @@ function searchOrder(q, kt) {
   const ref = refPoint(), here = ref && regionFor(ref.lat, ref.lon);
   // The town lists cover only Massachusetts and Connecticut, so with the map in New Jersey or Florida, that state still comes first.
   const townSt = kt && (!here || here.id === 'MA' || here.id === 'CT') ? (here && kt.states.includes(here.id) ? here.id : kt.states[0]) : null;
-  const order = [townSt && REGIONS[townSt], here, REGIONS.MA, REGIONS.CT, REGIONS.NJ, REGIONS.FL, REGIONS.NC, REGIONS.WI, REGIONS.WA, REGIONS.NE];
+  // The parcel services asked: the one the map is in and the rest of that state (Harris County's neighbors in Texas), and a known
+  // town's state. Not every state at once: with no state typed, the address lookups find the place and its lot is found there.
+  const order = [townSt && REGIONS[townSt], here, ...(here ? regionsIn(stateOf(here.id)) : []), ...(kt ? kt.states.map((st) => REGIONS[st]) : [])];
   return order.filter((r, i) => r && order.indexOf(r) === i);
 }
+// With no state typed, a town found in more than one state: the map's state first, then the states with full records, where
+// most searches have gone (New Jersey's Clifton before Maine's), then any other state, nearest first.
+const TOWN_STATE_HINT = ['MA', 'CT', 'NJ', 'FL', 'NC', 'WI', 'WA', 'NE'];
 
 async function searchAddress(text) {
   if (DEMO) return null;                      // the demo neighborhood is made up: nothing to look up, and nothing is sent anywhere
@@ -4039,7 +4069,7 @@ async function searchAddress(text) {
   }
   // 2. Look the address (or street) up, and the town alongside it in case the address can't be found.
   const townNames = [...new Set([q.town, ...q.readings.map((r) => r.town)].filter(Boolean))];
-  const townP = townNames.length ? timeLimit(townPlace(townNames, order, q.townFix), SEARCH_GEO_MS).catch((e) => { console.warn('town search failed', e); return null; }) : null;
+  const townP = townNames.length ? timeLimit(townPlace(townNames, order, q.townFix, !!q.state), SEARCH_GEO_MS).catch((e) => { console.warn('town search failed', e); return null; }) : null;
   // A house number: the Census first (it places the number along the street; Geoapify often knows only the street), with
   // Geoapify as the backup for typos. Anything else: Geoapify first when there's a key.
   const census = ['Census', async () => {
@@ -4235,7 +4265,7 @@ async function censusSearch(text, st) {
 async function twGet(url) {
   return hedge([['fetch', (signal) => getJSON(url, { signal }, SEARCH_GEO_MS)], ['script', () => jsonp(url, 'callback', SEARCH_GEO_MS)]], 2000);
 }
-async function townPlace(names, order, fix) {
+async function townPlace(names, order, fix, onlyOrder = true) {
   const layers = await memo('twTowns', async () => {
     const m = await twGet(`${TIGER}?f=json`), find = (re) => (m.layers || []).find((l) => re.test(String(l.name).trim()));
     const out = { cousub: find(/^county subdivisions$/i), place: find(/^incorporated places$/i), cdp: find(/^census designated places$/i) };
@@ -4284,9 +4314,12 @@ async function townPlace(names, order, fix) {
   // Washington), then nearest:
   // New Jersey has five Washington townships.
   // Towns (county subdivisions) come first in New England, New Jersey and Wisconsin; cities and places elsewhere
-  const ids = order.map((r) => r.id), pref = (x) => (/^(MA|CT|NJ|WI|VT|NH|ME|RI)$/.test(stateOf(x.st)) ? ['cousub', 'place', 'cdp'] : ['place', 'cdp', 'cousub']).indexOf(x.kind);
+  // A typed state (onlyOrder): only that state's towns. None typed: any state, the likely ones first (TOWN_STATE_HINT).
+  const sts = [...new Set([...order.map((r) => stateOf(r.id)), ...(onlyOrder ? [] : TOWN_STATE_HINT)])];
+  const rank = (x) => { const i = sts.indexOf(stateOf(x.st)); return i < 0 ? sts.length : i; };
+  const pref = (x) => (/^(MA|CT|NJ|WI|VT|NH|ME|RI)$/.test(stateOf(x.st)) ? ['cousub', 'place', 'cdp'] : ['place', 'cdp', 'cousub']).indexOf(x.kind);
   const ref = refPoint(), far = (x) => (ref ? distM(ref.lat, ref.lon, x.lat, x.lon) : 0);
-  const ok = found.filter((x) => ids.includes(x.st)).sort((a, b) => (a.prio - b.prio) || (ids.indexOf(a.st) - ids.indexOf(b.st)) || (pref(a) - pref(b)) || (far(a) - far(b)));
+  const ok = found.filter((x) => !onlyOrder || sts.includes(stateOf(x.st))).sort((a, b) => (a.prio - b.prio) || (rank(a) - rank(b)) || (pref(a) - pref(b)) || (far(a) - far(b)));
   if (!ok.length) return null;
   const b = ok[0];
   return { kind: 'town', lat: b.lat, lon: b.lon, name: `${b.name}, ${stateOf(b.st)}`, st: stateOf(b.st), town: b.name, fixed: b.fix };   // the state, not a county's region
@@ -4839,6 +4872,7 @@ function renderCard(cand, total, idx) {
   // No street address on the record (Vermont, Alaska): look up the nearest one, then show the card again if it's still open.
   if (s.region.addrByPosition && !DEMO && L.p.posAddr === undefined && s.addr === 'Address not listed') {
     posAddrFor(L.p).then((a) => {
+      if (a) patchPlace(L.p);                                                                   // Saved and history, even if the card has moved on
       const el = $('#cardBody .addr'); if (!a || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
       el.textContent = a;
       const n = $('#cardBody .note'); if (n) n.insertAdjacentText('afterbegin', s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ');
@@ -4847,12 +4881,13 @@ function renderCard(cand, total, idx) {
   // The basic card: the town and county from the same lookup, once it answers (the record search then names the county)
   if (s.region.basic && !DEMO) {
     posAddrFor(L.p).then(() => {
+      if (L.p.posPlace) patchPlace(L.p);
       const pl = L.p.posPlace, el = $('#cardBody .addr'); if (!pl || !el || el.dataset.k !== L.p.key) return;
       const tw = $('#cardBody .town'); if (tw && !s.town && pl.town) tw.textContent = [pl.town, s.typeLabel].filter(Boolean).join(' · ');
       const rl = $('#cardBody .rec-link'); if (rl && pl.county && !s.r0.COUNTY) rl.href = basicRecordSearch(s.region.state, pl.county);
     });
   }
-  const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, s);
+  const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, summarize(L.p));   // now: the nearest address may have arrived since
   const cr = $('#copyRec'); if (cr) cr.onclick = () => copyRecords(L);
   document.querySelectorAll('#cardBody .units').forEach((ul) => ul.addEventListener('click', (e) => {
     if (e.target.closest('.all-btn')) { ul.classList.add('all'); return; }
@@ -4872,7 +4907,7 @@ function renderCard(cand, total, idx) {
 function lotRecordsJson(L) {
   const p = L.p, [lat, lon] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
   return JSON.stringify({ housepoint: 'lot', state: p.region, key: p.key, captured: new Date().toISOString().slice(0, 10), lat: +lat.toFixed(6), lon: +lon.toFixed(6),
-    rings: p.ringsLL, records: [...(p.raw || []), ...(p.rawExtra || [])].map((a) => { const no = (REGIONS[p.region] || {}).noCopy; if (!no) return a; const c = { ...a }; for (const k of no) delete c[k]; return c; }) });
+    rings: p.ringsLL, records: [...(p.raw || []), ...(p.rawExtra || [])].map((a) => scrubAttrs(p.region, a)) });
 }
 async function copyRecords(L) {
   const text = lotRecordsJson(L);
@@ -5374,7 +5409,7 @@ function envFor(L) {
     .then(([fl, el]) => ({ flood: fl.status === 'fulfilled' ? fl.value : null, elev: el.status === 'fulfilled' ? el.value : null }));
 }
 
-function floodView(env) {
+function floodView(env, what = 'lot') {      // what: 'lot', or 'building' on the basic card (its "lots" are building outlines)
   const fl = env.flood, el = env.elev, lines = [];
   let cls = '', badge = '—', small = 'zone', t1;
   if (!fl) { t1 = 'Flood map didn’t load'; badge = '?'; small = ''; }
@@ -5389,10 +5424,10 @@ function floodView(env) {
     else if (c.shaded) lines.push('Shallow or local flooding possible');
     if (fl.partial) {
       if (fl.top.risk === 'high' && c.risk !== 'high') { t1 = fl.exact ? 'Next to a high-risk flood zone' : 'Near a high-risk flood zone'; cls = 'moderate'; }
-      lines.push(fl.exact ? `Part of the lot is in zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : `Zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge} is nearby`);
+      lines.push(fl.exact ? `Part of the ${what} is in zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : `Zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge} is nearby`);
     }
   }
-  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString('en-US')} ft above sea level (middle of the lot)` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the lot)`);
+  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString('en-US')} ft above sea level (middle of the ${what})` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the ${what})`);
   if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft above sea level`);
   return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
 }
@@ -5436,7 +5471,7 @@ const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsigh
   MI: 'https://www.mischooldata.org/', KS: 'https://ksreportcard.ksde.org/', GA: 'https://schoolgrades.georgia.gov/', AZ: 'https://azreportcards.azed.gov/',
   AL: 'https://reportcard.alsde.edu/', IA: 'https://www.iaschoolperformance.gov/', KY: 'https://www.kyschoolreportcard.com/', LA: 'https://www.louisianaschools.com/',
   MS: 'https://msrc.mdek12.org/', MO: 'https://apps.dese.mo.gov/MCDS/home.aspx', NM: 'https://nmvistas.org/', OK: 'https://www.oklaschools.com/',
-  PA: 'https://futurereadypa.org/', RI: 'https://reportcard.ride.ri.gov/', SC: 'https://screportcards.com/' };
+  PA: 'https://futurereadypa.org/', RI: 'https://reportcard.ride.ri.gov/', SC: 'https://screportcards.com/', SD: 'https://sdschools.sd.gov/' };
 
 function buyBoxHtml(L) {
   return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
@@ -5460,6 +5495,13 @@ function wireBuy(L, s) {
 }
 function openBuy(L, s) {
   const box = $('#buyBox'); if (!box) return;
+  // No street address on the record (Vermont, Alaska, the basic card): the listing links and the town for safety wait for the
+  // nearest one on the map, then use the card as it is then.
+  if (s.region.addrByPosition && !DEMO && !s.placeReady) {
+    box.innerHTML = '<div class="buy-h">Thinking of buying?</div><div class="bsec"><div class="bl">Finding the address…</div></div>';
+    posAddrFor(L.p).then(() => { const b = $('#buyBox'); if (b && b.dataset.k === L.p.key) openBuy(L, { ...summarize(L.p), placeReady: true }); });
+    return;
+  }
   const key = L.p.key, [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
   const sec = (id, t, msg) => `<div class="bsec" id="${id}"><div class="bt">${t}</div><div class="bl">${msg}</div></div>`;
   box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}${calcApplies(s) ? calcHtml(L, s) : ''}
@@ -5544,7 +5586,8 @@ const fetchMsg = (e) => (/failed to fetch|load failed|networkerror/i.test(String
 
 // Listing status isn't public record: agents keep it in their MLS. Send people to the listing sites instead.
 function listingHtml(s) {
-  const q = [s.addr, s.town, stateOf(s.region.id)].filter(Boolean).join(' ');
+  const a = s.addr === 'Address not listed' ? '' : String(s.addr || '').replace(/^Near /, '');   // a nearest-address guess searches as the address itself
+  const q = [a, s.town, stateOf(s.region.id)].filter(Boolean).join(' ');
   const z = `https://www.zillow.com/homes/${encodeURIComponent(q).replace(/%20/g, '-')}_rb/`;
   const g = `https://www.google.com/search?q=${encodeURIComponent(q + ' for sale')}`;
   return `<div class="bsec"><div class="bt">For sale?</div><div class="bl">Whether a home is for sale, pending or under contract comes from agents’ listing services, not public records, so check a listing site.</div>
@@ -6008,7 +6051,7 @@ function wireCalc(L, s) {
       + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
     const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: 'the estimate above', none: 'not included' }[c.taxKind];
     $('#cNote').innerHTML = `Rate: Freddie Mac’s average 30-year rate was ${RATE30.rate}% (${RATE30.asOf}); yours depends on credit and points${c.term !== 30 ? ', and shorter loans usually run a bit lower' : ''}. `
-      + `Price starts at the ${s.condo ? 'typical unit value' : num(s.r0.MKT_EST) > 0 ? 'state’s market estimate' : 'town’s value or the last sale, whichever is higher'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : staleRecord(s) ? ` (the town’s value here is from FY${s.fy})` : ''}. Tax: ${taxWhy}. `
+      + `${calcDefaults(s).price > 0 ? `Price starts at the ${s.condo ? 'typical unit value' : num(s.r0.MKT_EST) > 0 ? 'state’s market estimate' : 'town’s value or the last sale, whichever is higher'}` : 'There’s no value or sale on file here to start the price from'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : staleRecord(s) ? ` (the town’s value here is from FY${s.fy})` : ''}. Tax: ${taxWhy}. `
       + `Insurance: ${s.condo ? 'add your condo policy quote' : `${esc(stateNameOf(s.region))}’s average policy; get a real quote`}.${m.pmi ? ` Mortgage insurance is a rough ${PMI_RATE * 100}% a year.` : ''} `
       + `Cash needed: <b>${dollars(m.cash)}</b> down plus closing costs, often 2–5% of the loan.`;
     if (edited) patchSaved(key, { calc: { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } });
@@ -6073,6 +6116,13 @@ function toggleSave(L, s) {
 // What the buying section found for a house, kept so saving it later (or now) fills in the comparison.
 const BUY_FACTS = new Map();
 function noteBuy(key, patch) { BUY_FACTS.set(key, { ...(BUY_FACTS.get(key) || {}), ...patch }); patchSaved(key, patch); }
+// The nearest address and town arrive after the card (posAddrFor): a house already saved or in history gets them then.
+function patchPlace(p) {
+  const s = summarize(p); if (s.addr === 'Address not listed' && !s.town) return;
+  const patch = { addr: s.addr, town: s.town };
+  patchSaved(p.key, patch);
+  try { const h = loadHistory(), x = h.find((y) => y.key === p.key); if (x) { Object.assign(x, patch); localStorage.setItem(HKEY, JSON.stringify(h)); } } catch (e) { /* storage unavailable */ }
+}
 function patchSaved(key, patch) {
   const a = loadSaved(), x = a.find((h) => h.key === key); if (!x) return;
   Object.assign(x, patch); storeSaved(a);
@@ -6109,7 +6159,7 @@ function paintFlood(L) {
   const key = L.p.key;
   envFor(L).then((env) => {
     const box = $('#floodBox'); if (!box || box.dataset.k !== key) return;   // the card has moved on
-    const v = floodView(env);
+    const v = floodView(env, (REGIONS[L.p.region] || {}).basic ? 'building' : 'lot');
     box.className = 'flood ' + v.cls; box.innerHTML = v.html;
     patchSaved(key, { flood: floodShort(env) });
   });
@@ -6414,7 +6464,9 @@ $('#shutter').onclick = async () => {
   if (compassPoor() && !S.compassWarned) { S.compassWarned = true; toast('Your compass is off, so this might not be the house you mean. Wave your phone in a figure 8 to fix it.', 4200); }
   else if (!DEMO && S.acc > 30) toast(`GPS is fuzzy right now (±${feet(S.acc)}), so this might not be the house you mean.`, 3400);
   $('#scan').classList.add('on');
-  try { await ensureData(S.pos.lat, S.pos.lon); } catch (e) { $('#scan').classList.remove('on'); return; }
+  // A tap is someone asking: within the wait after a failed load, it tries again now instead of doing nothing
+  try { await ensureData(S.pos.lat, S.pos.lon).catch((e) => { if (/waiting before retry/.test(e && e.message)) return ensureData(S.pos.lat, S.pos.lon, true); throw e; }); }
+  catch (e) { $('#scan').classList.remove('on'); return; }       // the load's own message has said why
   let cands = findCandidates(S.pos.lat, S.pos.lon, S.heading);
   if (S.live) cands = [cands.find((c) => c.L === S.live.L) || S.live, ...cands.filter((c) => c.L !== S.live.L)];   // the house the label shows comes first
   cands = cands.slice(0, 6);
@@ -7103,7 +7155,7 @@ function renderNear() {
   if (!ref || !S.proj || !S.local.length) { panelItems = []; return '<div class="empty">No property data loaded here yet. Point at a house or search the map first.</div>'; }
   const [ox, oy] = S.proj.fwd(ref.lat, ref.lon);
   const near = S.local.filter((L) => L.p.built && Math.hypot(L.c[0] - ox, L.c[1] - oy) < 350).map((L) => ({ L, s: summarize(L.p) })).filter((x) => !x.s.park);
-  if (!near.length) { panelItems = []; return '<div class="empty">No houses within 350 m of here.</div>'; }
+  if (!near.length) { panelItems = []; return '<div class="empty">No buildings within about 1,100 feet of here.</div>'; }
   const best = (arr, f) => arr.reduce((a, b) => (a === null || f(b) > f(a) ? b : a), null);
   const dated = near.filter((x) => x.s.year);
   const items = [];
@@ -7124,7 +7176,7 @@ function renderNear() {
   const over100 = dated.filter((x) => THIS_YEAR - x.s.year >= 100).length;
   const medYear = median(dated.map((x) => x.s.year));
   const medVal = median(singles.map((x) => num(x.s.r0.TOTAL_VAL)));
-  const sum = `<div class="sum"><b>${near.length}</b> houses within 350 m.` +
+  const sum = `<div class="sum"><b>${near.length}</b> buildings within about 1,100 feet.` +
     (dated.length ? ` <b>${over100}</b> ${over100 === 1 ? 'is' : 'are'} 100+ years old, and the typical one was built around <b>${medYear}</b>.` : '') +
     (medVal ? ` Typical assessed value: <b>${money(medVal)}</b>.` : '') + '</div>';
   return sum + items.map((it, i) => `<button class="item" data-i="${i}"><div class="badge${it.hot ? ' hot' : ''}">${esc(it.stat)}</div><div><div class="t1">${esc(it.title)}</div><div class="t2">${esc([it.x.s.addr, it.sub].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
@@ -7194,8 +7246,9 @@ const ABOUT = `
   counties, California; Franklin County (Columbus) and Hamilton County (Cincinnati), Ohio; Nashville, Tennessee; Bismarck, North Dakota; the Portland area
   (Multnomah, Washington and Clackamas counties), Oregon; Ada County (Boise), Idaho; Oakland and Macomb counties, Michigan; Sedgwick County (Wichita), Kansas;
   Atlanta, Georgia; and Maricopa County (Phoenix), Arizona.</p>
-  <p><b>Lot lines and addresses, with a link to the county’s record where the state has one:</b> Indiana, New Hampshire, West Virginia, Nevada, Hawaii,
-  Delaware and Virginia. Values there are on the county’s or town’s own site.</p>
+  <p><b>Lot lines, with a link to the county’s record where the state has one:</b> Indiana, New Hampshire, West Virginia, Nevada, Hawaii,
+  Delaware and Virginia. Indiana, New Hampshire and West Virginia list addresses too; elsewhere the card shows the nearest address on
+  OpenStreetMap. Values there are on the county’s or town’s own site.</p>
   <p><b>Everywhere else in the US, the basic card:</b> the building’s use, footprint and height from the national building outlines, the nearest
   address, the flood zone, schools, the neighborhood, safety and what’s nearby, and a search for the county’s own property record.</p>
   <h3>Privacy</h3>
@@ -7250,7 +7303,7 @@ const ABOUT = `
   </ul>
   <h3>How accurate is it?</h3>
   <p>Lot lines are a drawing of property boundaries, not a survey. Assessed, appraised and “just” values are what towns and counties use for taxes, not market
-  estimates. Tax amounts (except New Jersey’s and Wisconsin’s, which are last year’s actual bills) are estimates from public rates and leave out most exemptions. Records can be a year or more behind. Which house you’re
+  estimates. Tax amounts are estimates from public rates and leave out most exemptions, except in New Jersey, Wisconsin, Minnesota, DC and Hamilton County, Ohio, where the records carry last year’s actual bill. Records can be a year or more behind. Which house you’re
   pointing at depends on your phone’s GPS and compass; if it picks the wrong one, tap “Not it.”</p>
   <h3>Fonts</h3>
   <p>Inter and Fraunces, under the SIL Open Font License.</p>
@@ -7295,7 +7348,7 @@ if (SHARED) startMapMode({ lat: SHARED.lat, lon: SHARED.lon, selectKey: SHARED.k
    answering a kind of search in time. Nothing is saved or sent anywhere else.
    ========================================================================= */
 const HEALTH_LOT = {};          // a lot found in each state's check, for the buying checks
-const HEALTH_SPOTS = { MA: [42.2493, -71.1752, 'Dedham Square'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
+const HEALTH_SPOTS = { MA: [42.3505, -71.0810, 'Boston’s Back Bay'], CT: [41.7637, -72.6851, 'downtown Hartford'], NJ: [40.7440, -74.0324, 'Hoboken'], FL: [26.7153, -80.0534, 'West Palm Beach'],
   NC: [35.8085, -78.6430, 'Raleigh Five Points'], WI: [43.0700, -89.4300, 'Madison Near West'], WA: [47.6680, -122.3850, 'Seattle Ballard'], NE: [41.2611, -95.9850, 'Omaha Dundee'],
   MN: [44.9244, -93.3195, 'Minneapolis Linden Hills'], DC: [38.8862, -76.9955, 'Capitol Hill'],
   MD: [39.2780, -76.6100, 'Baltimore Federal Hill'], NY: [40.6720, -73.9780, 'Brooklyn Park Slope'], VT: [44.4800, -73.2100, 'Burlington'],
@@ -7366,13 +7419,13 @@ async function runHealth() {
   try { const [r, t] = await timed(censusSearch('1 Ashburton Pl, Boston', 'MA')); g1[r ? 'ok' : 'warn'](r ? `found 1 Ashburton Pl, Boston (${secs(t)})` : 'answered, found nothing'); }
   catch (e) { g1.bad(`no answer (${e.message || e})`); }
   const g2 = row('Census town lookup');
-  try { const [r, t] = await timed(townPlace(['DEDHAM'], [REGIONS.MA])); g2[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
+  try { const [r, t] = await timed(townPlace(['SALEM'], [REGIONS.MA])); g2[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
   catch (e) { g2.bad(`no answer (${e.message || e})`); }
   const g3 = row('Geoapify search');
   if (!KEYS.geoapify) g3.warn('no key set');
-  else try { const [r, t] = await timed(geoapifySearch(parseQuery('Dedham, MA'))); g3[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
+  else try { const [r, t] = await timed(geoapifySearch(parseQuery('Salem, MA'))); g3[r ? 'ok' : 'warn'](r ? `found ${r.name} (${secs(t)})` : 'answered, found nothing'); }
   catch (e) { g3.bad(`no answer (${e.message || e})`); }
-  // What "Thinking of buying?" shows, for a spot in Dedham Square
+  // What "Thinking of buying?" shows, for the Massachusetts spot
   const [hlat, hlon] = HEALTH_SPOTS.MA, maLot = HEALTH_LOT.MA;
   const b1 = row('Schools (U.S. Department of Education)');
   try { const [d, t] = await timed(timeLimit(schoolsFor(hlat, hlon), 30000)); const n = d.schools.length;
@@ -7399,7 +7452,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

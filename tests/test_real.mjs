@@ -5,6 +5,7 @@ import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
+import { isOwnerish } from './owner-fields.mjs';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8790);
@@ -17,8 +18,6 @@ const FIX = `${HP_ROOT}/tests/fixtures`;
 const files = fs.existsSync(FIX) ? fs.readdirSync(FIX).filter((f) => /^real-[A-Z]{2}(_[A-Z]+)?\.json$/.test(f)) : [];   // a state (real-NC.json) or a county's region (real-TX_HARRIS.json)
 const sets = files.map((f) => JSON.parse(fs.readFileSync(`${FIX}/${f}`, 'utf8')));
 if (!sets.length) { console.log('no fixtures yet: ALL PASSED'); process.exit(0); }
-const SITE_OK = new Set(['CityStateZip', 'OwnDate']);     // Montana's: the property's own city, state and zip; Nashville's: the last sale's date
-const OWNERISH = /(^|_)OWN(?!ERSHIP(_TYPE)?$)|OWNER(?!SHIP(_TYPE)?$)|MAIL|PSTL|TAXPAYER|TAX_NAME|TAX_ADD|CAREOF|^ADDRESS[12]$|CITYSTZIP|LEGAL|LIBER|FOLIO|PRIMARY_OWNER|ADD_OWNER|NYS_NAME|PO_BOX/i;     // Nebraska's Ownership_Type and Minnesota's ownership are Private, Exempt, State…
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
@@ -77,7 +76,7 @@ let shown = 0, skipped = 0;
 for (const set of sets) {
   for (const lot of set.lots) {
     const name = `${set.state} ${lot.spot} ${lot.kind} (${lot.key})`;
-    for (const f of lot.features) for (const k of Object.keys(f.attributes)) if (OWNERISH.test(k) && !SITE_OK.has(k)) check(false, `owner field ${k} in the fixture: ${name}`);
+    for (const f of lot.features) for (const k of Object.keys(f.attributes)) if (isOwnerish(k)) check(false, `owner field ${k} in the fixture: ${name}`);
     current = { set, lot };
     const st = await page.evaluate(async (lat, lon) => {
       const hp = window.__hp, S = hp.S;
@@ -151,7 +150,7 @@ for (const set of sets) {
     if (/\bHouse\b/.test(st.chip)) check(st.houseLike, `tag says House for a ${st.kind}: ${name}`);
     // "Copy this lot's records": the records as the service sent them, every one, with nothing owner-like
     check(st.copied.housepoint === 'lot' && st.copied.state === set.state && st.copied.records.length >= st.recs && st.copied.rings.length >= 1
-      && st.copied.records.every((a) => Object.keys(a).every((k) => !OWNERISH.test(k) || SITE_OK.has(k))), `copied records don't match the lot: ${name}`);
+      && st.copied.records.every((a) => Object.keys(a).every((k) => !isOwnerish(k))), `copied records don't match the lot: ${name}`);
     // Named lots
     if (lot.key === 'id:F_751960_2913839') {
       console.log('River St:', JSON.stringify({ town: st.town, value: st.value, heads: st.heads, lists: st.lists, buy: st.buy }));
