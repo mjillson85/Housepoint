@@ -171,6 +171,7 @@
   .grid .k { font-size: 10.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .2px; font-weight: 600; white-space: nowrap; }
   .grid .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
   .note { font-size: 12px; color: var(--mute); line-height: 1.45; margin: 10px 0 8px; }
+  .rec-alt { display: block; margin: 6px 2px 0; font-size: 13px; color: var(--mute); text-decoration: underline; }
   .rec-link { display: block; margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--brick-2); font-size: 14px; font-weight: 500; text-decoration: none; }
   .copyrec { display: block; margin: 4px 0 14px; padding: 6px 0; border: 0; background: none; color: var(--mute); font: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
   .copytext { width: 100%; font: 11px/1.35 ui-monospace, Menlo, monospace; margin: 4px 0 14px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #fff; }
@@ -2405,6 +2406,24 @@ const basicRecordSearch = (st, county) => {
   const c = t2clean(county), place = c ? (/\b(County|Parish|Borough|City)$/i.test(c) ? c : `${c} ${st === 'LA' ? 'Parish' : 'County'}`) + ' ' : '';
   return `https://www.google.com/search?q=${encodeURIComponent(`${place}${STATE_NAME[st] || st} property assessor parcel search`)}`;
 };
+// Rhode Island: no county assesses; the 39 cities and towns do, each with its records on one of two sites (Vision Government
+// Solutions' list, https://www.vgsi.com/rhode-island-online-database/, or Northeast Revaluation's), as listed by the Rhode Island
+// Association of Realtors (November 2026). Only links: those sites show owners' names, and the app never reads them.
+const RI_VGSI = { Charlestown: 'CharlestownRI', Cranston: 'CranstonRI', Cumberland: 'cumberlandri/', Exeter: 'exeterri', Foster: 'fosterri',
+  Hopkinton: 'hopkintonri/', Johnston: 'johnstonri/', 'Little Compton': 'LittleComptonRI', Lincoln: 'LincolnRI', Middletown: 'MiddletownRI',
+  'New Shoreham': 'newshorehamri/', 'North Kingstown': 'northkingstownri/', Pawtucket: 'PawtucketRI', Portsmouth: 'portsmouthri/', Richmond: 'richmondri/',
+  Smithfield: 'smithfieldri/', 'South Kingstown': 'SouthKingstownRI2', Warwick: 'warwickri/', Westerly: 'WesterlyRI', Woonsocket: 'WoonsocketRI' };
+const RI_NEREVAL = ['Barrington', 'Bristol', 'Burrillville', 'Central Falls', 'Coventry', 'East Greenwich', 'East Providence', 'Glocester', 'Jamestown',
+  'Narragansett', 'Newport', 'North Providence', 'North Smithfield', 'Providence', 'Scituate', 'Tiverton', 'Warren', 'West Greenwich', 'West Warwick'];
+const RI_TOWN_LIST = 'https://www.rirealtors.org/ri-tax-assessor-resource';     // all 39 towns' sites, before the town is known
+function riAssessorUrl(town) {
+  if (RI_VGSI[town]) return `https://gis.vgsi.com/${RI_VGSI[town]}`;
+  if (RI_NEREVAL.includes(town)) return `https://data.nereval.com/SearchInfo.aspx?town=${encodeURIComponent(town).replace(/%20/g, '+')}`;
+  return null;
+}
+const townSearch = (town, st) => `https://www.google.com/search?q=${encodeURIComponent(`${town} ${st} assessor property database`)}`;
+// Who keeps the record: the town in Rhode Island, the parish in Louisiana, the county everywhere else the basic card goes.
+const assessorWord = (st) => (st === 'RI' ? 'town' : st === 'LA' ? 'parish' : 'county');
 function basicRegion(st) {
   const id = 'US_' + st;
   if (REGIONS[id]) return REGIONS[id];
@@ -2413,10 +2432,10 @@ function basicRegion(st) {
     id, state: st, name, basic: true, bbox: b || [-180, -90, 180, 90], polys: BASIC_OUTLINES[st] || [],
     declination: (lat, lon) => wmmDeclination(lat, lon),
     services: [], detect: [], fields: {},
-    addrByPosition: true, kindOf: basicKind, labelOf: basicLabel, recordLinkText: 'Search for the county’s property record',
+    addrByPosition: true, kindOf: basicKind, labelOf: basicLabel, recordLinkText: st === 'RI' ? 'Find the town’s property record' : `Search for the ${assessorWord(st)}’s property record`,
     // A state covered county by county, a covered state's county that doesn't share, or a state Housepoint has nothing for yet
     noValues: `${COUNTY_STATES.has(st) ? `Housepoint has ${name}’s property records only for the counties it covers.` : REGION_ORDER.some((k) => stateOf(k) === st)
-      ? `${name}’s statewide records don’t include this place.` : `Housepoint doesn’t have ${name}’s property records yet.`} The building is from FEMA’s national building outlines; the county’s assessor has the record.`,
+      ? `${name}’s statewide records don’t include this place.` : `Housepoint doesn’t have ${name}’s property records yet.`} The building is from FEMA’s national building outlines; the ${assessorWord(st)}’s assessor has the record.`,
     source: () => 'Source: USA Structures, the national building outlines from FEMA and Oak Ridge National Laboratory. There’s no property record for this place in Housepoint yet.',
     shareSource: 'USA Structures (FEMA and ORNL)',
   });
@@ -2450,7 +2469,8 @@ async function basicLots(region, lat, lon, radius) {
     if (/^(Y|YES|1|TRUE)$/i.test(t2clean(g('OUTBLDG')))) continue;        // a garage or barn beside the house
     out.push({ geometry: ft.geometry, attributes: { __PROP_ID: g('BUILD_ID') || null, __SITE_ADDR: g('PROP_ADDR') || null, __CITY: g('PROP_CITY') || null,
       __ZIP: g('PROP_ZIP') || null, __USE_CODE: g('OCC_CLS') || null, __USE_DESC: g('PRIM_OCC') || null, __FOOTPRINT: Math.round(sqft),
-      __HEIGHT_FT: h > 0 && h < 500 ? Math.round(h * 3.28084) : null, __STATE: region.state, __COUNTY: county, __RECORD_URL: basicRecordSearch(region.state, county) } });
+      __HEIGHT_FT: h > 0 && h < 500 ? Math.round(h * 3.28084) : null, __STATE: region.state, __COUNTY: county,
+      __RECORD_URL: region.state === 'RI' ? RI_TOWN_LIST : basicRecordSearch(region.state, county) } });   // Rhode Island: the town's site, once the town is known (the card)
   }
   return buildParcels(out, region.id).map((p) => ({ ...p, built: true }));
 }
@@ -4301,13 +4321,26 @@ async function censusSearch(text, st) {
 async function twGet(url) {
   return hedge([['fetch', (signal) => getJSON(url, { signal }, SEARCH_GEO_MS)], ['script', () => jsonp(url, 'callback', SEARCH_GEO_MS)]], 2000);
 }
-async function townPlace(names, order, fix, onlyOrder = true) {
-  const layers = await memo('twTowns', async () => {
-    const m = await twGet(`${TIGER}?f=json`), find = (re) => (m.layers || []).find((l) => re.test(String(l.name).trim()));
-    const out = { cousub: find(/^county subdivisions$/i), place: find(/^incorporated places$/i), cdp: find(/^census designated places$/i) };
-    if (!out.cousub && !out.place && !out.cdp) throw new Error('no town layers');
-    return out;
+const twTownLayers = () => memo('twTowns', async () => {
+  const m = await twGet(`${TIGER}?f=json`), find = (re) => (m.layers || []).find((l) => re.test(String(l.name).trim()));
+  const out = { cousub: find(/^county subdivisions$/i), place: find(/^incorporated places$/i), cdp: find(/^census designated places$/i) };
+  if (!out.cousub && !out.place && !out.cdp) throw new Error('no town layers');
+  return out;
+});
+// The municipality a point is in, from the Census's county subdivisions: in New England these are the towns themselves, where the map's
+// own place name can be a village (Wakefield is in South Kingstown, Wickford in North Kingstown, Pascoag in Burrillville).
+function townAt(lat, lon) {
+  return memo(`cousub:${lat.toFixed(4)},${lon.toFixed(4)}`, async () => {
+    const L = await twTownLayers(); if (!L.cousub) return null;
+    const q = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+      outFields: 'BASENAME,NAME,STATE', returnGeometry: 'false', f: 'json' });
+    const j = await twGet(`${TIGER}/${L.cousub.id}/query?${q}`);
+    const a = ((j.features || [])[0] || {}).attributes || {}, n = a.BASENAME ?? a.basename;
+    return n && !/not defined/i.test(n) ? String(n) : null;
   });
+}
+async function townPlace(names, order, fix, onlyOrder = true) {
+  const layers = await twTownLayers();
   const up = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
   // Ways the Census may write a town's name: St./Saint anywhere ("Port St. Lucie"), New Jersey's townships and boroughs by
   // their plain name, and Massachusetts cities it calls "X Town" (Braintree Town, Weymouth Town).
@@ -4923,8 +4956,17 @@ function renderCard(cand, total, idx) {
       if (L.p.posPlace) patchPlace(L.p);
       const pl = L.p.posPlace, el = $('#cardBody .addr'); if (!pl || !el || el.dataset.k !== L.p.key) return;
       const tw = $('#cardBody .town'); if (tw && !s.town && pl.town) tw.textContent = [pl.town, s.typeLabel].filter(Boolean).join(' · ');
-      const rl = $('#cardBody .rec-link'); if (rl && pl.county && !s.r0.COUNTY) rl.href = basicRecordSearch(s.region.state, pl.county);
+      const rl = $('#cardBody .rec-link'); if (rl && pl.county && !s.r0.COUNTY && s.region.state !== 'RI') rl.href = basicRecordSearch(s.region.state, pl.county);
     });
+  }
+  if (s.region.basic && s.region.state === 'RI' && !DEMO) {
+    const [tla, tlo] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
+    townAt(tla, tlo).then((town) => {
+      const rl = $('#cardBody .rec-link'), el = $('#cardBody .addr'); if (!town || !rl || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
+      const u = riAssessorUrl(town);
+      rl.href = u || townSearch(town, 'RI'); rl.textContent = `${u ? `${town}’s assessor database` : `Search for ${town}’s property record`} ›`;
+      if (u && !$('#cardBody .rec-alt')) rl.insertAdjacentHTML('afterend', `<a class="rec-alt" href="${esc(townSearch(town, 'RI'))}" target="_blank" rel="noopener">or search the web for it ›</a>`);
+    }).catch(() => { /* the link stays on the list of all 39 towns' sites */ });
   }
   const sb = $('#saveBtn'); if (sb) sb.onclick = () => toggleSave(L, summarize(L.p));   // now: the nearest address may have arrived since
   const cr = $('#copyRec'); if (cr) cr.onclick = () => copyRecords(L);
@@ -7529,7 +7571,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

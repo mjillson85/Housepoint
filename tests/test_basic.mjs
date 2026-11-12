@@ -31,7 +31,8 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-const seen = { layer: [], reverse: [], census: [], agol: [] };
+const seen = { layer: [], reverse: [], census: [], agol: [], cousub: [] };
+const TIGER = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer';
 await page.setRequestInterception(true);
 page.on('request', (req) => {
   const u = req.url();
@@ -46,7 +47,15 @@ page.on('request', (req) => {
     return json({ features: BLDGS.map(([box, a], i) => ({ geometry: { rings: [ring(...box, [g[0], g[1]])] }, attributes: { OBJECTID: i + 1, ...a } })) });
   }
   if (u.startsWith('https://api.geoapify.com/v1/geocode/reverse')) { seen.reverse.push(u); const q = new URL(u).searchParams;
+    // Rhode Island: the map names the village (Wakefield), not the town (South Kingstown)
+    if (+q.get('lat') > 41) return json({ results: [{ housenumber: '40', street: 'Main Street', distance: 9, lat: +q.get('lat'), lon: +q.get('lon'), city: 'Wakefield', county: 'Washington County', state_code: 'RI' }] });
     return json({ results: [{ housenumber: '1720', street: 'Pickens Street', distance: 9, lat: +q.get('lat'), lon: +q.get('lon'), city: 'Columbia', county: 'Richland County', state_code: 'SC' }] }); }
+  // The Census's map: its layers, and the county subdivision (in Rhode Island, the town) at a point (as a script when asked for one)
+  if (u.startsWith(TIGER) && new URL(u).searchParams.get('callback')) return req.abort();
+  if (u.startsWith(TIGER + '?f=json')) return json({ layers: [{ id: 22, name: 'County Subdivisions' }, { id: 28, name: 'Incorporated Places' }, { id: 30, name: 'Census Designated Places' }] });
+  if (u.startsWith(TIGER + '/22/query')) { const q = new URL(u).searchParams; seen.cousub.push(q.get('geometry'));
+    const [x, y] = (q.get('geometry') || '').split(',').map(Number);
+    return json({ features: y > 41.7 ? [{ attributes: { BASENAME: 'Providence', NAME: 'Providence city', STATE: '44' } }] : y > 41 ? [{ attributes: { BASENAME: 'South Kingstown', NAME: 'South Kingstown town', STATE: '44' } }] : [] }); }
   if (u.startsWith('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress')) {
     const q = new URL(u).searchParams, cb = q.get('callback'); seen.census.push(q.get('address'));
     const body = /Pickens/i.test(q.get('address') || '') ? { result: { addressMatches: [{ matchedAddress: '1712 PICKENS ST, COLUMBIA, SC, 29201', coordinates: { x: COLUMBIA[1] - 0.0003, y: COLUMBIA[0] } }] } } : { result: { addressMatches: [] } };
@@ -119,6 +128,26 @@ const sv = await page.evaluate(async () => {
 });
 check(sv.saved && sv.saved.addr === '1720 Pickens Street' && sv.saved.town === 'Columbia', `Save keeps the address and town from the map: ${JSON.stringify(sv.saved && { addr: sv.saved.addr, town: sv.saved.town })}`);
 check(sv.links.length === 2 && sv.links.every((u) => /1720.Pickens.Street.*Columbia.*SC/.test(decodeURIComponent(u)) && !/Address.not.listed|Near/.test(decodeURIComponent(u))), `the listing links search the address: ${sv.links.join(' ')}`);
+// Rhode Island: towns keep the records, not counties. The link goes to the town's own database, by the town the Census map puts the
+// building in (South Kingstown), not the village the address lookup names (Wakefield); Providence's records are on the other site.
+const ri = async (lat, lon) => page.evaluate(async (lat, lon) => {
+  const hp = window.__hp, S = hp.S;
+  await hp.centerMap(lat, lon);
+  const L = S.local.find((l) => l.p.records.some((r) => String(r.PROP_ID) === '101'));
+  if (!L) return { err: 'no lot' };
+  hp.selectLot(L); await new Promise((r) => setTimeout(r, 900));
+  const a = document.querySelector('#cardBody .rec-link'), b = document.querySelector('#cardBody .rec-alt');
+  return { rid: (hp.regionFor(lat, lon) || {}).id, link: a && a.href, text: a && a.textContent, alt: b && b.href, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ') };
+}, lat, lon);
+const sk = await ri(41.437, -71.501);
+console.log('Rhode Island:', JSON.stringify(sk).slice(0, 500));
+check(sk.rid === 'US_RI' && sk.link === 'https://gis.vgsi.com/SouthKingstownRI2' && /^South Kingstown’s assessor database ›$/.test(sk.text), `Rhode Island: the town's own database, by the Census town (not the village): ${sk.link} "${sk.text}"`);
+check(/google\.com\/search\?q=South%20Kingstown%20RI%20assessor/.test(sk.alt || ''), `Rhode Island: a web search for the town's records beside it: ${sk.alt}`);
+check(/the town’s assessor has the record/.test(sk.card) && !/county’s assessor/.test(sk.card), 'Rhode Island: the card says the town keeps the record, not the county');
+const pv = await ri(41.824, -71.412);
+check(pv.link === 'https://data.nereval.com/SearchInfo.aspx?town=Providence' && /^Providence’s assessor database ›$/.test(pv.text), `Rhode Island: Providence's records on Northeast Revaluation's site: ${pv.link}`);
+const town = await page.evaluate(() => [['Burrillville', 'Central Falls', 'West Warwick', 'Cranston', 'New Shoreham', 'Little Compton'].map((t) => window.__hp.riAssessorUrl(t)), window.__hp.riAssessorUrl('Springfield')]);
+check(town[0].every(Boolean) && /town=Central\+Falls$/.test(town[0][1]) && town[0][3] === 'https://gis.vgsi.com/CranstonRI' && town[1] === null, `Rhode Island: every town has its site, none for a town that isn't one: ${JSON.stringify(town)}`);
 const h2 = await card('102');
 check(/1712 Pickens St \|/.test(h2.card) && /Columbia · House/.test(h2.card) && !/nearest one on OpenStreetMap/.test(h2.card), `an outline with its own address uses it: ${h2.card.slice(0, 200)}`);
 const ap = await card('104');

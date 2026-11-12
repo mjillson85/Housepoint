@@ -40,3 +40,7 @@ jobs:
         env:
           CHROME: /usr/bin/google-chrome
         run: node probe/live-state.mjs
+      - name: The assessor links the card can show (Rhode Island's towns)
+        working-directory: tests
+        continue-on-error: true
+        run: node probe/record-links.mjs
