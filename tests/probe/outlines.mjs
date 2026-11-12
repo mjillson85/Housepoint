@@ -12,7 +12,9 @@ const area = (r) => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length;
 const WANT = [['AL', states, '01'], ['IA', states, '19'], ['KY', states, '21'], ['LA', states, '22'], ['MS', states, '28'], ['MO', states, '29'],
   ['NM', states, '35'], ['OK', states, '40'], ['PA', states, '42'], ['RI', states, '44'], ['SC', states, '45'], ['SD', states, '46'], ['IL', states, '17'],
   ['TX', states, '48'], ['CA', states, '06'], ['OH', states, '39'], ['TN', states, '47'], ['ND', states, '38'], ['OR', states, '41'], ['ID', states, '16'],
-  ['MI', states, '26'], ['KS', states, '20'], ['GA', states, '13'], ['AZ', states, '04'], ['FL', states, '12'], ['NJ', states, '34'], ['NY', states, '36'], ['NE', states, '31']];
+  ['MI', states, '26'], ['KS', states, '20'], ['GA', states, '13'], ['AZ', states, '04'], ['FL', states, '12'], ['NJ', states, '34'], ['NY', states, '36'], ['NE', states, '31'],
+  // the covered states along Canada, for cutting their outlines at the international line
+  ['ME', states, '23'], ['NH', states, '33'], ['VT', states, '50'], ['MN', states, '27'], ['WA', states, '53'], ['MT', states, '30']];
 const out = {};
 for (const [name, layer, geoid] of WANT) {
   try {
