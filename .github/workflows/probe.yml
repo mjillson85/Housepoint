@@ -44,3 +44,7 @@ jobs:
         working-directory: tests
         continue-on-error: true
         run: node probe/record-links.mjs
+      - name: Counties whose record sites follow their state's pattern (Georgia, Iowa; Tennessee's and Kansas's statewide sites)
+        working-directory: tests
+        continue-on-error: true
+        run: node probe/county-sites.mjs

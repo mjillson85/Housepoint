@@ -141,7 +141,7 @@ const ri = async (lat, lon) => page.evaluate(async (lat, lon) => {
 }, lat, lon);
 const sk = await ri(41.437, -71.501);
 console.log('Rhode Island:', JSON.stringify(sk).slice(0, 500));
-check(sk.rid === 'US_RI' && sk.link === 'https://gis.vgsi.com/SouthKingstownRI2' && /^South Kingstown’s assessor database ›$/.test(sk.text), `Rhode Island: the town's own database, by the Census town (not the village): ${sk.link} "${sk.text}"`);
+check(sk.rid === 'US_RI' && sk.link === 'https://gis.vgsi.com/SouthKingstownRI/' && /^South Kingstown’s assessor database ›$/.test(sk.text), `Rhode Island: the town's own database, by the Census town (not the village): ${sk.link} "${sk.text}"`);
 check(/google\.com\/search\?q=South%20Kingstown%20RI%20assessor/.test(sk.alt || ''), `Rhode Island: a web search for the town's records beside it: ${sk.alt}`);
 check(/the town’s assessor has the record/.test(sk.card) && !/county’s assessor/.test(sk.card), 'Rhode Island: the card says the town keeps the record, not the county');
 const pv = await ri(41.824, -71.412);

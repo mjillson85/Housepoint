@@ -2406,17 +2406,20 @@ const basicRecordSearch = (st, county) => {
   const c = t2clean(county), place = c ? (/\b(County|Parish|Borough|City)$/i.test(c) ? c : `${c} ${st === 'LA' ? 'Parish' : 'County'}`) + ' ' : '';
   return `https://www.google.com/search?q=${encodeURIComponent(`${place}${STATE_NAME[st] || st} property assessor parcel search`)}`;
 };
-// Rhode Island: no county assesses; the 39 cities and towns do, each with its records on one of two sites (Vision Government
+// Rhode Island: no county assesses; the 39 cities and towns do, nearly all with their records on one of two sites (Vision Government
 // Solutions' list, https://www.vgsi.com/rhode-island-online-database/, or Northeast Revaluation's), as listed by the Rhode Island
-// Association of Realtors (November 2026). Only links: those sites show owners' names, and the app never reads them.
+// Association of Realtors (November 2026). tests/probe/record-links.mjs opens them all. Only links: those sites show owners' names, and the app never reads them.
 const RI_VGSI = { Charlestown: 'CharlestownRI', Cranston: 'CranstonRI', Cumberland: 'cumberlandri/', Exeter: 'exeterri', Foster: 'fosterri',
   Hopkinton: 'hopkintonri/', Johnston: 'johnstonri/', 'Little Compton': 'LittleComptonRI', Lincoln: 'LincolnRI', Middletown: 'MiddletownRI',
   'New Shoreham': 'newshorehamri/', 'North Kingstown': 'northkingstownri/', Pawtucket: 'PawtucketRI', Portsmouth: 'portsmouthri/', Richmond: 'richmondri/',
-  Smithfield: 'smithfieldri/', 'South Kingstown': 'SouthKingstownRI2', Warwick: 'warwickri/', Westerly: 'WesterlyRI', Woonsocket: 'WoonsocketRI' };
+  'South Kingstown': 'SouthKingstownRI/', Warwick: 'warwickri/', Westerly: 'WesterlyRI', Woonsocket: 'WoonsocketRI' };
+// Smithfield moved its records from Vision to actDataScout (Vision's old page forwards there, November 2026)
+const RI_OTHER = { Smithfield: 'https://www.actdatascout.com/RealProperty/Rhode%20Island/Smithfield' };
 const RI_NEREVAL = ['Barrington', 'Bristol', 'Burrillville', 'Central Falls', 'Coventry', 'East Greenwich', 'East Providence', 'Glocester', 'Jamestown',
   'Narragansett', 'Newport', 'North Providence', 'North Smithfield', 'Providence', 'Scituate', 'Tiverton', 'Warren', 'West Greenwich', 'West Warwick'];
 const RI_TOWN_LIST = 'https://www.rirealtors.org/ri-tax-assessor-resource';     // all 39 towns' sites, before the town is known
 function riAssessorUrl(town) {
+  if (RI_OTHER[town]) return RI_OTHER[town];
   if (RI_VGSI[town]) return `https://gis.vgsi.com/${RI_VGSI[town]}`;
   if (RI_NEREVAL.includes(town)) return `https://data.nereval.com/SearchInfo.aspx?town=${encodeURIComponent(town).replace(/%20/g, '+')}`;
   return null;
