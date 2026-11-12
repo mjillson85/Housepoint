@@ -15,6 +15,13 @@ await page.click('#toMap'); await new Promise(r => setTimeout(r, 900));
 const mapOn = await page.$eval('#mapView', el => !el.classList.contains('hidden')), drawn = await page.$$eval('#mParcels path', els => els.length);
 console.log('map visible:', mapOn, '| parcels drawn:', drawn, '| photo tiles:', await page.$$eval('#mImg image', els => els.length));
 console.log(mapOn && drawn > 0 ? 'PASS the map opens with lots drawn' : 'FAIL the map: visible ' + mapOn + ', lots ' + drawn);
+// Moving the map moves the drawn lots as one piece: the lot outlines aren't drawn again on every step of a drag
+const mv = await page.evaluate(() => {
+  const hp = window.__hp, g = document.querySelector('#mParcels'), d0 = g.innerHTML, t0 = g.getAttribute('transform');
+  hp.S.map.center = { lat: hp.S.map.center.lat + 0.0002, lon: hp.S.map.center.lon + 0.0002 }; hp.drawMap();
+  return { same: g.innerHTML === d0, moved: g.getAttribute('transform') !== t0 };
+});
+console.log(mv.same && mv.moved ? 'PASS panning the map moves the lots without redrawing them' : 'FAIL panning the map: ' + JSON.stringify(mv));
 await page.screenshot({ path: 'n_map.png' });
 await page.mouse.click(250, 520); await new Promise(r => setTimeout(r, 500));
 const mapAddr = await page.$eval('#cardBody .addr', el => el.innerText);

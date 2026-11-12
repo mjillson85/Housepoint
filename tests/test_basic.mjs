@@ -69,6 +69,20 @@ const want = { columbia: 'US_SC', philly: 'US_PA', albuquerque: 'US_NM', austin:
   charlotte: 'NC', toronto: null, mexicali: null, gulf: null, keyWest: 'FL', valdosta: 'US_GA', orangeBeach: 'US_AL', bellevueNE: 'NE', lambertvilleNJ: 'NJ', newOrleans: 'US_LA', providence: 'US_RI', siouxFalls: 'US_SD', memphis: 'US_TN' };
 const bad = Object.entries(want).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
 check(!bad.length, 'places land in their state’s basic region, covered places in theirs, other countries in none' + (bad.length ? ': ' + bad.join(', ') : ''));
+// The lines themselves: towns across a river or a line from each other, the western Aleutians past 180°, Liberty Island
+const edges = await page.evaluate(() => [
+  ['Coventry, RI (near Connecticut)', 41.70, -71.784, 'US_RI'], ['Sterling, CT (near Rhode Island)', 41.70, -71.792, 'CT'],
+  ['Bridgeport, OH (across from Wheeling)', 40.07, -80.74, 'US_OH'], ['Wheeling, WV', 40.064, -80.721, 'WV'], ['Gallipolis, OH', 38.81, -82.20, 'US_OH'],
+  ['Sarnia, ON', 42.97, -82.40, null], ['Port Huron, MI', 42.97, -82.43, 'US_MI'], ['Sault Ste. Marie, ON', 46.51, -84.34, null],
+  ['Sault Ste. Marie, MI', 46.495, -84.345, 'US_MI'], ['Windsor, ON', 42.30, -83.03, null], ['Fort Erie, ON', 42.90, -78.93, null], ['Buffalo, NY', 42.89, -78.88, 'NY'],
+  ['Ciudad Juárez', 31.72, -106.45, null], ['El Paso, TX', 31.76, -106.49, 'US_TX'], ['Nuevo Laredo', 27.49, -99.51, null], ['Laredo, TX', 27.51, -99.50, 'US_TX'],
+  ['Emerson, MB', 49.0, -97.21, null], ['Pembina, ND', 48.966, -97.24, 'US_ND'], ['St. Stephen, NB', 45.195, -67.285, null], ['Calais, ME', 45.184, -67.276, 'ME'],
+  ['Edmundston, NB', 47.373, -68.325, null], ['Fort Frances, ON', 48.61, -93.40, null], ['International Falls, MN', 48.60, -93.41, 'MN'],
+  ['White Rock, BC', 49.02, -122.80, null], ['Point Roberts, WA', 48.98, -123.07, 'WA'], ['Attu, AK (past 180°)', 52.85, 173.2, 'AK'], ['Adak, AK', 51.88, -176.65, 'AK'],
+  ['Liberty Island (New York’s)', 40.6892, -74.0445, 'NY'], ['Jersey City', 40.718, -74.047, 'NJ'], ['Galveston, TX', 29.27, -94.83, 'US_TX'], ['Mackinac Island, MI', 45.85, -84.62, 'US_MI'],
+].map(([n, la, lo, w]) => { const r = window.__hp.regionFor(la, lo); return [n, r ? r.id : null, w]; }));
+const edgeBad = edges.filter(([, got, w]) => got !== w).map(([n, got, w]) => `${n}: ${got} (want ${w})`);
+check(!edgeBad.length, `state and country lines: ${edges.length} places on either side land right` + (edgeBad.length ? ': ' + edgeBad.join(', ') : ''));
 
 // Compass: the World Magnetic Model where no region has its own fit
 const decl = await page.evaluate(() => [[33.998, -81.03], [39.952, -75.18], [35.09, -106.63], [30.27, -97.74], [47.6, -122.3]].map(([a, o]) => +window.__hp.declinationAt({ lat: a, lon: o }).toFixed(1)));

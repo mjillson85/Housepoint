@@ -24,7 +24,7 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 // Sample spots: [name, lat, lon, radius in meters]
 const SPOTS = {
   MA: [['Boston Back Bay', 42.3505, -71.0810, 250], ['Boston Downtown', 42.3555, -71.0605, 250],
-    ['Cambridge Central Sq', 42.3650, -71.1035, 300], ['Holbrook center', 42.1550, -71.0090, 450], ['Hyannis', 41.6528, -70.2830, 400],
+    ['Cambridge Central Sq', 42.3650, -71.1035, 300], ['Hyannis', 41.6528, -70.2830, 400],
     ['Springfield downtown', 42.1015, -72.5898, 350], ['Worcester Canal District', 42.2585, -71.7980, 350], ['Hawley (rural)', 42.5800, -72.8900, 1500],
     ['Plymouth (shore, parks)', 41.9050, -70.6300, 900], ['Nantucket town', 41.2835, -70.0995, 350]],
   CT: [['Hartford downtown', 41.7637, -72.6851, 350], ['Greenwich Ave', 41.0262, -73.6282, 350], ['New Haven', 41.3083, -72.9279, 350],
@@ -104,7 +104,7 @@ const SPOTS = {
   VA: [['Richmond', 37.5500, -77.4600, 250], ['Arlington', 38.8800, -77.1000, 250], ['Norfolk', 36.8500, -76.2900, 300]],
 };
 // Lots that have shown problems before, found by their MassGIS LOC_ID through the state's own server (indexed there).
-const NAMED = { MA: [['47-49 River St (commercial condo, land and master records)', 'F_751960_2913839'], ['6 Mosesso Dr, Holbrook', 'F_792474_2883742']] };
+const NAMED = { MA: [['47-49 River St (commercial condo, land and master records)', 'F_751960_2913839']] };
 const MA_STATE_PARCELS = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer/1';
 const PER_STATE = 120, PER_KIND = 2, MAX_RECS = 80;
 

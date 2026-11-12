@@ -31,8 +31,8 @@ const raw = await page.evaluate(async () => {
 log('== school and district services, asked from a web page');
 for (const r of raw) log(JSON.stringify(r));
 
-// 2. The app's own lookups, for Boston's Back Bay and Holbrook
-for (const [name, lat, lon] of [['Boston Back Bay', 42.3505, -71.0810], ['Holbrook', 42.1606, -70.9959]]) {
+// 2. The app's own lookups, for Boston's Back Bay and Worcester
+for (const [name, lat, lon] of [['Boston Back Bay', 42.3505, -71.0810], ['Worcester', 42.2626, -71.8023]]) {
   log(`== the app's lookups at ${name}`);
   const r = await page.evaluate(async (lat, lon) => {
     const hp = window.__hp, out = {};

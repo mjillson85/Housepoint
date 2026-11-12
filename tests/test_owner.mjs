@@ -82,6 +82,19 @@ check(vt.flags[0] === 'condo', `the condo is still read from it: ${JSON.stringif
 check(!/JANE|DOE|SMITH|DWL/.test(vt.all), 'none of the free text is kept anywhere: records, memory or the copy');
 check(JSON.stringify(vt.copied) === JSON.stringify(['CONDO', '']), `the copied records hold the word, not the text: ${JSON.stringify(vt.copied)}`);
 
+// 4. A parcel layer found by searching ArcGIS Online is used only if it's the same publisher's (same organization or server): a copy
+// anyone could publish under the right title, with owner names or made-up values in it, is never read.
+const pub = await page.evaluate(() => {
+  const hp = window.__hp, same = (id, u) => hp.samePublisher(hp.REGIONS[id])(u);
+  return {
+    ctSame: same('CT', 'https://services3.arcgis.com/3FL1kr7L4LvwA2Kb/arcgis/rest/services/Connecticut_Parcels_2026/FeatureServer/0'),
+    ctOther: same('CT', 'https://services7.arcgis.com/SomeoneElse123/arcgis/rest/services/Connecticut_CAMA_and_Parcel_Layer/FeatureServer/0'),
+    mtSame: same('MT', 'https://gisservice.mt.gov/ArcGIS/rest/services/msdi_cadastral_map_v2/MapServer/1'),
+    mtOther: same('MT', 'https://services1.arcgis.com/Copycat/arcgis/rest/services/cadastral_Montana/FeatureServer/0'),
+  };
+});
+check(pub.ctSame && !pub.ctOther && pub.mtSame && !pub.mtOther, `a layer found by searching counts only from the same publisher: ${JSON.stringify(pub)}`);
+
 check(!errors.length, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
 await browser.close(); srv.close();
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');

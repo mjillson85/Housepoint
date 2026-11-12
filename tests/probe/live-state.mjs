@@ -61,5 +61,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 600 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Building outlines|Texas|Ohio|Maine|Indiana|Virginia/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/Building outlines|Texas|Ohio|Maine|Indiana|Virginia|Flood|elevation|Aerial/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();

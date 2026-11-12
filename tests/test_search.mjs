@@ -20,21 +20,21 @@ const CENSUS = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddre
 const GEOAPIFY = 'https://api.geoapify.com/v1/geocode/search';
 const MA_FIELDS = ['OBJECTID', 'LOC_ID', 'POLY_TYPE', 'SITE_ADDR', 'CITY', 'FY', 'TOTAL_VAL', 'LAND_VAL', 'LS_DATE', 'LS_PRICE', 'USE_CODE', 'YEAR_BUILT', 'RES_AREA', 'UNITS'];
 
-// A made-up Holbrook: Elm St lots north of a street line, Oak St lots south of it, around the town's center point.
-const H = { lat: 42.1543, lon: -71.009 };
+// A made-up Hopkinton: Elm St lots north of a street line, Oak St lots south of it, around the town's center point.
+const H = { lat: 42.2287, lon: -71.5226 };
 const kx = Math.cos(H.lat * Math.PI / 180) * 111320, ky = 110540;
 const ll = (x, y) => ({ lat: H.lat + y / ky, lon: H.lon + x / kx });
 const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => { const p = ll(x, y); return [p.lon, p.lat]; });
 const LOTS = [];
 for (let j = 0; j < 6; j++) {
   const x0 = -60 + j * 20;
-  LOTS.push({ geometry: { rings: [ring(x0, 6, x0 + 20, 36)] }, attributes: { OBJECTID: 1 + j, LOC_ID: `E${10 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${10 + 2 * j} ELM ST`, CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 400000 + j, YEAR_BUILT: 1950 + j, RES_AREA: 1500, UNITS: 1, USE_CODE: '1010' } });
-  LOTS.push({ geometry: { rings: [ring(x0, -36, x0 + 20, -6)] }, attributes: { OBJECTID: 20 + j, LOC_ID: `O${36 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${36 + 2 * j} OAK ST`, CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 500000 + j, YEAR_BUILT: 1960 + j, RES_AREA: 1700, UNITS: 1, USE_CODE: '1010' } });
+  LOTS.push({ geometry: { rings: [ring(x0, 6, x0 + 20, 36)] }, attributes: { OBJECTID: 1 + j, LOC_ID: `E${10 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${10 + 2 * j} ELM ST`, CITY: 'HOPKINTON', FY: 2026, TOTAL_VAL: 400000 + j, YEAR_BUILT: 1950 + j, RES_AREA: 1500, UNITS: 1, USE_CODE: '1010' } });
+  LOTS.push({ geometry: { rings: [ring(x0, -36, x0 + 20, -6)] }, attributes: { OBJECTID: 20 + j, LOC_ID: `O${36 + 2 * j}`, POLY_TYPE: 'FEE', SITE_ADDR: `${36 + 2 * j} OAK ST`, CITY: 'HOPKINTON', FY: 2026, TOTAL_VAL: 500000 + j, YEAR_BUILT: 1960 + j, RES_AREA: 1700, UNITS: 1, USE_CODE: '1010' } });
 }
-// Mosesso Dr, east of the rest: the Census puts its points out at (20, 0), which is about 145 m from number 6 and 320 m from
+// Laurel Dr, east of the rest: the Census puts its points out at (20, 0), which is about 145 m from number 6 and 320 m from
 // number 8, as it can on a long street.
-LOTS.push({ geometry: { rings: [ring(140, 50, 160, 80)] }, attributes: { OBJECTID: 40, LOC_ID: 'M6', POLY_TYPE: 'FEE', SITE_ADDR: '6 MOSESSO DR', CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 600000, YEAR_BUILT: 1990, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
-LOTS.push({ geometry: { rings: [ring(330, -10, 350, 20)] }, attributes: { OBJECTID: 41, LOC_ID: 'M8', POLY_TYPE: 'FEE', SITE_ADDR: '8 MOSESSO DR', CITY: 'HOLBROOK', FY: 2026, TOTAL_VAL: 610000, YEAR_BUILT: 1991, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
+LOTS.push({ geometry: { rings: [ring(140, 50, 160, 80)] }, attributes: { OBJECTID: 40, LOC_ID: 'M6', POLY_TYPE: 'FEE', SITE_ADDR: '6 LAUREL DR', CITY: 'HOPKINTON', FY: 2026, TOTAL_VAL: 600000, YEAR_BUILT: 1990, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
+LOTS.push({ geometry: { rings: [ring(330, -10, 350, 20)] }, attributes: { OBJECTID: 41, LOC_ID: 'M8', POLY_TYPE: 'FEE', SITE_ADDR: '8 LAUREL DR', CITY: 'HOPKINTON', FY: 2026, TOTAL_VAL: 610000, YEAR_BUILT: 1991, RES_AREA: 2000, UNITS: 1, USE_CODE: '1010' } });
 const MOS = ll(20, 0);
 // The state's own server (MassGIS assess table indexed by town, and lot outlines by lot id), faked from the same lots
 const STATE_SVC = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer';
@@ -90,14 +90,14 @@ async function newPage(url) {
       if (q.get('where') && q.get('geometry')) {                     // an address in a circle around a point
         const w = q.get('where'); seen.near.push({ w, g: q.get('geometry'), d: q.get('distance'), units: q.get('units') });
         if (hang.ma) return;
-        if (/LIKE '8 MOSESSO DR%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '8 MOSESSO DR') });
+        if (/LIKE '8 LAUREL DR%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '8 LAUREL DR') });
         return json({ features: [] });
       }
       if (q.get('where')) {
         const w = q.get('where'); seen.where.push(w);
         if (hang.ma || hang.maAddr) return;                          // never answers
         if (/LIKE '12 ELM ST%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '12 ELM ST') });
-        if (/LIKE '36 OAK ST%' AND UPPER\(CITY\) LIKE 'HOLBROOK%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '36 OAK ST') });
+        if (/LIKE '36 OAK ST%' AND UPPER\(CITY\) LIKE 'HOPKINTON%'/.test(w)) return json({ features: LOTS.filter((f) => f.attributes.SITE_ADDR === '36 OAK ST') });
         if (/LIKE '12 MAIN ST%' AND UPPER\(CITY\) LIKE 'CLINTON%'/.test(w)) return json({ features: [MA_LOT('12 MAIN ST', 'CLINTON', 42.418, -71.683)] });   // the typo guess's lot
         if (/LIKE '% ELM ST'/.test(w)) return json({ features: LOTS.filter((f) => /ELM/.test(f.attributes.SITE_ADDR)) });
         return json({ features: [] });
@@ -122,11 +122,11 @@ async function newPage(url) {
       if (hang.census === 'late') return setTimeout(() => script(cb, { result: { addressMatches: [] } }).catch(() => {}), 6800);   // after the app gave up
       if (hang.census) return;
       if (q.get('format') !== 'jsonp' || q.get('benchmark') !== 'Public_AR_Current') return script(cb, { errors: ['bad request'] });
-      if (/40 Oak/i.test(a) && !/Holbrok\b/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '40 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: OAK40.lon, y: OAK40.lat } }] } });
-      if (/^[68] Mosesso Dr/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: `${a[0]} MOSESSO DR, HOLBROOK, MA, 02343`, coordinates: { x: MOS.lon, y: MOS.lat } }] } });
-      if (/14 Elm/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '14 ELM ST, HOLBROOK, MA, 02343', coordinates: { x: ELM14.lon, y: ELM14.lat } }] } });
+      if (/40 Oak/i.test(a) && !/Hopkintn\b/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '40 OAK ST, HOPKINTON, MA, 01748', coordinates: { x: OAK40.lon, y: OAK40.lat } }] } });
+      if (/^[68] Laurel Dr/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: `${a[0]} LAUREL DR, HOPKINTON, MA, 01748`, coordinates: { x: MOS.lon, y: MOS.lat } }] } });
+      if (/14 Elm/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '14 ELM ST, HOPKINTON, MA, 01748', coordinates: { x: ELM14.lon, y: ELM14.lat } }] } });
       if (/100 Warren St, Roxbury, MA$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '100 WARREN ST, ROXBURY, MA, 02119', coordinates: { x: -71.0832, y: 42.3266 } }] } });
-      if (/12 Oak St/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '12 OAK ST, HOLBROOK, MA, 02343', coordinates: { x: ll(-30, 3).lon, y: ll(-30, 3).lat } }] } });   // in front of 12 ELM ST
+      if (/12 Oak St/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '12 OAK ST, HOPKINTON, MA, 01748', coordinates: { x: ll(-30, 3).lon, y: ll(-30, 3).lat } }] } });   // in front of 12 ELM ST
       if (/44 Oak St, Clifton, NJ$/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '44 OAK ST, CLIFTON, NJ, 07011', coordinates: { x: -74.1576, y: 40.863 } }] } });
       if (/Loiza/i.test(a)) return script(cb, { result: { addressMatches: [{ matchedAddress: '500 CALLE LOIZA, SAN JUAN, PR, 00911', coordinates: { x: -66.0489, y: 18.4489 } }] } });
       return script(cb, { result: { addressMatches: [] } });
@@ -138,7 +138,7 @@ async function newPage(url) {
       const m = /MapServer\/(\d+)\/query/.exec(u); const id = m && +m[1]; const w = q.get('where') || '';
       const f = [];
       if (!/STATE IN \('12','25','34','09'\)|STATE IN/.test(w)) return json({ features: [] });
-      if (id === 22 && /'HOLBROOK'/.test(w)) f.push({ attributes: { BASENAME: 'Holbrook', NAME: 'Holbrook town', STATE: '25', INTPTLAT: '+' + H.lat.toFixed(7), INTPTLON: H.lon.toFixed(7) } });
+      if (id === 22 && /'HOPKINTON'/.test(w)) f.push({ attributes: { BASENAME: 'Hopkinton', NAME: 'Hopkinton town', STATE: '25', INTPTLAT: '+' + H.lat.toFixed(7), INTPTLON: H.lon.toFixed(7) } });
       if (id === 22 && /'SPRINGFIELD'/.test(w)) {
         f.push({ attributes: { BASENAME: 'Springfield', STATE: '25', INTPTLAT: '+42.1015', INTPTLON: '-072.5898' } });
         f.push({ attributes: { BASENAME: 'Springfield', STATE: '34', INTPTLAT: '+40.6990', INTPTLON: '-074.3245' } });
@@ -161,10 +161,10 @@ async function newPage(url) {
       if (hang.geo) return;
       if (geoMode === 'fail') return json({ statusCode: 500, error: 'Internal', message: 'down' }, 500);
       const t = q.get('text');
-      if (/Holbrok/i.test(t)) return json({ results: [{ result_type: 'city', city: 'Holbrook', state_code: 'MA', lat: H.lat, lon: H.lon, formatted: 'Holbrook, MA, United States of America', rank: { confidence: 0.9 } }] });
-      if (/99 Oak St/i.test(t)) return json({ results: [{ result_type: 'street', street: 'Oak Street', city: 'Holbrook', lat: OAK40.lat, lon: OAK40.lon, formatted: 'Oak Street, Holbrook, MA', rank: { confidence: 0.6 } }] });
-      if (/Oka St/i.test(t)) return json({ results: [{ result_type: 'building', housenumber: '40', street: 'Oak Street', city: 'Holbrook', lat: OAK40.lat, lon: OAK40.lon, formatted: '40 Oak Street, Holbrook, MA 02343' }] });
-      if (/^Oak St/i.test(t)) return json({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { result_type: 'street', street: 'Oak Street', city: 'Holbrook', formatted: 'Oak Street, Holbrook, MA' }, geometry: { type: 'Point', coordinates: [OAK40.lon, OAK40.lat] } }] });
+      if (/Hopkintn/i.test(t)) return json({ results: [{ result_type: 'city', city: 'Hopkinton', state_code: 'MA', lat: H.lat, lon: H.lon, formatted: 'Hopkinton, MA, United States of America', rank: { confidence: 0.9 } }] });
+      if (/99 Oak St/i.test(t)) return json({ results: [{ result_type: 'street', street: 'Oak Street', city: 'Hopkinton', lat: OAK40.lat, lon: OAK40.lon, formatted: 'Oak Street, Hopkinton, MA', rank: { confidence: 0.6 } }] });
+      if (/Oka St/i.test(t)) return json({ results: [{ result_type: 'building', housenumber: '40', street: 'Oak Street', city: 'Hopkinton', lat: OAK40.lat, lon: OAK40.lon, formatted: '40 Oak Street, Hopkinton, MA 01748' }] });
+      if (/^Oak St/i.test(t)) return json({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { result_type: 'street', street: 'Oak Street', city: 'Hopkinton', formatted: 'Oak Street, Hopkinton, MA' }, geometry: { type: 'Point', coordinates: [OAK40.lon, OAK40.lat] } }] });
       return json({ results: [] });
     }
     seen.other.push(u);
@@ -198,33 +198,33 @@ const page = await newPage('/');
 await page.click('#goMap'); await sleep(300);
 
 // Reading what was typed
-const pq = await page.evaluate(() => ['Holbrook MA', '12 Elm Ct', 'West Palm Beach FL', 'Mount Washington', '12 Main St, Holbrook, MA 02343', 'Austin, TX', 'Elm St, Holbrook']
+const pq = await page.evaluate(() => ['Hopkinton MA', '12 Elm Ct', 'West Palm Beach FL', 'Mount Washington', '12 Main St, Hopkinton, MA 01748', 'Austin, TX', 'Elm St, Hopkinton']
   .map((t) => window.__hp.parseQuery(t)));
 console.log('parsed:', JSON.stringify(pq));
-check(pq[0].town === 'HOLBROOK' && pq[0].state === 'MA' && !pq[0].num, '"Holbrook MA": a town and a state');
+check(pq[0].town === 'HOPKINTON' && pq[0].state === 'MA' && !pq[0].num, '"Hopkinton MA": a town and a state');
 check(pq[1].num === '12' && /Elm Ct/i.test(pq[1].street) && !pq[1].state, '"12 Elm Ct": a court, not Connecticut');
 check(pq[2].town === 'WEST PALM BEACH' && pq[2].state === 'FL', '"West Palm Beach FL"');
 check(pq[3].town === 'Mount Washington' && !pq[3].state, '"Mount Washington" is a town, not Washington state');
-check(pq[4].num === '12' && pq[4].town === 'Holbrook' && pq[4].state === 'MA', 'zip code dropped, number, town and state read');
+check(pq[4].num === '12' && pq[4].town === 'Hopkinton' && pq[4].state === 'MA', 'zip code dropped, number, town and state read');
 check(pq[5].state === 'TX', '"Austin, TX" reads as Texas');
-check(!pq[6].num && /Elm St/.test(pq[6].street) && pq[6].town === 'Holbrook', 'a street without a number');
-check((await page.evaluate(() => window.__hp.knownTown('Holbrok'))).name === 'Holbrook', 'a misspelled Massachusetts town is corrected');
-const pq2 = await page.evaluate(() => ['6 mosesso drive Holbrook', '500 Beach Dr NE', '12 Main St, Washington', '12 Main St, Delaware', 'Seattle, Washington', '12 Elm St CT', '1 Main St Apt 2', 'Route 9, Framingham', '6 Mosesso Dr Holbrook MA']
+check(!pq[6].num && /Elm St/.test(pq[6].street) && pq[6].town === 'Hopkinton', 'a street without a number');
+check((await page.evaluate(() => window.__hp.knownTown('Hopkintn'))).name === 'Hopkinton', 'a misspelled Massachusetts town is corrected');
+const pq2 = await page.evaluate(() => ['6 laurel drive Hopkinton', '500 Beach Dr NE', '12 Main St, Washington', '12 Main St, Delaware', 'Seattle, Washington', '12 Elm St CT', '1 Main St Apt 2', 'Route 9, Framingham', '6 Laurel Dr Hopkinton MA']
   .map((t) => window.__hp.parseQuery(t)));
-check(pq2[0].num === '6' && pq2[0].street === 'MOSESSO DRIVE' && pq2[0].town === 'HOLBROOK' && pq2[0].loose, 'no comma: the word after "Drive" is read as the town');
+check(pq2[0].num === '6' && pq2[0].street === 'LAUREL DRIVE' && pq2[0].town === 'HOPKINTON' && pq2[0].loose, 'no comma: the word after "Drive" is read as the town');
 check(!pq2[1].state && /Beach Dr NE/i.test(pq2[1].street) && !pq2[1].town, '"500 Beach Dr NE" is northeast, not Nebraska');
 check(!pq2[2].state && pq2[2].town === 'Washington' && !pq2[3].state && pq2[3].town === 'Delaware', 'after a street, Washington and Delaware are towns');
 check(pq2[4].state === 'WA' && pq2[4].town === 'Seattle', '"Seattle, Washington" is still the state');
 check(pq2[5].state === 'CT' && /^ELM ST$/i.test(pq2[5].street), '"12 Elm St CT" is Connecticut');
 check(!pq2[6].town && /^Main St$/i.test(pq2[6].street), 'an apartment number isn’t a town (and isn’t needed to find the lot)');
 check(/Route 9/.test(pq2[7].street) && pq2[7].town === 'Framingham', '"Route 9, Framingham": the town is kept');
-check(pq2[8].state === 'MA' && pq2[8].town === 'HOLBROOK' && pq2[8].num === '6', 'no commas at all: number, street, town and state');
-const pq3 = await page.evaluate(() => ['25 Main St Hartford CT', '100 Main St Omaha NE', '12 Main St West Hartford', '12 Elm St, Apt 2, Holbrook, MA', '12 Elm St Holbrook MA 02343',
+check(pq2[8].state === 'MA' && pq2[8].town === 'HOPKINTON' && pq2[8].num === '6', 'no commas at all: number, street, town and state');
+const pq3 = await page.evaluate(() => ['25 Main St Hartford CT', '100 Main St Omaha NE', '12 Main St West Hartford', '12 Elm St, Apt 2, Hopkinton, MA', '12 Elm St Hopkinton MA 01748',
   '500 Beach Dr NE St Petersburg', '12-14 Elm St, Quincy', '100 N Ocean Blvd, Palm Beach, FL', '12 Circle Ct'].map((t) => window.__hp.parseQuery(t)));
 check(pq3[0].state === 'CT' && pq3[0].town === 'HARTFORD' && pq3[1].state === 'NE', '"…Hartford CT" is Connecticut and "…Omaha NE" Nebraska, after a street and a town');
 check(pq3[2].readings[0].town === 'WEST HARTFORD' && pq3[2].readings.some((r) => r.street === 'MAIN ST WEST' && r.town === 'HARTFORD'), '"Main St West Hartford": West Hartford first, Main St West in Hartford also tried');
-check(pq3[3].town === 'Holbrook' && pq3[3].state === 'MA' && /^Elm St$/.test(pq3[3].street), 'an "Apt 2" part is skipped, not taken as the town');
-check(pq3[4].state === 'MA' && pq3[4].town === 'HOLBROOK', 'a zip code without a comma is dropped');
+check(pq3[3].town === 'Hopkinton' && pq3[3].state === 'MA' && /^Elm St$/.test(pq3[3].street), 'an "Apt 2" part is skipped, not taken as the town');
+check(pq3[4].state === 'MA' && pq3[4].town === 'HOPKINTON', 'a zip code without a comma is dropped');
 check(pq3[5].readings[0].town === 'ST PETERSBURG', '"Beach Dr NE St Petersburg": St is Saint here');
 check(pq3[6].num === '12' && pq3[6].numFull === '12-14', '"12-14 Elm St": both numbers kept');
 check(pq3[7].state === 'FL' && pq3[7].town === 'Palm Beach', '"…, FL" is Florida, not a floor number');
@@ -232,29 +232,29 @@ check(!pq3[8].state && /CIRCLE CT/.test(pq3[8].street), '"12 Circle Ct" is a cou
 
 // 1. Exact lot from the parcel service
 reset();
-let r = await search(page, '12 Elm Street, Holbrook, MA');
+let r = await search(page, '12 Elm Street, Hopkinton, MA');
 console.log('lot:', JSON.stringify(r), '| where:', seen.where.join(' || '));
 check(r.selected === 'E12' && r.open && /12 Elm St/i.test(r.card), 'a parcel hit selects that lot');
-check(seen.state.length === 1 && /TOWN_ID = 133\b/.test(seen.state[0]) && /'12 ELM ST%'/.test(seen.state[0]) && seen.where.length === 1, 'typed state only: Massachusetts asked on the state’s server, by town (Holbrook is town 133)');
+check(seen.state.length === 1 && /TOWN_ID = 139\b/.test(seen.state[0]) && /'12 ELM ST%'/.test(seen.state[0]) && seen.where.length === 1, 'typed state only: Massachusetts asked on the state’s server, by town (Hopkinton is town 139)');
 
 // 2. Parcel miss -> Census geocoder -> the lot at that point (house number nearby wins over the street it landed on)
 reset();
-r = await search(page, '40 Oak Street, Holbrook');
+r = await search(page, '40 Oak Street, Hopkinton');
 console.log('census:', JSON.stringify(r), '| census asked:', seen.census.join(' || '));
-check(seen.census.length === 1 && /40 Oak Street, Holbrook, MA$/.test(seen.census[0]), 'Census asked once, with the state added');
+check(seen.census.length === 1 && /40 Oak Street, Hopkinton, MA$/.test(seen.census[0]), 'Census asked once, with the state added');
 check(r.selected === 'O40' && r.open && /40 Oak St/i.test(r.card), 'Census point selects the lot for that address');
 check(r.R === 70, 'zoomed in on the house');
 reset();
-r = await search(page, '14 Elm Rd, Holbrook, MA');
+r = await search(page, '14 Elm Rd, Hopkinton, MA');
 check(r.selected === 'E14', 'a Census point inside a lot selects that lot');
 
 // 3. Town alone -> TIGERweb -> centered, nothing selected, help line
 reset();
 await page.evaluate(() => { window.__hp.S.map.center = { lat: 26.7, lon: -80.07 }; });   // the map is in Florida, so the state order puts Florida first
-r = await search(page, 'Holbrook');
+r = await search(page, 'Hopkinton');
 console.log('town:', JSON.stringify(r), '| tiger:', seen.tiger.filter((x) => /query/.test(x)).slice(0, 1).join(''));
 check(near(r.center, H) && !r.selected && !r.open, 'town: centered on it, nothing selected');
-check(/^Showing Holbrook, MA\. Tap a house, or add a street address\.$/.test(r.help), 'town: help line says what to do');
+check(/^Showing Hopkinton, MA\. Tap a house, or add a street address\.$/.test(r.help), 'town: help line says what to do');
 check(!seen.census.length && !seen.where.length, 'town: no parcel or address lookups');
 check(r.R > 150, 'town: zoomed out');
 r = await search(page, 'West Palm Beach FL');
@@ -269,17 +269,17 @@ check(/Springfield, MA/.test(r.help), 'Springfield with the map in Connecticut: 
 r = await search(page, 'Springfield, NJ');
 check(/Springfield, NJ/.test(r.help), 'Springfield, NJ: the state typed wins');
 // A misspelled town is fixed from the town list, but a real town with a similar name wins over the guess
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
-r = await search(page, 'Holbrok');
-check(/^Showing Holbrook, MA\./.test(r.help), 'no key: "Holbrok" finds Holbrook');
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
+r = await search(page, 'Hopkintn');
+check(/^Showing Hopkinton, MA\./.test(r.help), 'no key: "Hopkintn" finds Hopkinton');
 r = await search(page, 'Clifton');
 check(/^Showing Clifton, NJ\./.test(r.help), '"Clifton" finds Clifton, NJ, not Clinton, MA');
 
 // 4. Street without a number (no Geoapify key): lots on that street in that town
 reset();
-r = await search(page, 'Elm St, Holbrook');
+r = await search(page, 'Elm St, Hopkinton');
 console.log('street:', JSON.stringify(r));
-check(/^Showing Elm St, Holbrook\. Tap a house, or add a house number\.$/.test(r.help) && !r.selected && near(r.center, ll(-10, 21), 25), 'street: centered on its lots, nothing selected');
+check(/^Showing Elm St, Hopkinton\. Tap a house, or add a house number\.$/.test(r.help) && !r.selected && near(r.center, ll(-10, 21), 25), 'street: centered on its lots, nothing selected');
 
 // 5. Outside the covered states
 reset();
@@ -306,9 +306,9 @@ check(!esc2.b && /<b>evil<\/b>town/i.test(esc2.txt), 'a service’s town name is
 
 // 8. Slow services: still an answer in about 10 seconds
 reset(); hang.ma = true; hang.census = true;
-r = await search(page, '99 Nowhere Rd, Holbrook', 20000);
+r = await search(page, '99 Nowhere Rd, Hopkinton', 20000);
 console.log('slow:', JSON.stringify({ help: r.help, ms: r.ms }));
-check(r.ms < 11000 && /^Couldn’t find that address, so here’s Holbrook, MA\. Tap a house\.$/.test(r.help), `parcel service and Census both hang: town shown after ${r.ms} ms`);
+check(r.ms < 11000 && /^Couldn’t find that address, so here’s Hopkinton, MA\. Tap a house\.$/.test(r.help), `parcel service and Census both hang: town shown after ${r.ms} ms`);
 check(await page.evaluate(() => window.__hp.MA_STATE_HEALTH.down), 'a state that ran out of time is marked as slow to search by address');
 hang.ma = false;
 r = await search(page, '99 Nowhere Rd', 20000);
@@ -319,13 +319,13 @@ await unslow();
 
 // 8b. The lot lookup reads the text more than one way
 reset();
-r = await search(page, '36 oak street holbrook');
+r = await search(page, '36 oak street hopkinton');
 console.log('no comma:', seen.where.slice(0, 1).join(''));
 // (Only the state the map is in and a known town's state are asked: not every state at once.)
-check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 133\b/.test(w) && /'36 OAK ST%'/.test(w)) && seen.where.every((w) => seen.state.includes(w)), 'no comma: lot found on the state’s server, by town; no other state searched');
+check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 139\b/.test(w) && /'36 OAK ST%'/.test(w)) && seen.where.every((w) => seen.state.includes(w)), 'no comma: lot found on the state’s server, by town; no other state searched');
 reset();
-r = await search(page, '36 Oak St, Holbrok');
-check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 133\b/.test(w)) && seen.where.every((w) => seen.state.includes(w)),
+r = await search(page, '36 Oak St, Hopkintn');
+check(r.selected === 'O36' && seen.state.some((w) => /TOWN_ID = 139\b/.test(w)) && seen.where.every((w) => seen.state.includes(w)),
   'misspelled town with a house number: the corrected spelling finds the lot on the state’s server');
 reset();
 r = await search(page, '12 Main St, Washington');
@@ -335,30 +335,30 @@ r = await search(page, '500 Beach Dr NE');
 check(!/outside/.test(r.help) && seen.census.length >= 1, '"500 Beach Dr NE" is searched, not called Nebraska');
 // No state typed and the first guess is wrong: the town lookup supplies the state for a second Census try
 reset();
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });      // the map is in Massachusetts
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });      // the map is in Massachusetts
 r = await search(page, '44 Oak St, Clifton');
 console.log('census retry:', seen.census.join(' || '));
 check(seen.census.length === 2 && /Clifton, MA$/.test(seen.census[0]) && /Clifton, NJ$/.test(seen.census[1]) && near(r.center, { lat: 40.863, lon: -74.1576 }, 50), 'Census tried again in the town’s own state (and “Clifton” isn’t “corrected” to Clinton)');
 // A misspelled town with an address the lot lookup doesn't have: the Census is asked again with the right spelling
 reset();
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
-r = await search(page, '40 Oak St, Holbrok');
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
+r = await search(page, '40 Oak St, Hopkintn');
 console.log('census respell:', seen.census.join(' || '));
-check(seen.census.length === 2 && /Holbrok, MA$/.test(seen.census[0]) && /Holbrook, MA$/.test(seen.census[1]) && r.selected === 'O40', 'misspelled town: the Census is asked again with the right spelling');
+check(seen.census.length === 2 && /Hopkintn, MA$/.test(seen.census[0]) && /Hopkinton, MA$/.test(seen.census[1]) && r.selected === 'O40', 'misspelled town: the Census is asked again with the right spelling');
 
 // 8c. More review fixes
 reset();
-r = await search(page, '12 Court Street, Holbrook');
+r = await search(page, '12 Court Street, Hopkinton');
 check(seen.where.some((w) => /LIKE '12 COURT ST%'/.test(w)) && !seen.where.some((w) => /CT ST/.test(w)), 'only the street type is shortened: COURT ST, not CT ST');
 reset();
-r = await search(page, "12 O'Brien Way, Holbrook");
+r = await search(page, "12 O'Brien Way, Hopkinton");
 check(seen.where.some((w) => /'12 O BRIEN WAY%'/.test(w) && /'12 OBRIEN WAY%'/.test(w) && /'12 O''BRIEN WAY%'/.test(w)), 'an apostrophe is tried three ways (O BRIEN, OBRIEN, O’BRIEN), quoted safely');
 reset();
-r = await search(page, '12-14 Elm St, Holbrook');
+r = await search(page, '12-14 Elm St, Hopkinton');
 check(seen.where.some((w) => /'12 ELM ST%'/.test(w) && /'12-14 ELM ST%'/.test(w)), 'a hyphenated number is tried both ways');
 // The typed town beats a corrected guess: "Clifton" isn't Clinton, MA
 reset();
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
 r = await search(page, '12 Main St, Clifton');
 check(near(r.center, { lat: 40.863, lon: -74.1576 }, 100), `the town as typed wins: 12 Main St in Clifton, NJ, not Clinton, MA (${JSON.stringify(r.center)})`);
 // Roxbury is a Connecticut town and a Boston neighborhood: with the map in Boston, the Census is asked for both, Boston wins
@@ -369,10 +369,10 @@ console.log('roxbury:', seen.census.join(' || '));
 check(seen.census.some((a) => /Roxbury, CT$/.test(a)) && seen.census.some((a) => /Roxbury, MA$/.test(a)) && near(r.center, { lat: 42.3266, lon: -71.0832 }, 50), 'the map’s state is asked too: Roxbury, Boston is found');
 // A geocoded point by the wrong house: nothing is picked rather than a neighbor
 reset();
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
-r = await search(page, '12 Oak St, Holbrook');
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
+r = await search(page, '12 Oak St, Hopkinton');
 console.log('no such lot:', r.help);
-check(!r.selected && !r.open && /^Here’s 12 Oak St, Holbrook\. Tap the house to see its story\.$/.test(r.help), 'no lot with that number on that street: nothing picked, “tap the house”');
+check(!r.selected && !r.open && /^Here’s 12 Oak St, Hopkinton\. Tap the house to see its story\.$/.test(r.help), 'no lot with that number on that street: nothing picked, “tap the house”');
 // Town names the way the Census writes them
 reset();
 r = await search(page, 'Washington Twp, NJ');
@@ -380,7 +380,7 @@ check(/^Showing Washington, NJ\./.test(r.help), '"Washington Twp" finds Washingt
 await page.evaluate(() => { window.__hp.S.map.center = { lat: 39.76, lon: -75.06 }; });
 r = await search(page, 'Washington, NJ');
 check(near(r.center, { lat: 39.75, lon: -75.07 }, 500), 'several Washingtons in New Jersey: the nearest one');
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
 r = await search(page, 'Braintree');
 check(/^Showing Braintree, MA\./.test(r.help) && near(r.center, { lat: 42.2049, lon: -71.005 }, 100), '"Braintree" finds the Census’s "Braintree Town", shown as Braintree');
 r = await search(page, 'Port St Lucie FL');
@@ -396,57 +396,57 @@ hang.census = false;
 //     address search there never finishes): the house is found at once. If that server doesn't answer, the Census point and
 //     a search around it still find the house, even a few hundred meters off.
 reset(); hang.maAddr = true;
-await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
-r = await search(page, '6 Mosesso Drive, Holbrook');
-console.log('mosesso 6:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| state:', seen.state.join(' || '));
-check(r.selected === 'M6' && r.open && /6 Mosesso Dr/i.test(r.card) && r.ms < 2000 && seen.state.some((w) => /TOWN_ID = 133\b/.test(w) && /'6 MOSESSO DR%'/.test(w)),
+await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
+r = await search(page, '6 Laurel Drive, Hopkinton');
+console.log('laurel 6:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| state:', seen.state.join(' || '));
+check(r.selected === 'M6' && r.open && /6 Laurel Dr/i.test(r.card) && r.ms < 2000 && seen.state.some((w) => /TOWN_ID = 139\b/.test(w) && /'6 LAUREL DR%'/.test(w)),
   `the state's server finds the house straight away (${r.ms} ms)`);
-check(!seen.where.some((w) => /SITE_ADDR\) LIKE '6 MOSESSO/.test(w) && !/TOWN_ID/.test(w)), 'the statewide layer isn’t asked by address');
+check(!seen.where.some((w) => /SITE_ADDR\) LIKE '6 LAUREL/.test(w) && !/TOWN_ID/.test(w)), 'the statewide layer isn’t asked by address');
 reset(); hang.maState = true;
-r = await search(page, '8 Mosesso Dr, Holbrook', 20000);
-console.log('mosesso 8:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| near:', JSON.stringify(seen.near));
+r = await search(page, '8 Laurel Dr, Hopkinton', 20000);
+console.log('laurel 8:', JSON.stringify({ sel: r.selected, ms: r.ms, help: r.help }), '| near:', JSON.stringify(seen.near));
 const nq = seen.near[0] || { g: '0,0' }, [nlon, nlat] = nq.g.split(',').map(Number);
-check(seen.near.length === 1 && nq.d === '400' && nq.units === 'esriSRUnit_Meter' && near({ lat: nlat, lon: nlon }, MOS, 5) && /'8 MOSESSO DR%'/.test(nq.w) && !/CITY/.test(nq.w),
+check(seen.near.length === 1 && nq.d === '400' && nq.units === 'esriSRUnit_Meter' && near({ lat: nlat, lon: nlon }, MOS, 5) && /'8 LAUREL DR%'/.test(nq.w) && !/CITY/.test(nq.w),
   'the state’s server doesn’t answer: the layer is asked for the house within 400 m of the Census point, any town');
-check(r.selected === 'M8' && r.open && /8 Mosesso Dr/i.test(r.card) && r.ms < 11000, `and that finds the house 320 m away (${r.ms} ms)`);
+check(r.selected === 'M8' && r.open && /8 Laurel Dr/i.test(r.card) && r.ms < 11000, `and that finds the house 320 m away (${r.ms} ms)`);
 check(await page.evaluate(() => window.__hp.MA_STATE_HEALTH.down), 'the state’s server is marked as down for this visit');
 reset();
-r = await search(page, '6 Mosesso Dr, Holbrook');
+r = await search(page, '6 Laurel Dr, Hopkinton');
 check(!seen.state.length && r.selected === 'M6', 'and isn’t asked again; the Census point finds the house among the lots around it');
 reset();
-r = await search(page, '12 Oak St, Holbrook');
-check(!r.selected && seen.near.length === 1 && /^Here’s 12 Oak St, Holbrook\. Tap the house to see its story\.$/.test(r.help), 'nothing there either: “tap the house”, as before');
+r = await search(page, '12 Oak St, Hopkinton');
+check(!r.selected && seen.near.length === 1 && /^Here’s 12 Oak St, Hopkinton\. Tap the house to see its story\.$/.test(r.help), 'nothing there either: “tap the house”, as before');
 hang.maAddr = false; hang.maState = false; await unslow();
 // A whole street in a Massachusetts town: the state's server finds its lots
 reset();
-r = await search(page, 'Oak St, Holbrook');
-check(/^Showing Oak St, Holbrook\./.test(r.help) && seen.state.some((w) => /TOWN_ID = 133\b/.test(w) && /'% OAK ST'/.test(w)) && near(r.center, ll(-10, -21), 40), `street: found on the state’s server (${JSON.stringify(r.center)})`);
+r = await search(page, 'Oak St, Hopkinton');
+check(/^Showing Oak St, Hopkinton\./.test(r.help) && seen.state.some((w) => /TOWN_ID = 139\b/.test(w) && /'% OAK ST'/.test(w)) && near(r.center, ll(-10, -21), 40), `street: found on the state’s server (${JSON.stringify(r.center)})`);
 
 // 9. With a Geoapify key: it leads for towns and streets; for a house number the Census leads and Geoapify backs it up
-await page.evaluate(() => { window.__hp.KEYS.geoapify = 'TESTKEY'; window.__hp.S.map.center = { lat: 42.15, lon: -71.0 }; });
+await page.evaluate(() => { window.__hp.KEYS.geoapify = 'TESTKEY'; window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
 reset();
-r = await search(page, 'Holbrok');
+r = await search(page, 'Hopkintn');
 console.log('geoapify:', seen.geo[0]);
-check(seen.geo.length === 1 && /filter=countrycode(:|%3A)us/.test(seen.geo[0]) && /bias=proximity(:|%3A)-71\.0/.test(seen.geo[0]) && /apiKey=TESTKEY/.test(seen.geo[0]), 'Geoapify asked, limited to the US, near the map');
-check(/^Showing Holbrook\. Tap a house, or add a street address\.$/.test(r.help) && near(r.center, H) && !r.selected, 'Geoapify town result: centered, nothing selected');
-r = await search(page, 'Oak St, Holbrook');
-check(/^Showing Oak Street, Holbrook\. Tap a house, or add a house number\./.test(r.help), 'Geoapify GeoJSON street result understood');
+check(seen.geo.length === 1 && /filter=countrycode(:|%3A)us/.test(seen.geo[0]) && /bias=proximity(:|%3A)-71\.52/.test(seen.geo[0]) && /apiKey=TESTKEY/.test(seen.geo[0]), 'Geoapify asked, limited to the US, near the map');
+check(/^Showing Hopkinton\. Tap a house, or add a street address\.$/.test(r.help) && near(r.center, H) && !r.selected, 'Geoapify town result: centered, nothing selected');
+r = await search(page, 'Oak St, Hopkinton');
+check(/^Showing Oak Street, Hopkinton\. Tap a house, or add a house number\./.test(r.help), 'Geoapify GeoJSON street result understood');
 reset();
-r = await search(page, '40 Oak St, Holbrook');
+r = await search(page, '40 Oak St, Hopkinton');
 check(seen.census.length === 1 && seen.geo.length === 0 && r.selected === 'O40', 'house number: the Census answers, Geoapify isn’t needed');
 reset();
-r = await search(page, '40 Oka St, Holbrook');
+r = await search(page, '40 Oka St, Hopkinton');
 check(seen.census.length === 1 && seen.geo.length === 1 && r.selected === 'O40', 'street typo: the Census finds nothing, Geoapify finds the house');
 reset(); hang.census = true;
-r = await search(page, '40 Oka St, Holbrook', 20000);
+r = await search(page, '40 Oka St, Hopkinton', 20000);
 check(seen.geo.length === 1 && r.selected === 'O40' && r.ms < 11000, `Census hangs: Geoapify asked as a backup (${r.ms} ms)`);
 hang.census = false;
 reset();
-r = await search(page, '99 Oak St, Holbrook');
-check(/^Couldn’t find that address, so here’s Oak Street, Holbrook\. Tap a house\.$/.test(r.help) && !r.selected, 'Geoapify finds only the street for a house number: it says so');
+r = await search(page, '99 Oak St, Hopkinton');
+check(/^Couldn’t find that address, so here’s Oak Street, Hopkinton\. Tap a house\.$/.test(r.help) && !r.selected, 'Geoapify finds only the street for a house number: it says so');
 reset(); geoMode = 'fail';
-r = await search(page, 'Holbrok');
-check(seen.geo.length === 1 && /^Showing Holbrook, MA\./.test(r.help), 'Geoapify fails on a town: the Census town map still finds it');
+r = await search(page, 'Hopkintn');
+check(seen.geo.length === 1 && /^Showing Hopkinton, MA\./.test(r.help), 'Geoapify fails on a town: the Census town map still finds it');
 geoMode = 'ok';
 await page.evaluate(() => { window.__hp.KEYS.geoapify = ''; });
 check(!seen.other.some((u) => /geocod|tigerweb|geoapify/i.test(u)), 'every lookup went to the expected addresses');
@@ -459,14 +459,14 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
   await gp.click('#goPoint'); await sleep(5500);            // no compass here: the app switches to the map by itself
   const m0 = await gp.evaluate(() => window.__hp.S.mode);
   reset();
-  r = await search(gp, '12 Elm Street, Holbrook, MA');
+  r = await search(gp, '12 Elm Street, Hopkinton, MA');
   await gp.setGeolocation({ latitude: 42.2402, longitude: -71.1702, accuracy: 8 }); await sleep(1500);
   const c = await gp.evaluate(() => ({ data: window.__hp.S.center, map: window.__hp.S.map.center }));
   check(m0 === 'map' && near(c.map, H, 100) && near(c.data, H, 400), `on the map, a new GPS fix leaves the searched place’s lots alone (${JSON.stringify(c)})`);
   // A slow search doesn't yank the map back after you've gone somewhere else
   await gp.evaluate(() => { if (document.querySelector('#sheet').classList.contains('open')) document.querySelector('.grab').click(); }); await sleep(400);
   reset(); hang.ma = true; hang.census = true;          // both slow: the Census no longer waits for the state
-  await gp.evaluate(() => { document.querySelector('#q').value = '40 Oak St, Holbrook'; document.querySelector('#search').requestSubmit(); });
+  await gp.evaluate(() => { document.querySelector('#q').value = '40 Oak St, Hopkinton'; document.querySelector('#search').requestSubmit(); });
   await sleep(400);
   await gp.evaluate(() => window.__hp.centerMap(41.95, -71.3));   // what a sample spot or "Near me" does
   await sleep(7500);
@@ -481,7 +481,7 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
 {
   const sp = await newPage('/');
   await sp.click('#goMap'); await sleep(300);
-  r = await search(sp, '12 Elm Street, Holbrook, MA');
+  r = await search(sp, '12 Elm Street, Hopkinton, MA');
   const info = await sp.evaluate(() => { const c = window.__hp.S.candidates[window.__hp.S.cIdx]; return { link: window.__hp.houseLink(c), text: window.__hp.shareText(c) }; });
   console.log('share link:', info.link);
   check(r.open && /\?h=42\.\d{6},-71\.\d{6}&k=E12$/.test(info.link) && info.text.endsWith('\n' + info.link), 'sharing a card includes a link to the house');
@@ -507,7 +507,7 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
 reset();
 const demo = await newPage('/?demo=1');
 await demo.click('#goMap'); await sleep(300);
-r = await search(demo, 'Holbrook');
+r = await search(demo, 'Hopkinton');
 check(/^No match/.test(r.help) && !seen.census.length && !seen.tiger.length && !seen.geo.length && !seen.where.length, 'demo mode: search sends nothing');
 check(!demo.errors.length, 'no page errors (demo) ' + demo.errors.join('; '));
 

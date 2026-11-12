@@ -27,15 +27,15 @@ const r = await page.evaluate(() => {
     flNoTV: one(FL, { COUNTY: 65, USE_CODE: '0001', TOTAL_VAL: 450000 }),
     flRental: one(FL, { COUNTY: 58, USE_CODE: '0001', TOTAL_VAL: 400000, TV_NSD: 400000, TV_SD: 400000 }),
     flShop: one(FL, { COUNTY: 58, USE_CODE: '0011', TOTAL_VAL: 400000, TV_NSD: 400000 }),
-    holbrook: est({ region: MA, commonOnly: false, r0: { CITY: 'HOLBROOK', USE_CODE: '101', FY: 2022 }, recs: [{ CITY: 'HOLBROOK', USE_CODE: '101', TOTAL_VAL: 400000, FY: 2022 }] }),
-    stale: [2022, 2023, 2024, 2026, 2027].map((fy) => !!window.__hp.staleRecord({ region: { id: 'MA' }, fy, r0: { CITY: 'HOLBROOK' } })),
+    oldTown: est({ region: MA, commonOnly: false, r0: { CITY: 'REVERE', USE_CODE: '101', FY: 2022 }, recs: [{ CITY: 'REVERE', USE_CODE: '101', TOTAL_VAL: 400000, FY: 2022 }] }),
+    stale: [2022, 2023, 2024, 2026, 2027].map((fy) => !!window.__hp.staleRecord({ region: { id: 'MA' }, fy, r0: { CITY: 'REVERE' } })),
     staleCt: !!window.__hp.staleRecord({ region: { id: 'CT' }, fy: 2020, r0: {} }),
-    staleText: window.__hp.staleHtml({ region: { id: 'MA' }, fy: 2022, r0: { CITY: 'HOLBROOK' } }),
+    staleText: window.__hp.staleHtml({ region: { id: 'MA' }, fy: 2022, r0: { CITY: 'REVERE' } }),
   };
 });
 check(r.stale.join() === 'true,true,false,false,false' && !r.staleCt, 'old Massachusetts records (FY2023 or older) are flagged; others aren’t');
-check(/Holbrook’s FY2022 records/.test(r.staleText) && /google\.com\/search\?q=Holbrook%20MA%20assessor/.test(r.staleText), 'the flag names the town and links to its assessor database');
-check(r.holbrook && r.holbrook.notes.some((n) => /FY2026 rate on the town’s FY2022 value \(the newest the state has\), so it’s likely low/.test(n)), 'tax estimate says it’s likely low on an old value');
+check(/Revere’s FY2022 records/.test(r.staleText) && /google\.com\/search\?q=Revere%20MA%20assessor/.test(r.staleText), 'the flag names the town and links to its assessor database');
+check(r.oldTown && r.oldTown.notes.some((n) => /FY2026 rate on the town’s FY2022 value \(the newest the state has\), so it’s likely low/.test(n)), 'tax estimate says it’s likely low on an old value');
 check(r.towns === 351 && r.counties === 67, 'tables complete (351 towns, 67 counties)');
 console.log('  town ids:', r.byId.join(' | '), '\n  county ids:', r.flById.join(' | '));
 check(r.byId.join('|') === 'Boston 12.4|Cambridge 6.67|Dedham 12.3|Aquinnah 6.87|Yarmouth 6.97', 'town ids map to the right towns');
