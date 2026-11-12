@@ -2424,6 +2424,25 @@ function riAssessorUrl(town) {
   if (RI_NEREVAL.includes(town)) return `https://data.nereval.com/SearchInfo.aspx?town=${encodeURIComponent(town).replace(/%20/g, '+')}`;
   return null;
 }
+// States with one property search for most of their counties: Tennessee's Comptroller (86 of 95 counties; the nine that run their own
+// sites are left out) and Kansas's ORKA, which the state runs for its counties (the big counties with their own sites are left out).
+// Elsewhere, the county's own record is a web search away.
+const STATE_SITES = {
+  TN: { url: 'https://assessment.cot.tn.gov/TPAD', text: 'Tennessee’s property search (the Comptroller’s)',
+    except: ['Davidson', 'Hamilton', 'Knox', 'Montgomery', 'Rutherford', 'Shelby', 'Williamson', 'Chester', 'Hickman'] },
+  KS: { url: 'https://orkahub.kansasgis.org/', text: 'Kansas’s ORKA property search', except: ['Johnson', 'Shawnee', 'Wyandotte', 'Sedgwick'] },
+};
+const countyBase = (c) => t2clean(c).replace(/\s+(County|Parish)$/i, '');
+// The state's own search, when this county is on it (the county must be known: the counties left out are the most populous)
+function recordSiteFor(st, county) { const x = STATE_SITES[st], c = countyBase(county); return x && c && !x.except.includes(c) ? x : null; }
+// The basic card's record link, once the county is known: the state's search with a web search beside it, or the web search alone
+function patchRecordLink(L, s, county) {
+  const rl = $('#cardBody .rec-link'), el = $('#cardBody .addr'); if (!rl || !el || el.dataset.k !== L.p.key || !county) return;   // the card has moved on
+  const st = s.region.state, x = recordSiteFor(st, county), web = basicRecordSearch(st, county);
+  if (!x) { rl.href = web; return; }
+  rl.href = x.url; rl.textContent = `${x.text} ›`;
+  if (!$('#cardBody .rec-alt')) rl.insertAdjacentHTML('afterend', `<a class="rec-alt" href="${esc(web)}" target="_blank" rel="noopener">or search the web for the ${esc(countyBase(county))} County record ›</a>`);
+}
 const townSearch = (town, st) => `https://www.google.com/search?q=${encodeURIComponent(`${town} ${st} assessor property database`)}`;
 // Who keeps the record: the town in Rhode Island, the parish in Louisiana, the county everywhere else the basic card goes.
 const assessorWord = (st) => (st === 'RI' ? 'town' : st === 'LA' ? 'parish' : 'county');
@@ -4959,9 +4978,10 @@ function renderCard(cand, total, idx) {
       if (L.p.posPlace) patchPlace(L.p);
       const pl = L.p.posPlace, el = $('#cardBody .addr'); if (!pl || !el || el.dataset.k !== L.p.key) return;
       const tw = $('#cardBody .town'); if (tw && !s.town && pl.town) tw.textContent = [pl.town, s.typeLabel].filter(Boolean).join(' · ');
-      const rl = $('#cardBody .rec-link'); if (rl && pl.county && !s.r0.COUNTY && s.region.state !== 'RI') rl.href = basicRecordSearch(s.region.state, pl.county);
+      if (!s.r0.COUNTY && s.region.state !== 'RI') patchRecordLink(L, s, pl.county);
     });
   }
+  if (s.region.basic && s.region.state !== 'RI' && s.r0.COUNTY) patchRecordLink(L, s, s.r0.COUNTY);   // the county from the building's own outline
   if (s.region.basic && s.region.state === 'RI' && !DEMO) {
     const [tla, tlo] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
     townAt(tla, tlo).then((town) => {
@@ -7574,7 +7594,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
-  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
+  SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, recordSiteFor, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
 })();
 </script>
 </body>

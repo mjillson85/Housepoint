@@ -148,6 +148,11 @@ const pv = await ri(41.824, -71.412);
 check(pv.link === 'https://data.nereval.com/SearchInfo.aspx?town=Providence' && /^Providence’s assessor database ›$/.test(pv.text), `Rhode Island: Providence's records on Northeast Revaluation's site: ${pv.link}`);
 const town = await page.evaluate(() => [['Burrillville', 'Central Falls', 'West Warwick', 'Cranston', 'New Shoreham', 'Little Compton'].map((t) => window.__hp.riAssessorUrl(t)), window.__hp.riAssessorUrl('Springfield')]);
 check(town[0].every(Boolean) && /town=Central\+Falls$/.test(town[0][1]) && town[0][3] === 'https://gis.vgsi.com/CranstonRI' && town[1] === null, `Rhode Island: every town has its site, none for a town that isn't one: ${JSON.stringify(town)}`);
+// Tennessee and Kansas: the state's own property search for the counties on it, the county's web search for the big ones that aren't
+const sites = await page.evaluate(() => { const f = (st, c) => (window.__hp.recordSiteFor(st, c) || {}).url || null;
+  return [f('TN', 'Sumner County'), f('TN', 'Knox'), f('TN', 'Shelby County'), f('TN', null), f('KS', 'Riley'), f('KS', 'Johnson County'), f('SC', 'Richland')]; });
+check(JSON.stringify(sites) === JSON.stringify(['https://assessment.cot.tn.gov/TPAD', null, null, null, 'https://orkahub.kansasgis.org/', null, null]),
+  `Tennessee's and Kansas's statewide searches only for counties on them (and only once the county is known): ${JSON.stringify(sites)}`);
 const h2 = await card('102');
 check(/1712 Pickens St \|/.test(h2.card) && /Columbia · House/.test(h2.card) && !/nearest one on OpenStreetMap/.test(h2.card), `an outline with its own address uses it: ${h2.card.slice(0, 200)}`);
 const ap = await card('104');

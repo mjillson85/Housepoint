@@ -5,7 +5,7 @@ Point your phone at a house and see its story: when it was built, what it last s
 - **Property records and lot lines:** Massachusetts, Connecticut, New Jersey, Florida, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, Washington DC, Maryland, New York, Vermont, Montana, Arkansas, Colorado, Wyoming, Utah, Alaska and Maine.
 - **Big counties and cities:** Cook County (Chicago); Harris (Houston) and Tarrant (Fort Worth), Texas; Alameda and San Bernardino, California; Franklin (Columbus) and Hamilton (Cincinnati), Ohio; Nashville; Bismarck; the Portland area (Multnomah, Washington and Clackamas); Ada County (Boise); Oakland and Macomb, Michigan; Sedgwick County (Wichita); Atlanta; Maricopa County (Phoenix).
 - **Lot lines and addresses only** (values are on the county's or town's site, linked where the state's map has the link): Indiana, New Hampshire, West Virginia, Nevada, Hawaii, Delaware and Virginia.
-- **Everywhere else in the US, the basic card:** the building's use, footprint and height from the national building outlines (USA Structures), the nearest address on OpenStreetMap, flood zone, schools, neighborhood, safety, nearby places and a search for the county's own record.
+- **Everywhere else in the US, the basic card:** the building's use, footprint and height from the national building outlines (USA Structures), the nearest address on OpenStreetMap, flood zone, schools, neighborhood, safety, nearby places and a link to the record: the town's own assessor database in Rhode Island (its towns, not counties, keep the records), Tennessee's and Kansas's statewide property searches for the counties on them, and a search for the county's own record elsewhere.
 
 **Live:** https://mjillson85.github.io/Housepoint/
 
