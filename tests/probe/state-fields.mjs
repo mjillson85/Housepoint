@@ -21,14 +21,17 @@ await page.goto('http://localhost:8799/');
 // Wisconsin, Washington, Nebraska, Minnesota, New York, DC and Maryland are in git history (November 11, 2026).
 // Tier 2 (Colorado, Arkansas, Vermont, Montana, Wyoming, Alaska, Utah's Salt Lake County, Cook County): want 'auto' asks for every field
 // except owner, mailing, name, deed and legal fields (AUTO_SKIP below), to learn what each layer holds.
-const STATES = {   // Earlier rounds are in git history (November 11, 2026). Round 6: the lot-line states' codes and records.
-  IN: { layer: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', want: 'auto', spots: [[39.79, -86.15, 'Indianapolis'], [41.68, -86.25, 'South Bend']] },
-  NH: { layer: 'https://nhgeodata.unh.edu/hosting/rest/services/Hosted/CAD_ParcelMosaic/FeatureServer/1', want: 'auto', spots: [[43.21, -71.54, 'Concord'], [42.99, -71.46, 'Manchester']] },
-  WV: { layer: 'https://services.wvgis.wvu.edu/arcgis/rest/services/Planning_Cadastre/WV_Parcels/MapServer/0', want: 'auto', spots: [[38.35, -81.63, 'Charleston']] },
-  NV: { layer: 'https://arcgis.water.nv.gov/arcgis/rest/services/BaseLayers/County_Parcels_in_Nevada/MapServer/0', want: 'auto', spots: [[39.52, -119.81, 'Reno'], [36.15, -115.15, 'Las Vegas']] },
-  HI: { layer: 'https://geodata.hawaii.gov/arcgis/rest/services/ParcelsZoning/MapServer/25', want: 'auto', spots: [[21.30, -157.82, 'Honolulu']] },
-  DE: { layer: 'https://enterprise.firstmap.delaware.gov/arcgis/rest/services/PlanningCadastre/DE_StateParcels/FeatureServer/0', want: 'auto', spots: [[39.75, -75.55, 'Wilmington']] },
-  VA: { layer: 'https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', want: 'auto', spots: [[37.55, -77.46, 'Richmond'], [38.88, -77.10, 'Arlington']] },
+const STATES = {   // Earlier rounds are in git history (November 11, 2026). Round 7: big counties (LA, Philadelphia, Allegheny, Travis, Bexar, Dallas).
+  LA_GISNET: { layer: 'https://rpgis.isd.lacounty.gov/arcgis/rest/services/GISNET_Public/MapServer/333', want: 'auto', spots: [[34.0635, -118.30, 'Koreatown'], [34.150, -118.140, 'Pasadena'], [33.835, -118.340, 'Torrance']] },
+  LA_DPW: { layer: 'https://dpw.gis.lacounty.gov/dpw/rest/services/GIS_Web_Services/MapServer/2', want: 'auto', spots: [[34.0635, -118.30, 'Koreatown'], [34.150, -118.140, 'Pasadena']] },
+  LA_PUBLIC: { layer: 'https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0', want: 'auto', spots: [[34.0635, -118.30, 'Koreatown']] },
+  PHL_PWD: { layer: 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/PWD_PARCELS/FeatureServer/0', want: 'auto', spots: [[39.9495, -75.170, 'Rittenhouse'], [40.035, -75.215, 'Roxborough']] },
+  ALLE_COUNTY: { layer: 'https://gisdata.alleghenycounty.us/arcgis/rest/services/OPENDATA/Parcels/MapServer/0', want: 'auto', spots: [[40.4440, -79.9530, 'Oakland'], [40.3770, -80.0450, 'Mt. Lebanon']] },
+  ALLE_PASDA: { layer: 'https://maps.pasda.psu.edu/server/rest/services/AlleghenyCountyParcels/MapServer/0', want: 'auto', spots: [[40.4440, -79.9530, 'Oakland']] },
+  TX_TRAVIS: { layer: 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_public/FeatureServer/0', want: 'auto', spots: [[30.3050, -97.7270, 'Hyde Park, Austin'], [30.2470, -97.7700, 'Zilker']] },
+  TX_TRAVIS_TCAD: { layer: 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0', want: 'auto', spots: [[30.3050, -97.7270, 'Hyde Park, Austin']] },
+  TX_BEXAR: { layer: 'https://maps.bexar.org/arcgis/rest/services/Parcels/MapServer/0', want: 'auto', spots: [[29.4870, -98.4650, 'Alamo Heights'], [29.4100, -98.5000, 'King William']] },
+  TX_DALLAS: { layer: 'https://gis.dallascityhall.com/arcgis/rest/services/Crm_public/CrmLayers/MapServer/13', want: 'auto', spots: [[32.8130, -96.7990, 'Uptown Dallas'], [32.8100, -96.7500, 'Lakewood']] },
 };
 // In 'auto' mode: besides BAD, any field that could hold a person's name, a deed reference or a legal description.
 // (also "original" and "unmodified" copies of a record, which can hold the owner's name and mailing address: Alabama's do)
