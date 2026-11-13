@@ -18,13 +18,11 @@ const links = [
   ...nereval.map((t) => [t, `https://data.nereval.com/SearchInfo.aspx?town=${encodeURIComponent(t).replace(/%20/g, '+')}`]),
 ];
 // The county record pages the big counties' cards link to, at a commercial or public parcel each (a page that answers is enough:
-// some are apps that fill in after loading). Allegheny's and Bexar's are candidates, not linked yet.
+// some are apps that fill in after loading). Allegheny's real estate portal answered 500 to a parcel link (November 13, 2026): not linked.
 links.push(['Los Angeles County Assessor', 'https://portal.assessor.lacounty.gov/parceldetail/5502031011', /./],
   ['Philadelphia property', 'https://property.phila.gov/?p=882971656', /./],
   ['Travis CAD', 'https://travis.prodigycad.com/property-detail/303036', /./],
-  ['Allegheny real estate (candidate)', 'https://www2.alleghenycounty.us/RealEstate/GeneralInfo?ParcelID=0027S00150000003', /./],
-  ['Bexar CAD (candidate)', 'https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=1296114', /./],
-  ['Bexar CAD esearch (candidate)', 'https://esearch.bcad.org/Property/View/1296114', /./]);
+  ['Bexar CAD', 'https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=1296114', /./]);
 console.log(`== ${links.length} assessor links: the statewide searches, then Rhode Island's towns, then the big counties' record pages`);
 let bad = 0;
 for (const [town, url, nameRe] of links) {

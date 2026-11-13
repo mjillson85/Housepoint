@@ -160,7 +160,7 @@ const R = {
       Zip: 'SECRET ZIP', Zip4: 'SECRET Z4', Country: 'SECRET COUNTRY', DBA: 'SECRET DBA', LglDesc: 'SECRET LEGAL' },
     lot: { PropID: 346999, Situs: '150 WILDROSE AVE \r\nALAMO HEIGHTS, TX 78209', State_cd: 'A1', PropUse: '001', LandVal: 350000, ImprVal: 500000, TotVal: 850000,
       YrBlt: '1928', GBA: '2400', Stories: '2' },
-    card: [/150 Wildrose Ave \|/, /Alamo Heights · Single-family home/, /MARKET VALUE \(BCAD\)[^|]*\| \$850,000/i, /Built 1928/] },
+    card: [/150 Wildrose Ave \|/, /Alamo Heights · Single-family home/, /MARKET VALUE \(BCAD\)[^|]*\| \$850,000/i, /Built 1928/, /Bexar Appraisal District’s page/] },
   IN: { url: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', spot: [39.7900, -86.1500],
     fields: ['objectid', 'state_parcel_id', 'parcel_id', 'prop_add', 'prop_city', 'prop_state', 'prop_zip', 'dlgf_prop_class_code', 'county_fips', 'tax_county'],
     owner: {},

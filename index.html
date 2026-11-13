@@ -2395,7 +2395,8 @@ function phlKind(r) {
 function phlLabel(r) {
   const d = t2clean(r.USE_DESC).toUpperCase(), k = phlKind(r);
   if (k === 'single') return /^ROW/.test(d) ? 'Row house' : /^(SEMI|S\/D|TWIN)/.test(d) ? 'Twin (semi-detached)' : /^DET/.test(d) ? 'Detached house' : KIND_LABEL.single;
-  return wordsLabel(k, d);
+  // the building words are abbreviated ("OFF BLD N/COM W/PKG MASON"): the property office's category reads better
+  return KIND_LABEL[k] && !['unknown', 'other'].includes(k) ? KIND_LABEL[k] : sentence(r.USE_CODE) || wordsLabel(k, d);
 }
 // Allegheny County: the county's assessment for each parcel, from the Western Pennsylvania Regional Data Center (CKAN), by parcel
 // id. The data center doesn't allow cross-site requests, so it's asked by JSONP. Only these columns are asked for (the table has
@@ -3738,9 +3739,11 @@ const REGIONS = {
       YEAR_BUILT: ['YrBlt'], BLD_AREA: ['GBA'], STORIES: ['Stories'] },
     // "143 WILDROSE AVE \r\nALAMO HEIGHTS, TX 78209": the street address, then the town and zip
     derive: (o) => { const [a, csz] = String(o.SITE_ADDR ?? '').split(/\r?\n/); o.SITE_ADDR = t2clean(a);
-      const m = /^(.*?),\s*TX\s+(\d{5})/i.exec(t2clean(csz)); o.CITY = m ? m[1] : null; o.ZIP = m ? m[2] : null; },
+      const m = /^(.*?),\s*TX\s+(\d{5})/i.exec(t2clean(csz)); o.CITY = m ? m[1] : null; o.ZIP = m ? m[2] : null;
+      const id = Math.round(num(o.PROP_ID)); o.RECORD_URL = id > 0 ? `https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=${id}` : null; },
     addrWhere: looseAddrWhere,
     kindOf: (r) => txKind(r), labelOf: (r) => txLabel(r),
+    recordLinkText: 'Bexar Appraisal District’s page for this property',
     valueLabel: 'Market value (BCAD)', valueWord: 'Market value', valueTitle: 'Market value',
     source: () => 'Source: Bexar County’s parcels with the Bexar Appraisal District’s values. Market value is the district’s appraisal for taxes. Texas doesn’t make sale prices public.',
     shareSource: 'Bexar Appraisal District values via Bexar County',

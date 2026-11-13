@@ -19,16 +19,15 @@ page.on('pageerror', (e) => log('  [page error]', e.message));
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.
-const STATES = {   // Earlier rounds: in git history (November 11, 2026). The basic card, and a covered state's county that shares nothing:
-  US_SC: { spots: [[33.9980, -81.0300, null, 'Columbia SC'], [34.0150, -81.0150, null, 'Columbia Elmwood Park']], searches: ['1100 Gervais St, Columbia, SC'] },
-  US_PA: { spots: [[39.9520, -75.1800, null, 'Philadelphia Rittenhouse'], [40.4400, -79.9500, null, 'Pittsburgh']], searches: ['1500 Market St, Philadelphia, PA'] },
-  US_NM: { spots: [[35.0900, -106.6300, null, 'Albuquerque Nob Hill']], searches: ['1119 Las Lomas Rd NE, Albuquerque, NM'] },
-  US_LA: { spots: [[29.9300, -90.1000, null, 'New Orleans Uptown']], searches: [] },
-  US_SD: { spots: [[43.5450, -96.7300, null, 'Sioux Falls']], searches: [] },
-  US_TX: { spots: [[30.2700, -97.7400, null, 'Austin'], [32.8100, -96.7900, null, 'Dallas Uptown']], searches: ['112 E 7th St, Austin, TX'] },
-  US_CA: { spots: [[34.0600, -118.3000, null, 'Los Angeles Koreatown']], searches: [] },
-  NY_GAP: { spots: [[40.7268, -73.6343, null, 'Garden City NY (Nassau shares no records)']], searches: [] },
+const STATES = {   // Earlier rounds: in git history (November 13, 2026). The newest counties (public buildings and landmarks for the searches):
+  CA_LA: { spots: [[34.0635, -118.3000, null, 'Los Angeles Koreatown'], [33.8350, -118.3400, null, 'Torrance']], searches: ['3900 Lankershim Blvd, Los Angeles, CA'] },
+  PA_PHILA: { spots: [[40.0350, -75.2150, null, 'Philadelphia Roxborough'], [39.9493, -75.1707, null, 'Rittenhouse condos']], searches: ['1500 Market St, Philadelphia, PA'] },
+  PA_ALLEGHENY: { spots: [[40.3770, -80.0450, null, 'Mt. Lebanon'], [40.4440, -79.9530, null, 'Pittsburgh Oakland']], searches: ['4400 Forbes Ave, Pittsburgh, PA'] },
+  TX_TRAVIS: { spots: [[30.3050, -97.7270, null, 'Austin Hyde Park']], searches: ['1100 Congress Ave, Austin, TX'] },
+  TX_BEXAR: { spots: [[29.4870, -98.4650, null, 'Alamo Heights']], searches: ['300 Alamo Plaza, San Antonio, TX'] },
 };
+// The joined tables' warnings (Philadelphia's property office, Allegheny's assessments), if a join fails
+page.on('console', (m) => { if (/Philadelphia records|Allegheny assessments|extra records/.test(m.text())) log('  [console]', m.text().slice(0, 300)); });
 for (const [st, cfg] of Object.entries(STATES)) {
   log(`######## ${st}`);
   for (const [lat, lon, addr, what] of cfg.spots) {
@@ -45,6 +44,8 @@ for (const [st, cfg] of Object.entries(STATES)) {
       // Vermont and Alaska: the nearest address arrives a moment later
       if (/Address not listed/.test(document.querySelector('#cardBody').innerText)) await new Promise((r) => setTimeout(r, 2500));
       const kinds = {}; for (const l of S.local) { const k = hp.summarize(l.p).kind; kinds[k] = (kinds[k] || 0) + 1; }
+      const recs = S.local.flatMap((l) => l.p.records);
+      kinds.withValue = recs.filter((x) => Number(x.TOTAL_VAL) > 0).length; kinds.withAddress = recs.filter((x) => x.SITE_ADDR).length; kinds.records = recs.length;
       return { ms, rid: (hp.regionFor(lat, lon) || {}).id || null, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
     }, lat, lon, addr);
     log(`== ${what} [${r.rid}]: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}${r.help ? ' · ' + r.help : ''}`);
@@ -61,5 +62,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
 await page.goto('http://localhost:8800/?health=1');
 for (let i = 0; i < 600 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Building outlines|Texas|Ohio|Maine|Indiana|Virginia|Flood|elevation|Aerial/.test(h)) log('   ' + h.slice(0, 300));
+log('== health rows'); for (const h of rows) if (/Los Angeles|Philadelphia|Allegheny|Travis|Bexar|Building outlines|Flood|elevation|Aerial/.test(h)) log('   ' + h.slice(0, 300));
 await browser.close(); srv.close();
