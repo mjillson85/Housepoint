@@ -12,7 +12,7 @@ const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL
 
 // The list itself catches what it should, and lets through what it should
 for (const f of ['OWNER1', 'OWN_NAME', 'Owner_Name', 'MAIL_ADDR', 'TAXPAYER', 'CARE_OF', 'CAREOF', 'LEGAL_DESC', 'LEGALDESC', 'DEED_BOOK', 'DEEDPAGE', 'GRANTOR',
-  'GRANTEE', 'BOOK', 'LS_BOOK', 'LS_PAGE', 'PAGE', 'TAX_DESC', 'PROPDESC', 'PROP_DESC', 'ADDRESS1', 'PO_BOX', 'NAME', 'BUYER_NAME', 'INSTRUMENT', 'DEED_NAME'])
+  'GRANTEE', 'BOOK', 'LS_BOOK', 'LS_PAGE', 'PAGE', 'TAXPAADD1', 'TAXPACITY', 'TAXPAZIP', 'TAX_DESC', 'PROPDESC', 'PROP_DESC', 'ADDRESS1', 'PO_BOX', 'NAME', 'BUYER_NAME', 'INSTRUMENT', 'DEED_NAME'])
   check(isOwnerish(f), `the owner list catches ${f}`);
 for (const f of ['SITE_ADDR', 'LS_DATE', 'LS_PRICE', 'TOTAL_VAL', 'USE_CODE', 'USE_DESC', 'LAND_USE_D', 'CITY', 'TOWN', 'MUN_NAME', 'Ownership_Type', 'ownership',
   'CityStateZip', 'OwnDate', 'DEED_DATE', 'PROP_ADDR', 'YEAR_BUILT', 'CLASS_DESC', 'WEBPAGE_URL'])
