@@ -14,6 +14,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8801);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
+// Anything the page's script rules (Content-Security-Policy) refuse while asking the real services: a service the rules don't
+// allow is a broken feature, so it fails the run too. Only the rule and the address's host are kept.
+await page.evaluateOnNewDocument(() => { window.__refused = []; document.addEventListener('securitypolicyviolation', (e) => {
+  let host = e.blockedURI; try { host = new URL(e.blockedURI).host || e.blockedURI; } catch (x) { /* inline, eval */ } window.__refused.push(`${e.effectiveDirective} ${host}`); }); });
 await page.goto('http://localhost:8801/?health=1');
 let done = false;
 for (let i = 0; i < 1200 && !done; i++) { await sleep(500); done = await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false); }
@@ -38,7 +42,9 @@ for (const r of rows.filter((x) => x.cls === 'bad' && /: property records$/.test
 }
 const movedLayers = await page.evaluate(() => Object.values(window.__hp.REGIONS).filter((r) => /\/(FeatureServer|MapServer)\/\d+\/?$/i.test((r.services || [])[0] || '') && window.__hp.SVC[r.id] && window.__hp.SVC[r.id].layerUrl
   && window.__hp.SVC[r.id].layerUrl !== r.services[0].replace(/\/+$/, '')).map((r) => `  ${r.name}: answered from ${window.__hp.SVC[r.id].layerUrl}, not ${r.services[0]} (update the address)`));
+const refused = [...new Set(await page.evaluate(() => window.__refused))];
 await browser.close(); srv.close();
+if (refused.length) console.log(`\nRefused by the page's script rules (index.html's Content-Security-Policy):\n${refused.map((x) => '  ' + x).join('\n')}`);
 if (movedLayers.length) console.log(`\nRegions whose records came from another layer:\n${movedLayers.join('\n')}`);
 
 const MARK = { ok: '  ok  ', warn: ' warn ', bad: ' BAD  ', wait: ' wait ' };
@@ -47,7 +53,7 @@ for (const r of rows) console.log(`${MARK[r.cls] || r.cls} ${r.label} | ${r.msg.
 const dead = rows.filter((r) => (r.cls === 'bad' && /: property records$|: lots around |^(Assessed|Market) values in /.test(r.label)) || r.cls === 'wait');
 console.log(`\n${rows.length} checks: ${rows.filter((r) => r.cls === 'ok').length} ok, ${rows.filter((r) => r.cls === 'warn').length} with a problem, ${rows.filter((r) => r.cls === 'bad').length} not answering${done ? '' : ' (the page never finished)'}`);
 if (why.length) console.log(`\nWhy the records didn't answer:\n${why.join('\n')}`);
-if (!done || dead.length) {
-  console.log(`\nNeeds a look:\n${dead.map((r) => `  ${r.label}: ${r.msg.slice(0, 200)}`).join('\n') || '  the check page never finished'}`);
+if (!done || dead.length || refused.length) {
+  console.log(`\nNeeds a look:\n${dead.map((r) => `  ${r.label}: ${r.msg.slice(0, 200)}`).join('\n') || (refused.length ? '  the page refused something (above)' : '  the check page never finished')}`);
   process.exitCode = 1;
 }

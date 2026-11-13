@@ -16,6 +16,10 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 page.on('pageerror', (e) => log('  [page error]', e.message));
+// Anything the page's script rules refuse while showing real cards (only the rule and the host are printed)
+await page.evaluateOnNewDocument(() => document.addEventListener('securitypolicyviolation', (e) => {
+  let host = e.blockedURI; try { host = new URL(e.blockedURI).host || e.blockedURI; } catch (x) { /* inline */ } console.log(`[refused] ${e.effectiveDirective} ${host}`); }));
+page.on('console', (m) => { if (m.text().startsWith('[refused]')) log('  ' + m.text()); });
 await page.goto('http://localhost:8800/');
 
 // The newest states: [lat, lon, address on the lot to open (or the nearest built lot), what it is], then searches to time.

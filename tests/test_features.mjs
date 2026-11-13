@@ -73,11 +73,29 @@ async function newPage(errors) {
   await page.click('#arPill'); await sleep(500);
   check(await page.$$eval('.arc', (els) => els.length) > 0, 'Labels on brings them back');
 
-  // landscape: no tags (they assume a phone held up in portrait)
+  // On its side: tags show when the screen turns with the phone, around the pills, the radar and the bar; not when it doesn't
+  // (rotation lock), nor on a landscape screen before there's a tilt reading.
+  const pose = (b, g) => page.evaluate((b, g) => { const S = window.__hp.S; S.beta = b; S.gamma = g; }, b, g);
+  const tagsShown = () => page.$$eval('.arc', (els) => els.filter((el) => el.style.opacity === '1').map((el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; }));
+  const box = (q) => page.$eval(q, (el) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
+  const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  await pose(null, null);
   await page.setViewport({ width: 844, height: 390, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(500);
-  check(await page.$$eval('.arc', (els) => els.length) === 0, 'no tags in landscape');
-  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(600);
-  check(await page.$$eval('.arc', (els) => els.length) > 0, 'tags return in portrait');
+  check((await tagsShown()).length === 0, 'landscape screen, no tilt reading yet: no tags');
+  await pose(0, -90); await sleep(700);
+  const land = await tagsShown(), hudL = await box('#hudLeft'), radar = await box('#radarWrap'), bar = await box('#bar');
+  check(land.length > 0, `phone on its side with the screen turned too: tags show (${land.length})`);
+  check(land.every((r) => !overlaps(r, hudL) && !overlaps(r, radar) && r.bottom <= bar.top), 'landscape tags stay clear of the pills, the radar and the bar');
+  await page.screenshot({ path: 'ar_landscape.png' });
+  await pose(90, 0); await sleep(600);
+  check((await tagsShown()).length === 0, 'landscape screen but the phone upright: no tags');
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await pose(0, -90); await sleep(600);
+  check((await tagsShown()).length === 0, 'rotation lock (phone on its side, screen still portrait): no tags');
+  await pose(20, 0); await sleep(600);
+  check((await tagsShown()).length === 0, 'camera at the ground: no tags');
+  await pose(90, 0); await sleep(600);
+  check((await tagsShown()).length > 0, 'tags return upright in portrait');
+  await pose(null, null);
   // debug overlay has the view line
   console.log('debug:', (await page.$eval('#debug', (el) => el.innerText)).split('\n').find((l) => l.startsWith('view')));
 

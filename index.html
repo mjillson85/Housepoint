@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- What the page may load. Scripts: this page's own, and the three services read by JSONP (JSONP_HOSTS below; the tests check
+     the two lists match), so a script from anywhere else is refused. No inline event handlers (onerror= and the like). The app's
+     code is inline, so inline script has to be allowed, which also lets javascript: links run: what a records service sends is
+     escaped before it's shown, and its links are used only if they're web addresses (webUrl). Data from any https service,
+     since the app finds layers on many state and county servers. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://data.wprdc.org https://geocoding.geo.census.gov https://tigerweb.geo.census.gov; script-src-elem 'self' 'unsafe-inline' https://data.wprdc.org https://geocoding.geo.census.gov https://tigerweb.geo.census.gov; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https:; media-src 'self' blob: mediastream:; manifest-src 'self'; worker-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14110f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -42,6 +48,8 @@
     --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --safe-t: env(safe-area-inset-top, 0px);
     --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);    /* landscape: the notch side */
+    --safe-r: env(safe-area-inset-right, 0px);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; background: #14110f; color: #fff; font-family: var(--sans); overflow: hidden; overscroll-behavior: none; }
@@ -98,7 +106,7 @@
   #aboutClose { width: 100%; height: 46px; border-radius: 12px; background: var(--ink); color: var(--paper); font-weight: 600; margin: 8px 0 4px; }
 
   /* ---------- HUD ---------- */
-  #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(12px + var(--safe-t)) 14px 0; display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
+  #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(12px + var(--safe-t)) calc(14px + var(--safe-r)) 0 calc(14px + var(--safe-l)); display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
   .pill { pointer-events: auto; display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 999px;
     background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13px; font-weight: 500; white-space: nowrap; }
   .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #d9a441; }
@@ -127,7 +135,7 @@
     color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); text-align: center; width: 86vw; }
 
   /* ---------- bottom bar ---------- */
-  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 22px calc(22px + var(--safe-b)); display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 calc(22px + var(--safe-r)) calc(22px + var(--safe-b)) calc(22px + var(--safe-l)); display: flex; align-items: center; justify-content: space-between; z-index: 10; }
   .round { width: 52px; height: 52px; border-radius: 50%; background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     display: grid; place-items: center; }
   .round svg { width: 22px; height: 22px; }
@@ -1840,6 +1848,8 @@ function attachImageryFallback(group, set, credit) {
 const t2clean = (a) => String(a ?? '').replace(/\s+/g, ' ').trim();
 const t2year = (y) => (num(y) > 1600 && num(y) <= THIS_YEAR ? num(y) : null);
 // A county's own page for the record, as a link out: https, or http where that's all the county's site offers (a link, not a fetch)
+// A link from a records service is used only if it's a web address (never javascript: or data:).
+const webUrl = (u) => { try { const x = new URL(String(u == null ? '' : u).trim()); return /^https?:$/.test(x.protocol) && x.hostname.includes('.') ? x.href : null; } catch (e) { return null; } };
 const t2url = (u) => (/^https?:\/\/[\w.-]+\.[a-z]{2,}(\/|$)/i.test(t2clean(u)) ? t2clean(u) : null);
 
 // Montana: the Department of Revenue's records via the State Library's cadastral parcels. Its property type is broad: a house
@@ -4125,6 +4135,7 @@ function normalizeRecord(attrs, rid) {
   // Values a region added from its other tables (DC's building records) come already named: __YEAR_BUILT is YEAR_BUILT.
   for (const [k, v] of Object.entries(attrs)) if (k.startsWith('__') && ALL_FIELDS.has(k.slice(2))) out[k.slice(2)] = v;
   const rg = rid && REGIONS[rid]; if (rg && rg.derive) rg.derive(out);
+  if (out.RECORD_URL != null) out.RECORD_URL = webUrl(out.RECORD_URL);   // a web address or nothing, whatever the service sent
   if (!out.LS_DATE && num(out.SALE_YR) > 1800) out.LS_DATE = `${num(out.SALE_YR)}${String(num(out.SALE_MO) || 1).padStart(2, '0')}01`;
   return out;
 }
@@ -4787,7 +4798,7 @@ function demoParcels(lat0, lon0) {
 const S = {
   mode: 'start',
   pos: null, acc: null,          // GPS
-  heading: null, beta: null,     // compass (true north)
+  heading: null, beta: null, gamma: null,     // compass (true north) and tilt
   hbuf: [], gotOrientation: false, orientSource: null,
   accBuf: [], compassAcc: null, rawCompassAcc: null, compassBad: false, compassWarned: false,   // iPhone compass accuracy (± degrees, -1 = needs calibrating)
   parcels: [], center: null, proj: null, local: [], loading: null, bldgs: [], bldgVer: 0,
@@ -5324,7 +5335,7 @@ function renderCard(cand, total, idx) {
     ${grid}
     ${unitList}
     ${s.isHome ? buyBoxHtml(L) : ''}
-    ${r.RECORD_URL ? `<a class="rec-link" href="${esc(r.RECORD_URL)}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
+    ${webUrl(r.RECORD_URL) ? `<a class="rec-link" href="${esc(webUrl(r.RECORD_URL))}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
     <div class="note">${s.addrApprox ? (s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ') : ''}${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
     ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
@@ -6031,15 +6042,22 @@ function whyFailed(e) {
   if (/census key/i.test(m)) return m;
   return m.length > 160 ? m.slice(0, 157) + '…' : m;
 }
-// Load a script-wrapped (JSONP) answer: works with services that don't allow cross-site requests.
+// Load a script-wrapped (JSONP) answer: works with services that don't allow cross-site requests. A JSONP answer runs as script
+// in the page, so only these hosts are asked this way (the page's script rules allow just these too), and only an object counts
+// as an answer.
+// A javascript: link can't come from the app's own code; if one ever got into the page, clicking it does nothing.
+document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[href]'); if (a && /^\s*javascript:/i.test(a.getAttribute('href'))) e.preventDefault(); }, true);
+const JSONP_HOSTS = ['data.wprdc.org', 'geocoding.geo.census.gov', 'tigerweb.geo.census.gov'];
 function jsonp(url, param = 'callback', ms = 15000) {
+  let host = ''; try { const u = new URL(url); host = u.protocol === 'https:' ? u.host.toLowerCase() : ''; } catch (e) { /* not a URL */ }
+  if (!JSONP_HOSTS.includes(host)) return Promise.reject(new Error(`not a JSONP host: ${host || url}`));
   return new Promise((resolve, reject) => {
     const name = '__hp' + Math.random().toString(36).slice(2), s = document.createElement('script');
     const gone = () => { try { delete window[name]; } catch (e) { window[name] = undefined; } };
     // After giving up, the script may still arrive and call back: leave a stub that just cleans up.
     const done = (err, v) => { clearTimeout(t); if (err) window[name] = gone; else gone(); s.remove(); if (err) reject(err); else resolve(v); };
     const t = setTimeout(() => done(new Error('no answer')), ms);
-    window[name] = (v) => done(null, v);
+    window[name] = (v) => (v && typeof v === 'object' ? done(null, v) : done(new Error('not an answer')));
     s.onerror = () => done(new Error('blocked'));
     s.src = `${url}${url.includes('?') ? '&' : '?'}${param}=${name}`;
     document.head.appendChild(s);
@@ -6706,6 +6724,25 @@ function compassFromEuler(alpha, beta, gamma) {
   const Vx = -cZ * sY - sZ * sX * cY, Vy = -sZ * sY + cZ * sX * cY;
   return norm(Math.atan2(Vx, Vy) * 180 / Math.PI);
 }
+// How the phone is held, from its tilt (beta and gamma; iPhones and Android split the same tilt into different angles, and these
+// work for both): the screen's "up" in the phone's own axes, (0, 1) when it's upright in portrait.
+function phoneUp(beta, gamma) {
+  if (beta == null) return null;
+  const b = rad(beta), g = rad(gamma || 0);
+  return { x: -Math.cos(b) * Math.sin(g), y: Math.sin(b) };
+}
+// 'portrait', 'sideways' (landscape, either way round), 'upside-down' or 'flat'; null with no tilt reading yet.
+function phonePose(beta = S.beta, gamma = S.gamma) {
+  const u = phoneUp(beta, gamma);
+  if (!u) return null;
+  if (Math.hypot(u.x, u.y) < 0.5) return 'flat';
+  return Math.abs(u.x) > Math.abs(u.y) ? 'sideways' : u.y > 0 ? 'portrait' : 'upside-down';
+}
+// The camera's angle above the horizon (0 = level, negative = pointing down), whichever way the phone is turned.
+function camElev() {
+  if (S.beta == null) return null;
+  return Math.asin(clamp(-Math.cos(rad(S.beta)) * Math.cos(rad(S.gamma || 0)), -1, 1)) * 180 / Math.PI;
+}
 function pushHeading(h) {
   S.hbuf.push(h); if (S.hbuf.length > 8) S.hbuf.shift();
   let sx = 0, sy = 0; for (const v of S.hbuf) { sx += Math.sin(rad(v)); sy += Math.cos(rad(v)); }
@@ -6731,11 +6768,18 @@ function onOrientation(e) {
   let h = null;
   if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
     h = e.webkitCompassHeading; S.orientSource = 'ios';
+    // An iPhone's heading is its compass-corrected alpha: where the phone's top points (WebKit's own description). That's where
+    // the camera looks only when it's upright with no lean to either side: on its side the top points left or right of the
+    // camera, a small sideways lean near upright swings it a long way, and tipped back past upright it flips round. So the
+    // camera's direction is worked out from the tilt, as Android's reading already is. Lying flat, the camera points at the
+    // ground, so the top's direction is kept.
+    const pose = phonePose(e.beta, e.gamma);
+    if (pose && pose !== 'flat') h = compassFromEuler(360 - h, e.beta, e.gamma);
     if (typeof e.webkitCompassAccuracy === 'number') pushCompassAcc(e.webkitCompassAccuracy);
   } else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) {
     h = compassFromEuler(e.alpha, e.beta, e.gamma); S.orientSource = 'abs';
   } else return;
-  S.beta = e.beta; S.gotOrientation = true;
+  S.beta = e.beta; S.gamma = e.gamma; S.gotOrientation = true;
   S.rawHeading = h;
   pushHeading(norm(h + declinationAt(S.pos)));
 }
@@ -6888,7 +6932,7 @@ function tick(ts) {
   else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
   else if (!DEMO && S.center && !S.loading && !S.failAt && !S.local.length) hint = (regionFor(S.pos.lat, S.pos.lon) || {}).basic ? 'No buildings on file here.'
     : `No property records here. ${(regionFor(S.pos.lat, S.pos.lon) || {}).gapNote || `Housepoint covers ${COVERAGE} for now.`}`;
-  else if (S.beta != null && Math.abs(S.beta) < 35 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';
+  else if ((camElev() ?? 0) < -55 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';   // the camera's at the ground
   // After "hold it up" (holding it right comes first, and is quick to fix) but before fuzzy GPS: a bad compass swings the aim
   // further than fuzzy GPS moves it (30° off at 50 m is 25 m sideways, a house or two over), so it's the more useful thing to fix.
   else if (compassPoor()) hint = 'Compass is off. Wave your phone in a figure 8, away from cars and metal.';
@@ -6903,7 +6947,7 @@ function tick(ts) {
     el.textContent = [
       `src ${S.orientSource || '—'}  raw ${S.rawHeading == null ? '—' : S.rawHeading.toFixed(1)}°  acc ${S.compassAcc == null ? '—' : S.compassAcc < 0 ? 'needs calibrating' : '±' + Math.round(S.compassAcc) + '°'}${S.rawCompassAcc == null ? '' : ` (now ${Math.round(S.rawCompassAcc)})`}${compassPoor() ? ' POOR' : ''}`,
       `decl ${declinationAt(S.pos).toFixed(1)}° ${S.pos && regionFor(S.pos.lat, S.pos.lon) ? '(' + regionFor(S.pos.lat, S.pos.lon).id + ')' : ''}  heading ${S.heading == null ? '—' : S.heading.toFixed(1)}°`,
-      `tilt(beta) ${S.beta == null ? '—' : S.beta.toFixed(0)}°`,
+      `tilt(beta) ${S.beta == null ? '—' : S.beta.toFixed(0)}° gamma ${S.gamma == null ? '—' : S.gamma.toFixed(0)}° · ${phonePose() || '—'} · camera ${camElev() == null ? '—' : camElev().toFixed(0)}°`,
       `gps ${S.pos ? S.pos.lat.toFixed(5) + ', ' + S.pos.lon.toFixed(5) : '—'}  ±${S.acc == null ? '—' : Math.round(S.acc)} m`,
       `lots loaded ${S.local.length}${S.failAt ? '  (last load failed)' : ''}`,
       `view ${viewFovDeg().toFixed(0)}° wide${Number.isFinite(FOV_OVERRIDE) ? ' (set by ?fov)' : ''}  video ${$('#cam').videoWidth || '—'}×${$('#cam').videoHeight || '—'}  tags ${AR.items.filter((i) => !i.hidden).length}`,
@@ -7016,10 +7060,10 @@ function camFocalPx() {
   return scale * Math.max(vw, vh) / (2 * Math.tan(rad(CAM_HALF_LONG)));
 }
 const viewFovDeg = () => 2 * Math.atan(innerWidth / 2 / camFocalPx()) * 180 / Math.PI;
-const arPitch = () => (S.beta == null ? 0 : clamp(S.beta - 90, -50, 50));   // phone upright = 90; tipped back to look up > 90
+const arPitch = () => clamp(camElev() ?? 0, -50, 50);   // level = 0; tipped back to look up > 0
 function arY(dist, f, pitch, H) {
   const elev = Math.atan2(AR_TAG - AR_EYE, Math.max(dist, 4)) * 180 / Math.PI;   // nearer houses sit higher in the picture
-  return clamp(H / 2 - f * Math.tan(rad(elev - pitch)), 150, H - 180);
+  return clamp(H / 2 - f * Math.tan(rad(elev - pitch)), Math.min(150, H * 0.25), H - Math.min(180, H * 0.3));
 }
 
 // Where a ray first enters a lot's bounding box, or -1 if it misses (cheap test before the exact one).
@@ -7121,8 +7165,19 @@ function arRelayout(f, half) {
   const ll = $('#liveLabel');
   if (!ll.classList.contains('dim')) { const r = ll.getBoundingClientRect(); placed.push({ x: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.width, h: r.height }); }
   // Spots to try, nearest the house first: just above it, a row up, just below it (pointing up), a row down, two rows up…
-  const top0 = Math.max(70, ...['#hud', '#arPill'].map((q) => { const e = $(q); return e && e.offsetParent ? e.getBoundingClientRect().bottom + 6 : 0; }));
-  const bottom0 = H - 200;                                     // clear of the compass and the shutter
+  let top0, bottom0;
+  if (W > H) {
+    // Landscape: the pills run down the left side and the radar sits top right, so tags go around them rather than below them,
+    // and the bottom bar is a smaller share of the screen.
+    const seen = (q) => { const e = $(q); return e && !e.classList.contains('hidden') && e.getClientRects().length && e.textContent.trim() !== '' ? e.getBoundingClientRect() : null; };
+    for (const q of ['#hudLeft', '#radarWrap', '#hint']) { const r = q === '#radarWrap' ? ($(q) && $(q).getBoundingClientRect()) : seen(q); if (r && r.width) placed.push({ x: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2, w: r.width, h: r.height }); }
+    top0 = 8;   // no status bar in landscape
+    bottom0 = Math.min(H - 90, ...['#bar', '#sim'].map((q) => { const r = seen(q); return r ? r.top - 8 : H; }));
+  } else {
+    top0 = Math.max(70, ...['#hud', '#arPill'].map((q) => { const e = $(q); return e && e.offsetParent ? e.getBoundingClientRect().bottom + 6 : 0; }));
+    bottom0 = H - 200;                                         // clear of the compass and the shutter
+  }
+  AR.top = W > H ? top0 : 60;                                  // arFrame hides a tag that drifts above this
   for (const v of keep) {
     const x = W / 2 + f * Math.tan(rad(clamp(angDiff(v.bearing, S.heading), -80, 80))), y0 = arY(v.ydist, f, pitch, H), row = v.h + 6;
     const spots = [0, 1, -1, -2, 2, -3].map((k) => k >= 0
@@ -7144,7 +7199,10 @@ function arRelayout(f, half) {
 }
 
 function arFrame(ts) {
-  const upright = innerHeight >= innerWidth && !(S.beta != null && S.beta < 35);   // tags assume a phone held up in portrait
+  // Tags need the screen turned the way the phone is held: with rotation lock on, a phone on its side keeps a portrait screen
+  // and a sideways picture. Before the first tilt reading, portrait only. Not with the camera on the ground, nor upside down.
+  const pose = phonePose(), el = camElev();
+  const upright = (pose == null ? innerHeight >= innerWidth : pose === (innerWidth > innerHeight ? 'sideways' : 'portrait')) && !(el != null && el < -55);
   const ok = AR.on && upright && S.mode === 'point' && !S.locked && !$('#panel').classList.contains('open') && S.pos && S.proj && S.heading != null && S.local.length;
   if (!ok) { arClear(); return; }
   const f = camFocalPx(), W = innerWidth, H = innerHeight, half = Math.atan(W / 2 / f) * 180 / Math.PI;
@@ -7160,7 +7218,7 @@ function arFrame(ts) {
     const tx = W / 2 + f * Math.tan(rad(rel)), ty = arY(v.ydist, f, pitch, H) - v.lift;
     if (v.x == null) { v.x = tx; v.y = ty; } else { v.x += (tx - v.x) * 0.5; v.y += (ty - v.y) * 0.5; }
     const left = v.x - v.w / 2, top = v.y - v.h - 6;
-    const underLive = (lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top) || top < 60;
+    const underLive = (lr && left < lr.right && left + v.w > lr.left && top < lr.bottom && top + v.h > lr.top) || top < (AR.top ?? 60);
     v.el.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
     v.el.style.opacity = underLive ? '0' : Math.abs(rel) > half - 3 ? '0.5' : '1';
     v.el.style.pointerEvents = underLive ? 'none' : 'auto';
@@ -7979,7 +8037,7 @@ async function runHealth() {
 if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); }
 
 // test hooks
-window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, phonePose, camElev, arPitch, jsonp, censusSearch, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
   SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, recordSiteFor, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
