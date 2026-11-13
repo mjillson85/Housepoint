@@ -170,7 +170,11 @@ const R = {
     fields: ['objectid', 'pid', 'townid', 'town', 'slu', 'sluc', 'streetaddress', 'nbc'],
     owner: { name: 'SECRET OWNER' },
     lot: { pid: '4046-3288', town: 'Concord', streetaddress: '12 PLEASANT ST' },
-    card: [/12 Pleasant St \|/, /Concord/, /Lot lines only/, /town’s assessor/] },
+    // two shops: how many, the bigger one's footprint, its use as the outlines name it (not a home, so no buyer's tools)
+    bldgs: [[[17, -10, 27, 10], { OCC_CLS: 'Commercial', PRIM_OCC: 'Retail Trade', HEIGHT: 6, SQFEET: 2200 }],
+      [[29, -8, 38, 8], { OCC_CLS: 'Commercial', PRIM_OCC: 'Professional Services', HEIGHT: 9, SQFEET: 1500 }]],
+    buy: false,
+    card: [/12 Pleasant St \|/, /Concord · Retail trade/, /Lot lines only/, /town’s assessor/, /Buildings \| 2/i, /Main building \| 2,200 ft²/i] },
   WV: { url: 'https://services.wvgis.wvu.edu/arcgis/rest/services/Planning_Cadastre/WV_Parcels/MapServer/0', spot: [39.6300, -79.9550],
     fields: ['OBJECTID', 'CleanParcelID', 'CountyID', 'COUNTY', 'FullPhysicalAddress', 'CALC_ACRE'],
     owner: { FullOwnerName: 'SECRET OWNER', FullOwnerAddress: 'SECRET MAILING', FullLegalDescription: 'SECRET LEGAL', OWNER1: 'SECRET OWNER 1' },
@@ -190,14 +194,26 @@ const R = {
     fields: ['OBJECTID', 'PIN', 'ACRES', 'COUNTY'],
     owner: {},
     lot: { PIN: '2602820042', ACRES: 0.07, COUNTY: 'New Castle' },
-    card: [/26 Hillcrest Road \|/, /Lot lines only/, /New Castle, Kent or Sussex/] },
+    // a house, its detached garage and a shed on the national building outlines: the house counts, and the lot is a home's
+    bldgs: [[[20, -6, 32, 6], { OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', OUTBLDG: 'N', HEIGHT: 7.5, SQFEET: 1650 }],
+      [[34, -10, 39, -4], { OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', OUTBLDG: 'Y', SQFEET: 320 }],
+      [[36, 6, 38, 8], { OCC_CLS: 'Unclassified', PRIM_OCC: 'Unclassified', SQFEET: 40 }]],
+    buy: true,
+    card: [/26 Hillcrest Road \|/, /\| House \|/, /Lot lines only/, /New Castle, Kent or Sussex/, /national building outlines/, /Footprint \| 1,650 ft²/i, /Height \| ≈ 25 ft/i],
+    notCard: [/Buildings \|/i] },
   VA: { url: 'https://vginmaps.vdem.virginia.gov/arcgis/rest/services/VA_Base_Layers/VA_Parcels/FeatureServer/0', spot: [37.5500, -77.4600],
     fields: ['OBJECTID', 'VGIN_QPID', 'FIPS', 'LOCALITY', 'PARCELID', 'PTM_ID'],
     owner: {},
     lot: { PARCELID: '262174', LOCALITY: 'Richmond City', PTM_ID: 'W0000608040' },
-    card: [/26 Hillcrest Road \|/, /Lot lines only/, /county or city assessor/] },
+    bldgs: [],      // no outline on the lot: nothing said about buildings (never "none" or "vacant")
+    card: [/26 Hillcrest Road \|/, /Lot lines only/, /county or city assessor/],
+    notCard: [/Footprint|Buildings \||national building outlines|Vacant/i] },
 };
 const ME_TABLE = R.ME.url.replace(/\/10$/, '/9');
+const BLDG_ITEM = 'https://www.arcgis.com/sharing/rest/content/items/0ec8512ad21e4bb987d7e848d14e7e24';
+const BLDG_LAYER = 'https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/USA_Structures_View/FeatureServer/0';
+const BLDG_FIELDS = ['OBJECTID', 'BUILD_ID', 'OCC_CLS', 'PRIM_OCC', 'SEC_OCC', 'PROP_ADDR', 'PROP_CITY', 'PROP_ST', 'PROP_ZIP', 'PROP_CNTY', 'OUTBLDG', 'HEIGHT', 'SQMETERS', 'SQFEET'];
+const bldgAsked = [];
 // Philadelphia's property office table (Carto) and Allegheny's assessments (WPRDC, by JSONP): what each was asked, and a condo's units
 const cartoAsked = [], wprdcAsked = [];
 const PHL_CONDO = [['888001103', '101'], ['888092750', '905'], ['888092788', '1006']].map(([parcel_number, unit]) => ({ ...R.PA_PHILA.carto[0], parcel_number,
@@ -221,6 +237,14 @@ page.on('request', (req) => {
   if (u.startsWith('https://data.wprdc.org/api/3/action/datastore_search_sql')) { const p = new URL(u).searchParams, sql = p.get('sql') || ''; wprdcAsked.push(sql);
     const recs = R.PA_ALLEGHENY.wprdc.filter((r) => sql.includes(`'${r.PARID}'`));
     return req.respond({ status: 200, contentType: 'application/javascript', body: `${p.get('callback')}(${JSON.stringify({ success: true, result: { records: recs } })})` }); }
+  if (u.startsWith(BLDG_ITEM)) return json({ title: 'USA Structures', url: BLDG_LAYER });
+  if (u.startsWith(BLDG_LAYER + '?f=json')) return json({ geometryType: 'esriGeometryPolygon', maxRecordCount: 2000, fields: BLDG_FIELDS.map((name) => ({ name })) });
+  if (u.startsWith(BLDG_LAYER + '/query')) {
+    const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]), g = (q.get('geometry') || '').split(',').map(Number);
+    const c = Object.values(R).find((x) => x.bldgs && Math.hypot(x.spot[0] - g[1], x.spot[1] - g[0]) < 0.01);
+    if (c) bldgAsked.push(q.get('outFields') || '');
+    return json({ features: (c ? c.bldgs : []).map(([box, a], i) => ({ geometry: { rings: [ring(...box, [g[0], g[1]])] }, attributes: { OBJECTID: i + 1, ...a } })) });
+  }
   if (u.startsWith(ME_TABLE + '/query')) { const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]); tableAsked.push(q.get('outFields') || '');
     return json({ features: R.ME.table.filter((r) => (q.get('where') || '').includes(r.STATE_ID)).map((attributes) => ({ attributes })) }); }
   for (const [rid, c] of Object.entries(R)) {
@@ -339,20 +363,22 @@ async function cardAt(lat, lon) {
     const L = S.local[0];
     if (!L) return { err: 'no lots', help: document.querySelector('#mapHelpTxt').textContent };
     hp.selectLot(L); await new Promise((r) => setTimeout(r, 500));
-    return { card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | '), lots: S.local.length };
+    return { card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | '), lots: S.local.length, buy: !!document.querySelector('#buyBox') };
   }, lat, lon);
 }
 for (const [rid, c] of Object.entries(R)) {
   const r = await cardAt(c.spot[0], c.spot[1]);
   console.log(`${rid} card:`, (r.card || JSON.stringify(r)).slice(0, 600));
-  const miss = c.card.filter((re) => !re.test(r.card || ''));
-  check(!miss.length, `${rid}: the card shows what the records have` + (miss.length ? ` (missing ${miss.join(' ')})` : ''));
+  const miss = c.card.filter((re) => !re.test(r.card || '')), extra = (c.notCard || []).filter((re) => re.test(r.card || ''));
+  check(!miss.length && !extra.length, `${rid}: the card shows what the records have` + (miss.length ? ` (missing ${miss.join(' ')})` : '') + (extra.length ? ` (shouldn't show ${extra.join(' ')})` : ''));
+  if (c.buy != null) check(r.buy === c.buy, `${rid}: the buyer's tools ${c.buy ? 'show for a home the outlines name' : 'stay off for a building that isn’t a home'}`);
   check(!/SECRET/.test(r.card || ''), `${rid}: no owner, mailing or legal text on the card`);
   const outs = (asked[rid] || []).join(',').split(',');
   const bad = Object.keys(c.owner).filter((f) => outs.includes(f));
   check(outs.filter(Boolean).length >= 1 && !bad.length, `${rid}: owner, mailing and legal fields are never asked for` + (bad.length ? `: ${bad.join(', ')}` : ''));
 }
 check(tableAsked.length && tableAsked.every((f) => !/OWN|MAIL/i.test(f)), `Maine: the assessing table is asked for values only: ${tableAsked[0]}`);
+check(bldgAsked.length && bldgAsked.every((f) => f === 'OCC_CLS,PRIM_OCC,OUTBLDG,HEIGHT,SQFEET'), `the lot-line states ask the building outlines for their use, size and height by name: ${bldgAsked[0]}`);
 check(cartoAsked.length && cartoAsked.every((q) => !/owner|mailing|care_of|legal|book_and_page|registry|beginning_point/i.test(q)),
   `Philadelphia: the property office's table is asked for property columns only: ${(cartoAsked[0] || '').slice(0, 160)}`);
 check(wprdcAsked.length && wprdcAsked.every((q) => !/OWNER|CHANGENOTICE|LEGAL|DEED/i.test(q)), `Allegheny: the assessments are asked for property columns only: ${(wprdcAsked[0] || '').slice(0, 160)}`);

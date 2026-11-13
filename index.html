@@ -4864,7 +4864,8 @@ function bldgLayer(rid) {
     }
     cands.push(...src.more);
     for (const u of cands) {
-      try { const m = await getJSON(u + '?f=json', {}, 10000); if (/Polygon/i.test(m.geometryType || '')) return { url: u, page: Math.min(2000, m.maxRecordCount || 1000) }; }
+      try { const m = await getJSON(u + '?f=json', {}, 10000);
+        if (/Polygon/i.test(m.geometryType || '')) return { url: u, page: Math.min(2000, m.maxRecordCount || 1000), usa: (m.fields || []).some((f) => /^OCC_CLS$/i.test(f.name)) }; }
       catch (e) { /* next */ }
     }
     return null;
@@ -4876,25 +4877,46 @@ async function queryBuildingsNear(lat, lon, radius = QUERY_RADIUS) {
   if (DEMO) return demoParcels.cache ? demoParcels.cache.bldgs : [];
   const rg = regionFor(lat, lon); if (!rg || rg.basic) return [];     // the basic card's lots are the outlines themselves
   const l = await bldgLayer(rg.id); if (!l) return [];
+  // The lot-line states (no records on the lots): the outlines' own facts too, asked for by name (the layer has no owner fields at all)
+  const facts = !!(rg.noValues && l.usa);
   const out = [];
   for (let page = 0, offset = 0; page < 4; page++) {
     const params = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
       distance: String(radius), units: 'esriSRUnit_Meter', returnGeometry: 'true', outSR: '4326', geometryPrecision: '7',
-      resultOffset: String(offset), resultRecordCount: String(l.page), f: 'json' });
+      ...(facts ? { outFields: BLDG_FACT_FIELDS.join(',') } : {}), resultOffset: String(offset), resultRecordCount: String(l.page), f: 'json' });
     const j = await getJSON(l.url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }, 15000);
     const got = j.features || [];
-    for (const ft of got) if (ft.geometry && ft.geometry.rings && ft.geometry.rings.length) out.push(ft.geometry.rings);
+    for (const ft of got) if (ft.geometry && ft.geometry.rings && ft.geometry.rings.length) out.push(facts ? { rings: ft.geometry.rings, a: ft.attributes || {} } : ft.geometry.rings);
     if (!j.exceededTransferLimit || !got.length) break;
     offset += got.length;
   }
   return out;
 }
+const BLDG_FACT_FIELDS = ['OCC_CLS', 'PRIM_OCC', 'OUTBLDG', 'HEIGHT', 'SQFEET'];
+// What stands on a lot-line state's lot, from the outlines on it: the main building (the biggest; garages, barns and sheds left out),
+// how many buildings, and its use, footprint and height. Nothing when no outline counts (never "no buildings": outlines can be missing).
+function bldgFacts(list) {
+  const g = (a, k) => a[k] ?? a[k.toLowerCase()];
+  const keep = list.filter((b) => b.m2 >= SHED_M2 && !/^(Y|YES|1|TRUE)$/i.test(t2clean(g(b.a, 'OUTBLDG'))));
+  if (!keep.length) return null;
+  const main = keep.reduce((x, y) => (y.m2 > x.m2 ? y : x)), a = main.a, h = num(g(a, 'HEIGHT'));
+  const sqft = Math.round(num(g(a, 'SQFEET')) || main.m2 * 10.7639), r = { USE_CODE: g(a, 'OCC_CLS'), USE_DESC: g(a, 'PRIM_OCC') };
+  let kind = basicKind(r);
+  // The outlines' use is modelled from imagery and often "Unclassified": a home only when they say residential, and its size agrees
+  if (kind === 'apartments') kind = keep.length > 2 || sqft > 5000 ? 'apartments' : 'multi';
+  if (kind === 'otherRes') kind = keep.length === 1 && sqft < 4000 ? 'single' : 'otherRes';
+  const label = { single: 'House', multi: 'Multi-family house', apartments: 'Apartment building', mobile: 'Manufactured home', otherRes: 'Residential building' }[kind]
+    || (kind === 'unknown' ? null : basicLabel(r));
+  return { n: keep.length, sqft, heightFt: h > 0 && h < 500 ? Math.round(h * 3.28084) : null, kind, label };
+}
 // Each outline goes with the smallest lot it sits on.
 function setBuildings(list) {
   if (!S.proj) return;
-  for (const L of S.local) L.hasBldg = false;
-  const out = [];
-  for (const ringsLL of list || []) {
+  const cur = S.candidates && S.candidates[S.cIdx], was = cur && cur.L ? JSON.stringify(cur.L.p.bldg || null) : null;
+  for (const L of S.local) { L.hasBldg = false; L.p.bldg = null; }
+  const out = [], facts = new Map();
+  for (const item of list || []) {
+    const ringsLL = Array.isArray(item) ? item : item.rings;
     const rings = ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
     const c = centroid(rings), bb = lotBBox({ rings });
     let best = null, bestA = Infinity;
@@ -4906,11 +4928,16 @@ function setBuildings(list) {
     if (!best) continue;
     best.hasBldg = true;
     if ((REGIONS[best.p.region] || {}).builtByOutline) best.p.built = true;   // Wyoming: no building values, so a roof on the lot says it's built
-    out.push({ rings, c, bb, L: best, area: Math.abs(rings.reduce((t, r) => t + ringArea(r), 0)) });
+    const b = { rings, c, bb, L: best, area: Math.abs(rings.reduce((t, r) => t + ringArea(r), 0)) };
+    out.push(b);
+    if (!Array.isArray(item) && (REGIONS[best.p.region] || {}).noValues) (facts.get(best) || facts.set(best, []).get(best)).push({ m2: b.area, a: item.a || {} });
   }
+  for (const [L, fl] of facts) L.p.bldg = bldgFacts(fl);
   S.bldgs = out; S.bldgVer++;
   for (const L of S.local) L.badges = null;
   if (S.mode === 'map') drawMap();
+  // The card that's open, if what stands on its lot just arrived
+  if (cur && cur.L && $('#sheet').classList.contains('open') && JSON.stringify(cur.L.p.bldg || null) !== was) renderCard(cur, S.candidates.length, S.cIdx);
 }
 /* =========================================================================
    Targeting: which house is the phone pointing at?
@@ -5074,8 +5101,10 @@ function summarize(p) {
     : region.id === 'MN' ? /MOBILE HOME PARK|MANUFACTURED HOME PARK|MH PARK/.test(mnText(r0))
     : region.id === 'CT' ? region.useLabel(r0.USE_CODE, r0) === 'Mobile home park' || (region.useLabel(r0.USE_CODE, r0) === 'Mobile home' && (sites >= 3 || (acresOf(p) >= 5 && !oneHome))) : false);
   let use = park ? 'Mobile home park' : region.useLabel(r0.USE_CODE, r0);
+  const ob = region.noValues && !region.basic && lot.kind === 'unknown' && !lot.condo && p.bldg && p.bldg.label ? p.bldg : null;
+  if (ob && !use) use = ob.label;
   if (lot.kinds[lot.main] === 'vacant' && /^(Commercial|Industrial)$/.test(use || '')) use = `Vacant ${use.toLowerCase()} land`;   // 3939: land, not a store
-  const kind = park ? 'park' : lot.kind;
+  const kind = park ? 'park' : ob && RESIDENTIAL_KINDS.has(ob.kind) ? ob.kind : lot.kind;
   const BUILDING_LABEL = { resCondo: 'Condo building', comCondo: 'Commercial condo building', mixedCondo: 'Condo building · homes and businesses' };
   return { r0, recs, year, sales, vals, addr, addrApprox, town, units: lot.condo ? unitRecs.length : unitsListed, condo: lot.condo,
     use, park, sites: park && sites >= 3 ? sites : null,
@@ -5171,7 +5200,7 @@ function renderCard(cand, total, idx) {
       <div class="s">${s.region.commonNote || 'This county doesn’t publish individual unit records on the statewide map, so unit values and sales aren’t available here.'}${whole > 1000 ? `<br>The county values the whole building at <b>${moneyFull(whole)}</b>.` : ''}</div></div>`;
   } else if (s.region.noValues) {
     valueBlock = `<div class="value"><div class="k">Property record</div><div class="v small">${s.region.basic ? 'Not in Housepoint yet' : r.RECORD_URL ? 'On the county’s site' : 'Lot lines only'}</div>
-      <div class="s">${esc(s.region.noValues)}</div></div>`;
+      <div class="s">${esc(s.region.noValues)}${!s.region.basic && L.p.bldg ? '<br>What stands on the lot is from the national building outlines (FEMA and Oak Ridge National Laboratory), estimated from aerial imagery.' : ''}</div></div>`;
   } else if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy && s.region.yearLabel(s.fy) ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
@@ -5213,6 +5242,13 @@ function renderCard(cand, total, idx) {
     if (num(r.FOOTPRINT)) cells.push(['Footprint', `${num(r.FOOTPRINT).toLocaleString('en-US')} ft²`]);
     if (num(r.HEIGHT_FT)) cells.push(['Height', `≈ ${num(r.HEIGHT_FT)} ft`]);
   } else cells.push(['Lot', lotText(L)]);
+  // A lot-line state's lot: what stands on it, from the national building outlines
+  const ob = s.region.noValues && !s.region.basic && !s.condo ? L.p.bldg : null;
+  if (ob) {
+    if (ob.n > 1) cells.push(['Buildings', ob.n]);
+    cells.push([ob.n > 1 ? 'Main building' : 'Footprint', `${ob.sqft.toLocaleString('en-US')} ft²`]);
+    if (ob.heightFt) cells.push(['Height', `≈ ${ob.heightFt} ft`]);
+  }
   if (s.park && s.sites) cells.push(['Home sites', s.sites]);
   else if (s.units > 1 && !s.park && (s.condo || home)) cells.push(['Units', s.units]);
   if (num(r.LAND_VAL) && !s.condo && !s.commonOnly) cells.push(['Land value', money(r.LAND_VAL)]);
@@ -7643,7 +7679,8 @@ const ABOUT = `
   Travis County (Austin) and Bexar County (San Antonio), Texas.</p>
   <p><b>Lot lines, with a link to the county’s record where the state has one:</b> Indiana, New Hampshire, West Virginia, Nevada, Hawaii,
   Delaware and Virginia. Indiana, New Hampshire and West Virginia list addresses too; elsewhere the card shows the nearest address on
-  OpenStreetMap. Values there are on the county’s or town’s own site.</p>
+  OpenStreetMap. The building on the lot (its use, footprint and height, and how many there are) comes from the national building outlines; a lot
+  they call a home gets the buyer’s tools. Values there are on the county’s or town’s own site.</p>
   <p><b>Everywhere else in the US, the basic card:</b> the building’s use, footprint and height from the national building outlines, the nearest
   address, the flood zone, schools, the neighborhood, safety and what’s nearby, and a search for the county’s own property record.</p>
   <h3>Privacy</h3>
