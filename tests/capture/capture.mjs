@@ -144,6 +144,8 @@ async function main() {
   if (!states.length) { log('no new states to capture'); }
   const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
   const page = await browser.newPage();
+  // a joined table that fails (Philadelphia's, Allegheny's) says why in the page's console
+  page.on('console', (m) => { if (/records|assessments|extra records/i.test(m.text()) && m.type() === 'warning') log('  [page]', m.text().slice(0, 300)); });
   await page.goto(`http://localhost:${PORT}/`);
   fs.mkdirSync(OUT, { recursive: true });
   for (const st of states) { try { await captureState(page, st); } catch (e) { log(st, 'FAILED:', e.message); process.exitCode = 1; } }
@@ -213,7 +215,7 @@ async function captureState(page, st) {
       // DC: the condo units and building records the app adds from the service's other tables, the way the app adds them
       const extra = await page.evaluate(async (id, fs) => { const hp = window.__hp, rg = hp.REGIONS[id]; if (!rg.expand) return null;
         try { await rg.expand(fs, hp.SVC[id]); return fs; } catch (e) { return null; } }, st, feats).catch(() => null);
-      if (extra) { log(`  ${extra.length - feats.length} records added from the other tables`); feats = extra; }
+      if (extra) { log(`  ${extra.length - feats.length} records added from the other tables, ${extra.filter((f) => f.attributes && f.attributes.__TOTAL_VAL != null).length} with values from them`); feats = extra; }
       const lots = new Map();
       for (const f of feats) { const k = lotKey(f); if (!lots.has(k)) lots.set(k, []); lots.get(k).push(f); }
       log(`  ${feats.length} records on ${lots.size} lots`);
