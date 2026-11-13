@@ -308,6 +308,11 @@ const kinds = await page.evaluate(() => {
     alleGov: k('PA_ALLEGHENY', { USE_CODE: 'GOVERNMENT', USE_DESC: 'MUNICIPAL GOVERNMENT' }), alleCondo: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'CONDOMINIUM' }),
     tcadDuplex: k('TX_TRAVIS', { USE_CODE: 'B2', USE_DESC: 'DUPLEX' }), tcadCondo: k('TX_TRAVIS', { USE_CODE: 'A4', USE_DESC: 'CONDOS' }),
     tcadApts: k('TX_TRAVIS', { USE_CODE: 'B1', USE_DESC: 'MULTIFAMILY' }), bexarHouse: k('TX_BEXAR', { USE_CODE: 'A1' }), bexarLot: k('TX_BEXAR', { USE_CODE: 'C1' }),
+    phlStorage: k('PA_PHILA', { USE_CODE: 'SINGLE FAMILY', USE_DESC: 'CONDO STORAGE UNIT', TOTAL_VAL: 1100 }),
+    alleAux: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'RES AUX BUILDING (NO HOUSE)' }),
+    alleDevLand: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'CONDO DEVELOPMENTAL LAND' }),
+    alleGarageCo: k('PA_ALLEGHENY', { USE_CODE: 'COMMERCIAL', USE_DESC: 'PARKING GARAGE/LOTS' }),
+    tcadBuilt: k('TX_TRAVIS', { USE_CODE: 'O2', USE_DESC: 'RESIDENTIAL INVENTORY' }), bexarMobile: k('TX_BEXAR', { USE_CODE: 'M1' }),
   };
 });
 const wantK = { hcadHouse: 'single', hcadCondo: 'resCondo', hcadDuplex: 'multi', hcadApts: 'apartments', hcadLot: 'vacant', hcadExempt: 'exempt', alaHouse: 'single',
@@ -317,7 +322,8 @@ const wantK = { hcadHouse: 'single', hcadCondo: 'resCondo', hcadDuplex: 'multi',
   atlLot: 'vacant', bisDuplex: 'multi', sbdApts: 'apartments', meHouse: 'single', nhNone: 'unknown', laHouse: 'single', laCondo: 'resCondo', laConverted: 'resCondo',
   laTwo: 'multi', laApts: 'apartments', laLot: 'vacant', laOffice: 'commercial', laOfficeCondo: 'comCondo', phlRow: 'single', phlCondo: 'resCondo', phlWaterOnly: 'multi',
   phlMixed: 'mixed', alleHouse: 'single', alleTwo: 'multi', alleGov: 'exempt', alleCondo: 'resCondo', tcadDuplex: 'multi', tcadCondo: 'resCondo', tcadApts: 'apartments',
-  bexarHouse: 'single', bexarLot: 'vacant' };
+  bexarHouse: 'single', bexarLot: 'vacant', phlStorage: 'accessory', alleAux: 'accessory', alleDevLand: 'vacant', alleGarageCo: 'commercial',
+  tcadBuilt: 'single', bexarMobile: 'mobile' };
 const badK = Object.entries(wantK).filter(([k, v]) => kinds[k] !== v).map(([k, v]) => `${k}: ${kinds[k]} (want ${v})`);
 check(!badK.length, 'property types read as the right kind' + (badK.length ? ': ' + badK.join(', ') : ''));
 

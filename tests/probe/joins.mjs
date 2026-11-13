@@ -16,7 +16,7 @@ const js = (v, n = 900) => (JSON.stringify(v ?? null) || '').slice(0, n);
 const out = await page.evaluate(async (OWNsrc, KEEPsrc) => {
   const OWN = new RegExp(OWNsrc, 'i'), KEEP = new RegExp(KEEPsrc, 'i');
   // beyond the shared list: names, phones, notices and free-text descriptions
-  const SKIP = /own|mail|name|notice|change|phone|legal|desc1|desc2|desc3|book|page|deed|grantor|grantee|buyer|seller|homestead_exempt_name|care/i;
+  const SKIP = /own|mail|name|notice|change|phone|legal|desc1|desc2|desc3|book|page|deed|grantor|grantee|buyer|seller|homestead_exempt_name|care|registry|beginning_point|cross_reference/i;
   const safe = (c) => !(OWN.test(c) && !KEEP.test(c)) && !SKIP.test(c);
   const get = async (u, ms = 30000) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms), t0 = performance.now();
     try { const r = await fetch(u, { signal: c.signal }); const j = await r.json(); return { status: r.status, j, ms: Math.round(performance.now() - t0) }; }

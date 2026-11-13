@@ -2355,16 +2355,9 @@ const PHL_CARTO = 'https://phl.carto.com/api/v2/sql';
 async function phlExpand(feats, sv) {
   const ID = sv.canon.get('PROP_ID'), ADDR = sv.canon.get('SITE_ADDR'), N = sv.canon.get('BRT_COUNT'); if (!ID) return;
   const lots = feats.filter((f) => f.attributes && /^\d{9}$/.test(String(f.attributes[ID] ?? '')));
-  const many = lots.filter((f) => N && num(f.attributes[N]) > 1 && t2clean(f.attributes[ADDR]));
+  // a parcel holding several accounts (a condo building): its units, by its address, even when the parcel's own account is blank
+  const many = feats.filter((f) => f.attributes && N && num(f.attributes[N]) > 1 && t2clean(f.attributes[ADDR]));
   const ids = [...new Set(lots.map((f) => String(f.attributes[ID])))], adds = [...new Set(many.map((f) => t2clean(f.attributes[ADDR]).toUpperCase()))];
-  const q = (xs) => xs.map((x) => `'${sqlq(x)}'`).join(',');
-  const ask = (where) => getJSON(PHL_CARTO, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ q: `SELECT ${PHL_OPA_COLS.join(', ')} FROM opa_properties_public WHERE ${where}` }).toString() }, EXPAND_MS)
-    .then((j) => (j && j.rows) || []).catch((e) => { console.warn('Philadelphia records', e); return []; });
-  const asks = [];
-  for (let i = 0; i < ids.length; i += 300) asks.push(ask(`parcel_number IN (${q(ids.slice(i, i + 300))})`));
-  for (let i = 0; i < adds.length; i += 40) asks.push(ask(`location IN (${q(adds.slice(i, i + 40))})`));
-  const rows = (await Promise.all(asks)).flat();
   const named = (r) => { const loc = t2clean(r.location), u = t2clean(r.unit).replace(/^0+(?=\w)/, '');
     return { __SITE_ADDR: u ? `${loc} UNIT ${u}` : loc, __ZIP: r.zip_code, __USE_CODE: r.category_code_description, __USE_DESC: r.building_code_description,
       __TOTAL_VAL: r.market_value, __LAND_VAL: (num(r.taxable_land) || 0) + (num(r.exempt_land) || 0), __BLDG_VAL: (num(r.taxable_building) || 0) + (num(r.exempt_building) || 0),
@@ -2373,16 +2366,29 @@ async function phlExpand(feats, sv) {
       __RES_AREA: r.total_livable_area, __BEDS: r.number_of_bedrooms,
       __BATHS: r.number_of_bathrooms, __STORIES: r.number_stories, __SALE_DATE: r.sale_date, __LS_PRICE: r.sale_price,
       __RECORD_URL: /^\d{9}$/.test(t2clean(r.parcel_number)) ? `https://property.phila.gov/?p=${t2clean(r.parcel_number)}` : null }; };
-  const byId = new Map(); for (const f of lots) (byId.get(String(f.attributes[ID])) || byId.set(String(f.attributes[ID]), []).get(String(f.attributes[ID]))).push(f.attributes);
-  const done = new Set();
-  for (const r of rows) { const k = t2clean(r.parcel_number); if (done.has(k) || !byId.has(k)) continue; done.add(k); for (const a of byId.get(k)) Object.assign(a, named(r)); }
-  // a condo building's other units, stacked on its outline
+  const byId = new Map(); for (const f of lots) { const k = String(f.attributes[ID]); (byId.get(k) || byId.set(k, []).get(k)).push(f.attributes); }
   const byAddr = new Map(many.map((f) => [t2clean(f.attributes[ADDR]).toUpperCase(), f]));
-  for (const r of rows) { const k = t2clean(r.parcel_number), lot = byAddr.get(t2clean(r.location).toUpperCase()); if (!lot || done.has(k)) continue; done.add(k);
-    feats.push({ geometry: lot.geometry, attributes: { [ID]: k, ...named(r) } }); }
+  // Each answer is put on the lots as it arrives, in any order: a parcel's own account goes on the parcel, another account at a
+  // condo building's address stacks on its outline as a unit; each account once. A slow answer doesn't hold up the rest.
+  const done = new Set();
+  const apply = (rows) => { for (const r of rows) {
+    const k = t2clean(r.parcel_number); if (!k || done.has(k)) continue;
+    if (byId.has(k)) { done.add(k); for (const a of byId.get(k)) Object.assign(a, named(r)); continue; }
+    const lot = byAddr.get(t2clean(r.location).toUpperCase()); if (!lot) continue;
+    done.add(k); feats.push({ geometry: lot.geometry, attributes: { [ID]: k, ...named(r) } });
+  } };
+  const q = (xs) => xs.map((x) => `'${sqlq(x)}'`).join(',');
+  const ask = (where) => getJSON(PHL_CARTO, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ q: `SELECT ${PHL_OPA_COLS.join(', ')} FROM opa_properties_public WHERE ${where}` }).toString() }, EXPAND_MS - 1000)
+    .then((j) => apply((j && j.rows) || [])).catch((e) => { console.warn('Philadelphia records', String((e && e.message) || e)); });
+  const asks = [];
+  for (let i = 0; i < ids.length; i += 300) asks.push(ask(`parcel_number IN (${q(ids.slice(i, i + 300))})`));
+  for (let i = 0; i < adds.length; i += 40) asks.push(ask(`location IN (${q(adds.slice(i, i + 40))})`));
+  await Promise.all(asks);
 }
 function phlKind(r) {
   const d = t2clean(r.USE_DESC).toUpperCase(), c = t2clean(r.USE_CODE).toUpperCase();
+  if (/CONDO.*(STORAGE|PARKING|GARAGE)|(STORAGE|PARKING|GARAGE).*CONDO/.test(d)) return 'accessory';     // a condo's storage locker or parking space
   if (/CONDO/.test(d)) return /^(SINGLE|MULTI)/.test(c) || /RES/.test(d) ? 'resCondo' : 'comCondo';
   const k = [[/^SINGLE FAMILY/, 'single'], [/^MULTI FAMILY/, 'multi'], [/^APARTMENTS/, 'apartments'], [/^MIXED USE/, 'mixed'], [/^VACANT/, 'vacant'],
     [/^COMMERCIAL/, 'commercial'], [/^INDUSTRIAL/, 'industrial']].find(([re]) => re.test(c));
@@ -2412,10 +2418,13 @@ async function alleExpand(feats, sv) {
   const byId = new Map(); for (const f of feats) { const k = f.attributes && t2clean(f.attributes[ID]); if (/^[0-9A-Z]{16}$/.test(k || '')) (byId.get(k) || byId.set(k, []).get(k)).push(f.attributes); }
   // 40 parcels a request: a request for 100 failed from a browser on GitHub (November 13, 2026), and a failed one is asked once more
   const ids = [...byId.keys()], parts = []; for (let i = 0; i < ids.length; i += 40) parts.push(ids.slice(i, i + 40));
+  // each answer is put on its lots as it arrives, and both tries fit inside the wait for the whole join
   const ask = (c) => jsonp(`https://data.wprdc.org/api/3/action/datastore_search_sql?sql=${encodeURIComponent(
-    `SELECT ${ALLE_COLS.map((x) => `"${x}"`).join(',')} FROM "${ALLE_TABLE}" WHERE "PARID" IN (${c.map((x) => `'${x}'`).join(',')})`)}`, 'callback', EXPAND_MS / 2)
-    .then((j) => (j && j.result && j.result.records) || []);
-  const rows = (await Promise.all(parts.map((c) => ask(c).catch(() => ask(c)).catch((e) => { console.warn('Allegheny assessments', String((e && e.message) || e)); return []; })))).flat();
+    `SELECT ${ALLE_COLS.map((x) => `"${x}"`).join(',')} FROM "${ALLE_TABLE}" WHERE "PARID" IN (${c.map((x) => `'${x}'`).join(',')})`)}`, 'callback', (EXPAND_MS - 1000) / 2)
+    .then((j) => alleApply((j && j.result && j.result.records) || [], byId));
+  await Promise.all(parts.map((c) => ask(c).catch(() => ask(c)).catch((e) => { console.warn('Allegheny assessments', String((e && e.message) || e)); })));
+}
+function alleApply(rows, byId) {
   for (const r of rows) for (const a of byId.get(t2clean(r.PARID)) || []) {
     if (a.__TOTAL_VAL !== undefined) continue;
     const unit = t2clean(r.PROPERTYUNIT), frac = t2clean(r.PROPERTYFRACTION);
@@ -2432,6 +2441,9 @@ function alleKind(r) {
   const c = t2clean(r.USE_CODE).toUpperCase(), d = t2clean(r.USE_DESC).toUpperCase();
   if (!c && !d) return 'unknown';
   if (/GOVERNMENT/.test(c)) return 'exempt';
+  if (/DEVELOPMENTAL LAND/.test(d)) return 'vacant';
+  if (/GARAGE|\bAUX\b|STORAGE|PARKING/.test(d) && (c === 'RESIDENTIAL' || /CONDO/.test(d))) return 'accessory';     // a garage unit, an outbuilding with no house
+  if (/COMMON AREA|GREENBELT/.test(d)) return 'other';
   if (/CONDO/.test(d)) return c === 'RESIDENTIAL' ? 'resCondo' : 'comCondo';
   if (/^APART/.test(d)) return 'apartments';
   if (/\b(TWO|THREE|FOUR) FAMILY|DUPLEX|TRIPLEX/.test(d)) return 'multi';
@@ -2457,10 +2469,11 @@ function txKind(r) {
   if (/CONDO/.test(d)) return /COMMERCIAL/.test(d) ? 'comCondo' : 'resCondo';
   if (!c) return d ? kindFromWords(d, r) : 'unknown';
   if (/^B/.test(c)) return c === 'B1' ? 'apartments' : 'multi';
-  if (c === 'A2') return 'mobile';
+  if (c === 'A2' || /^M/.test(c)) return 'mobile';
   if (/^A/.test(c)) return hasUnitNo(String(r.SITE_ADDR || '')) ? 'resCondo' : 'single';
   if (/^F/.test(c)) return c === 'F2' ? 'industrial' : 'commercial';
-  if (/^[CO]/.test(c)) return 'vacant';
+  if (/^O/.test(c)) return num(r.BLDG_VAL) > 0 ? 'single' : 'vacant';     // a builder's inventory: a finished house, or a lot
+  if (/^C/.test(c)) return 'vacant';
   if (/^[DE]/.test(c)) return 'farmForest';
   if (/^X/.test(c)) return 'exempt';
   return 'other';
