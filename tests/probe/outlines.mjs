@@ -15,8 +15,10 @@ const WANT = [['AL', states, '01'], ['IA', states, '19'], ['KY', states, '21'], 
   ['MI', states, '26'], ['KS', states, '20'], ['GA', states, '13'], ['AZ', states, '04'], ['FL', states, '12'], ['NJ', states, '34'], ['NY', states, '36'], ['NE', states, '31'],
   // the covered states along Canada, for cutting their outlines at the international line
   ['ME', states, '23'], ['NH', states, '33'], ['VT', states, '50'], ['MN', states, '27'], ['WA', states, '53'], ['MT', states, '30']];
+// OUTLINES=next: the counties being added next (LA, Philadelphia, Allegheny, Travis, Bexar), at the finer offset
+const NEXT = [['CA_LA', counties, '06037'], ['PA_PHILA', counties, '42101'], ['PA_ALLEGHENY', counties, '42003'], ['TX_TRAVIS', counties, '48453'], ['TX_BEXAR', counties, '48029']];
 const out = {};
-for (const [name, layer, geoid] of WANT) {
+for (const [name, layer, geoid] of (process.env.OUTLINES === 'next' ? NEXT : WANT)) {
   try {
     const q = new URLSearchParams({ where: `GEOID='${geoid}'`, outFields: 'GEOID', returnGeometry: 'true', outSR: '4326', maxAllowableOffset: '0.0005', geometryPrecision: '4', f: 'json' });
     const j = await get(`${layer.base || BASE}/${layer.id}/query?${q}`);

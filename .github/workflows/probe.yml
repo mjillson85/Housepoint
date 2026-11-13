@@ -31,19 +31,20 @@ jobs:
       # probe/outlines.mjs (Census outlines of new states), probe/utah-services.mjs (Utah's county parcel services),
       # probe/layers.mjs (other layers and tables), probe/tier2-speed.mjs (timing slow layers), probe/me-join.mjs (Maine's assessing table),
       # probe/outlines.mjs (fine Census outlines),
+      # probe/joins.mjs (Philadelphia's and Allegheny's value tables), probe/state-fields.mjs (round 7's counties),
       # probe/county-sites.mjs (Georgia's qPublic and Iowa's iowaassessors.com county sites; their firewalls turn away GitHub's servers).
-      - name: The next counties' fields and property types (LA, Philadelphia, Allegheny, Travis, Bexar, Dallas)
+      - name: The next counties' last questions (LA condos, Philadelphia's units, Allegheny's values, Bexar's and Travis's classes)
         working-directory: tests
         continue-on-error: true
         env:
           CHROME: /usr/bin/google-chrome
-        run: node probe/state-fields.mjs
-      - name: Philadelphia's and Allegheny County's value tables
+        run: node probe/next-counties.mjs
+      - name: The next counties' Census outlines
         working-directory: tests
         continue-on-error: true
         env:
-          CHROME: /usr/bin/google-chrome
-        run: node probe/joins.mjs
+          OUTLINES: next
+        run: node probe/outlines.mjs
       - name: The basic card against the real services
         working-directory: tests
         continue-on-error: true
