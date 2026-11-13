@@ -18,6 +18,17 @@ await page.goto('http://localhost:8801/?health=1');
 let done = false;
 for (let i = 0; i < 1200 && !done; i++) { await sleep(500); done = await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false); }
 const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => ({ cls: li.className, label: (li.querySelector('b') || {}).textContent || '', msg: (li.querySelector('span') || {}).textContent || '' })));
+// For a region whose records don't answer: is the server down, turning GitHub away, or refusing browsers (its cross-site rules)?
+// Asked once from the browser page and once from plain Node; only the status and the layer's name are printed.
+const services = await page.evaluate(() => Object.fromEntries(Object.values(window.__hp.REGIONS).map((r) => [r.name, (r.services || [])[0]])));
+const why = [];
+for (const r of rows.filter((x) => x.cls === 'bad' && /: property records$/.test(x.label))) {
+  const name = r.label.replace(/: property records$/, ''), url = services[name]; if (!url) continue;
+  const browserTry = await page.evaluate(async (u) => { try { const res = await fetch(u + '?f=json', { signal: AbortSignal.timeout(15000) }); const j = await res.json(); return `${res.status} ${j.name || (j.error && j.error.message) || ''}`; } catch (e) { return `failed: ${e.message || e}`; } }, url);
+  let nodeTry; try { const res = await fetch(url + '?f=json', { signal: AbortSignal.timeout(15000) }); const t = await res.text(); let j = {}; try { j = JSON.parse(t); } catch (e) { /* not JSON */ }
+    nodeTry = `${res.status} ${j.name || (j.error && j.error.message) || t.slice(0, 60).replace(/\s+/g, ' ')}`; } catch (e) { nodeTry = `failed: ${(e.cause && e.cause.code) || e.message || e}`; }
+  why.push(`  ${name} (${url.replace(/^https:\/\//, '').split('/')[0]}): from the browser page ${browserTry}; from Node ${nodeTry}`);
+}
 await browser.close(); srv.close();
 
 const MARK = { ok: '  ok  ', warn: ' warn ', bad: ' BAD  ', wait: ' wait ' };
@@ -25,6 +36,7 @@ for (const r of rows) console.log(`${MARK[r.cls] || r.cls} ${r.label} | ${r.msg.
 // What fails the run: a region whose records or lots don't answer, a joined value table that comes back empty, or a check that never finished
 const dead = rows.filter((r) => (r.cls === 'bad' && /: property records$|: lots around |^(Assessed|Market) values in /.test(r.label)) || r.cls === 'wait');
 console.log(`\n${rows.length} checks: ${rows.filter((r) => r.cls === 'ok').length} ok, ${rows.filter((r) => r.cls === 'warn').length} with a problem, ${rows.filter((r) => r.cls === 'bad').length} not answering${done ? '' : ' (the page never finished)'}`);
+if (why.length) console.log(`\nWhy the records didn't answer:\n${why.join('\n')}`);
 if (!done || dead.length) {
   console.log(`\nNeeds a look:\n${dead.map((r) => `  ${r.label}: ${r.msg.slice(0, 200)}`).join('\n') || '  the check page never finished'}`);
   process.exitCode = 1;
