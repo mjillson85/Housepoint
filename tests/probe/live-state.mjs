@@ -25,6 +25,10 @@ const STATES = {   // Earlier rounds: in git history (November 13, 2026). The ne
   PA_ALLEGHENY: { spots: [[40.3770, -80.0450, null, 'Mt. Lebanon'], [40.4440, -79.9530, null, 'Pittsburgh Oakland']], searches: ['4400 Forbes Ave, Pittsburgh, PA'] },
   TX_TRAVIS: { spots: [[30.3050, -97.7270, null, 'Austin Hyde Park']], searches: ['1100 Congress Ave, Austin, TX'] },
   TX_BEXAR: { spots: [[29.4870, -98.4650, null, 'Alamo Heights']], searches: ['300 Alamo Plaza, San Antonio, TX'] },
+  // Lot-line states: what stands on the lots, from the national building outlines (the counts come after the outlines arrive)
+  DE: { spots: [[39.7500, -75.5500, null, 'Wilmington']], searches: [] },
+  NH: { spots: [[43.2100, -71.5400, null, 'Concord']], searches: [] },
+  VA: { spots: [[37.5500, -77.4600, null, 'Richmond']], searches: [] },
 };
 // The joined tables' warnings (Philadelphia's property office, Allegheny's assessments), if a join fails
 page.on('console', (m) => { if (/Philadelphia records|Allegheny assessments|extra records/.test(m.text())) log('  [console]', m.text().slice(0, 300)); });
@@ -46,6 +50,11 @@ for (const [st, cfg] of Object.entries(STATES)) {
       const kinds = {}; for (const l of S.local) { const k = hp.summarize(l.p).kind; kinds[k] = (kinds[k] || 0) + 1; }
       const recs = S.local.flatMap((l) => l.p.records);
       kinds.withValue = recs.filter((x) => Number(x.TOTAL_VAL) > 0).length; kinds.withAddress = recs.filter((x) => x.SITE_ADDR).length; kinds.records = recs.length;
+      if (hp.REGIONS[S.local[0] ? S.local[0].p.region : ''] && hp.REGIONS[S.local[0].p.region].noValues) {
+        await new Promise((r) => setTimeout(r, 4000));      // the outlines come after the lots
+        const b = S.local.filter((l) => l.p.bldg); kinds.withBuilding = b.length; kinds.homes = S.local.filter((l) => hp.summarize(l.p).isHome).length;
+        kinds.buildingKinds = b.reduce((m, l) => { m[l.p.bldg.kind] = (m[l.p.bldg.kind] || 0) + 1; return m; }, {});
+      }
       return { ms, rid: (hp.regionFor(lat, lon) || {}).id || null, lots: S.local.length, kinds, card: document.querySelector('#cardBody').innerText.replace(/\n+/g, ' | ').slice(0, 900) };
     }, lat, lon, addr);
     log(`== ${what} [${r.rid}]: ${r.err ? 'ERROR ' + r.err : ''} map ${r.ms} ms, ${r.lots} lots ${JSON.stringify(r.kinds || {})}${r.help ? ' · ' + r.help : ''}`);
