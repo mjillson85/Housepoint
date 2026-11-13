@@ -14,7 +14,7 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8798/');
 
-const LAYER = 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/1';
+const LAYER = 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/0';
 const NUMS = ['0', '100', '101', '111', '115', '140', '151', '200', '201', '204', '205', '209', '211', '233', '244', '660', '662', '670', '671', '710', '725',
   '730', '760', '765', '770', '771', '776', '958'];
 const SEARCHES = [

@@ -24,10 +24,10 @@ const services = await page.evaluate(() => Object.fromEntries(Object.values(wind
 const why = [];
 for (const r of rows.filter((x) => x.cls === 'bad' && /: property records$/.test(x.label))) {
   const name = r.label.replace(/: property records$/, ''), url = services[name]; if (!url) continue;
-  const browserTry = await page.evaluate(async (u) => { try { const res = await fetch(u + '?f=json', { signal: AbortSignal.timeout(15000) }); const j = await res.json(); return `${res.status} ${j.name || (j.error && j.error.message) || ''}`; } catch (e) { return `failed: ${e.message || e}`; } }, url);
+  const browserTry = await page.evaluate(async (u) => { try { const res = await fetch(u + '?f=json', { signal: AbortSignal.timeout(15000) }); const j = await res.json(); return `${res.status} ${j.name ? 'layer ' + j.name : (j.error && 'error ' + j.error.message) || ''}`; } catch (e) { return `failed: ${e.message || e}`; } }, url);
   // The layer answers but isn't the parcels any more: list the service's layers (numbers and names only) to find where they went.
   let moved = '';
-  if (/^200 /.test(browserTry) && /\/(FeatureServer|MapServer)\/\d+$/i.test(url)) {
+  if (/^200 layer /.test(browserTry) && /\/(FeatureServer|MapServer)\/\d+$/i.test(url)) {
     moved = await page.evaluate(async (u) => { try { const j = await (await fetch(u.replace(/\/\d+$/, '') + '?f=json', { signal: AbortSignal.timeout(15000) })).json();
       return [...(j.layers || []), ...(j.tables || [])].map((l) => `${l.id} ${l.name}${l.geometryType ? '' : ' (table)'}`).join('; '); } catch (e) { return `failed: ${e.message || e}`; } }, url);
     moved = `\n    the service's layers: ${moved}`;
@@ -36,7 +36,7 @@ for (const r of rows.filter((x) => x.cls === 'bad' && /: property records$/.test
     nodeTry = `${res.status} ${j.name || (j.error && j.error.message) || t.slice(0, 60).replace(/\s+/g, ' ')}`; } catch (e) { nodeTry = `failed: ${(e.cause && e.cause.code) || e.message || e}`; }
   why.push(`  ${name} (${url.replace(/^https:\/\//, '').split('/')[0]}): from the browser page ${browserTry}; from Node ${nodeTry}${moved}`);
 }
-const movedLayers = await page.evaluate(() => Object.values(window.__hp.REGIONS).filter((r) => (r.services || [])[0] && window.__hp.SVC[r.id] && window.__hp.SVC[r.id].layerUrl
+const movedLayers = await page.evaluate(() => Object.values(window.__hp.REGIONS).filter((r) => /\/(FeatureServer|MapServer)\/\d+\/?$/i.test((r.services || [])[0] || '') && window.__hp.SVC[r.id] && window.__hp.SVC[r.id].layerUrl
   && window.__hp.SVC[r.id].layerUrl !== r.services[0].replace(/\/+$/, '')).map((r) => `  ${r.name}: answered from ${window.__hp.SVC[r.id].layerUrl}, not ${r.services[0]} (update the address)`));
 await browser.close(); srv.close();
 if (movedLayers.length) console.log(`\nRegions whose records came from another layer:\n${movedLayers.join('\n')}`);

@@ -27,7 +27,7 @@ const LAYERS = [
   ['DC', 'common ownership lots', 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Property_and_Land/MapServer/49', [[38.9290, -77.0310, 'Columbia Heights']]],
   ['NY', 'tax parcels (sharing counties)', 'https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Tax_Parcels_Public/MapServer/1', [[42.6600, -73.7950, 'Albany houses'], [40.8710, -73.4150, 'Huntington'], [40.9890, -73.7840, 'Scarsdale']]],
   ['NY', 'parcel centroid points', 'https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Tax_Parcel_Centroid_Points/MapServer/0', [[40.8710, -73.4150, 'Huntington'], [40.9890, -73.7840, 'Scarsdale'], [43.1300, -77.5700, 'Rochester houses']]],
-  ['MN', 'opt-in open parcels', 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/1', [[44.9245, -93.3150, 'Minneapolis Linden Hills'], [44.9350, -93.1700, 'St Paul Mac-Groveland'], [44.0200, -92.4700, 'Rochester MN']]],
+  ['MN', 'opt-in open parcels', 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/0', [[44.9245, -93.3150, 'Minneapolis Linden Hills'], [44.9350, -93.1700, 'St Paul Mac-Groveland'], [44.0200, -92.4700, 'Rochester MN']]],
   ['UT', 'Salt Lake LIR parcels', 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_SaltLake_LIR/FeatureServer/0', [[40.7250, -111.8600, 'Sugar House']]],
   ['UT', 'Utah County LIR parcels', 'https://services1.arcgis.com/99lidPhWCzftIe9K/arcgis/rest/services/Parcels_Utah_LIR/FeatureServer/0', [[40.2500, -111.6600, 'Provo']]],
   ['WI', 'statewide parcels', 'https://services3.arcgis.com/n6uYoouQZW75n5WI/arcgis/rest/services/Wisconsin_Statewide_Parcels_DB/FeatureServer/0', [[43.0700, -89.4300, 'Madison Near West']]],

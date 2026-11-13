@@ -11,7 +11,7 @@ const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8780);
 const ORIGIN = 'http://localhost:8780';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const MN_SVC = 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/1';
+const MN_SVC = 'https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/0';
 // The layer's real fields, owner and tax-mailing ones included (they must never be asked for).
 const MN_FIELDS = ['objectid', 'county_pin', 'state_pin', 'anumberpre', 'anumber', 'anumbersuf', 'st_pre_mod', 'st_pre_dir', 'st_pre_typ', 'st_pre_sep', 'st_name',
   'st_pos_typ', 'st_pos_dir', 'st_pos_mod', 'sub_type1', 'sub_id1', 'sub_type2', 'sub_id2', 'zip', 'zip4', 'ctu_name', 'ctu_id_txt', 'postcomm', 'co_code', 'co_name',
@@ -35,15 +35,15 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 const asked = { where: [], outFields: '' };
 let empty = false;          // a county that doesn't share its records: the layer answers with nothing
-let moved = false;          // the parcels renumbered to layer 0 and layer 1 now a metadata layer: the app finds them in the same service
-const MN_ROOT = MN_SVC.replace(/\/1$/, ''), layerNow = () => (moved ? MN_ROOT + '/0' : MN_SVC);
+let moved = false;          // the parcels renumbered (to layer 2 here) and the old layer now a metadata layer: the app finds them in the same service
+const MN_ROOT = MN_SVC.replace(/\/0$/, ''), layerNow = () => (moved ? MN_ROOT + '/2' : MN_SVC);
 await page.setRequestInterception(true);
 page.on('request', (req) => {
   const u = req.url();
   const json = (o) => req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) });
   if (u.startsWith(ORIGIN)) return req.continue();
   if (moved && u.startsWith(MN_SVC + '?f=json')) return json({ name: 'Open Parcels Metadata Layer', geometryType: 'esriGeometryPolygon', fields: [{ name: 'objectid' }, { name: 'co_name' }, { name: 'edit_date' }] });
-  if (moved && u.startsWith(MN_ROOT + '?f=json')) return json({ layers: [{ id: 0, name: 'Open Parcels', geometryType: 'esriGeometryPolygon' }, { id: 1, name: 'Open Parcels Metadata Layer', geometryType: 'esriGeometryPolygon' }] });
+  if (moved && u.startsWith(MN_ROOT + '?f=json')) return json({ layers: [{ id: 0, name: 'Open Parcels Metadata Layer', geometryType: 'esriGeometryPolygon' }, { id: 1, name: 'Counties', geometryType: 'esriGeometryPoint' }, { id: 2, name: 'Open Parcels', geometryType: 'esriGeometryPolygon' }] });
   if (u.startsWith(layerNow() + '?f=json')) return json({ objectIdField: 'objectid', maxRecordCount: 2000, geometryType: 'esriGeometryPolygon', fields: MN_FIELDS.map((name) => ({ name })) });
   if (u.startsWith(layerNow() + '/query')) {
     const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]);
@@ -229,7 +229,7 @@ moved = true; asked.outFields = '';
 await page.evaluate(() => { const sv = window.__hp.SVC.MN; for (const k of Object.keys(sv)) delete sv[k]; sv.ready = null; });
 await page.evaluate(() => window.__hp.centerMap(44.9244, -93.3195, true)); await sleep(2500);
 const movedTo = await page.evaluate(() => window.__hp.SVC.MN.layerUrl);
-check(movedTo === MN_ROOT + '/0', 'a renumbered layer is found in the same service: ' + movedTo);
+check(movedTo === MN_ROOT + '/2', 'a renumbered layer is found in the same service: ' + movedTo);
 check(asked.outFields && !/owner_|tax_name|tax_add|abb_legal|own_add/i.test(asked.outFields), 'the moved layer is asked, and only for the app’s fields');
 
 // A county that doesn't share its records

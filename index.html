@@ -3035,7 +3035,7 @@ const REGIONS = {
     declination: (lat, lon) => 0.546 - 0.793 * (lon + 94.3) - 0.072 * (lat - 46.3),   // ~ -0.6 in Minneapolis, ~ +2.4 in Moorhead, ~ -4 at Grand Portage
     // MnGeo's open parcels: the counties that share their records openly (about 60 of 87, among them Hennepin, Ramsey, Dakota,
     // Anoka and Washington), in one layer. Owner names and the tax bill's mailing address are on it but never asked for.
-    services: ['https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/1'],
+    services: ['https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_mngeo/plan_parcels_open/MapServer/0'],
     detect: ['EMV_TOTAL', 'USECLASS1', 'ANUMBER', 'ST_NAME'],
     fields: {
       PROP_ID: ['county_pin'], A_PRE: ['anumberpre'], A_NUM: ['anumber'], A_SUF: ['anumbersuf'], S_PMOD: ['st_pre_mod'], S_PDIR: ['st_pre_dir'],
@@ -4079,8 +4079,8 @@ function initService(region) {
     for (const u of region.services || []) {
       try { if (await tryLayer(region, u)) return true; answered.push(u); } catch (e) { console.warn(region.id, 'service failed', e); }
     }
-    // A layer that answers without the region's fields was most likely renumbered (Minnesota's open parcels left layer 1 in
-    // November 2026): look through the same service's other layers. Only for a layer that answered, so a server that's down
+    // A layer that answers without the region's fields was most likely renumbered (Minnesota's open parcels moved from layer 1 to
+    // layer 0 in November 2026): look through the same service's other layers. Only for a layer that answered, so a server that's down
     // isn't waited on twice.
     for (const u of answered) {
       const root = String(u).replace(/\/+$/, '').replace(/\/(FeatureServer|MapServer)\/\d+$/i, '/$1');
