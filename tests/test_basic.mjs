@@ -148,11 +148,12 @@ const pv = await ri(41.824, -71.412);
 check(pv.link === 'https://data.nereval.com/SearchInfo.aspx?town=Providence' && /^Providence’s assessor database ›$/.test(pv.text), `Rhode Island: Providence's records on Northeast Revaluation's site: ${pv.link}`);
 const town = await page.evaluate(() => [['Burrillville', 'Central Falls', 'West Warwick', 'Cranston', 'New Shoreham', 'Little Compton'].map((t) => window.__hp.riAssessorUrl(t)), window.__hp.riAssessorUrl('Springfield')]);
 check(town[0].every(Boolean) && /town=Central\+Falls$/.test(town[0][1]) && town[0][3] === 'https://gis.vgsi.com/CranstonRI' && town[1] === null, `Rhode Island: every town has its site, none for a town that isn't one: ${JSON.stringify(town)}`);
-// Tennessee and Kansas: the state's own property search for the counties on it, the county's web search for the big ones that aren't
+// Tennessee and Kansas: the state's own property search for the counties on it, the county's web search for the ones that aren't
+// (Kansas: the 12 counties that host their own appraisal data, Riley and Douglas among them)
 const sites = await page.evaluate(() => { const f = (st, c) => (window.__hp.recordSiteFor(st, c) || {}).url || null;
   return [f('TN', 'Sumner County'), f('TN', 'Knox'), f('TN', 'Shelby County'), f('TN', null), f('KS', 'Riley'), f('KS', 'Johnson County'), f('SC', 'Richland'),
-    f('TN', 'SHELBY'), f('KS', 'JOHNSON COUNTY'), f('TN', 'SUMNER')]; });   // the outlines may send county names in capitals
-check(JSON.stringify(sites) === JSON.stringify(['https://assessment.cot.tn.gov/TPAD', null, null, null, 'https://orkahub.kansasgis.org/', null, null, null, null, 'https://assessment.cot.tn.gov/TPAD']),
+    f('TN', 'SHELBY'), f('KS', 'JOHNSON COUNTY'), f('TN', 'SUMNER'), f('KS', 'Lyon County'), f('KS', 'Douglas County')]; });   // the outlines may send county names in capitals
+check(JSON.stringify(sites) === JSON.stringify(['https://assessment.cot.tn.gov/TPAD', null, null, null, null, null, null, null, null, 'https://assessment.cot.tn.gov/TPAD', 'https://orkahub.kansasgis.org/', null]),
   `Tennessee's and Kansas's statewide searches only for counties on them (and only once the county is known): ${JSON.stringify(sites)}`);
 // Saved before the address arrived, then un-saved and saved again after: the second save has the address
 const resave = await page.evaluate(async () => {

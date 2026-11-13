@@ -2583,7 +2583,9 @@ function riAssessorUrl(town) {
 const STATE_SITES = {
   TN: { url: 'https://assessment.cot.tn.gov/TPAD', text: 'Tennessee’s property search (the Comptroller’s)',
     except: ['Davidson', 'Hamilton', 'Knox', 'Montgomery', 'Rutherford', 'Shelby', 'Williamson', 'Chester', 'Hickman'] },
-  KS: { url: 'https://orkahub.kansasgis.org/', text: 'Kansas’s ORKA property search', except: ['Johnson', 'Shawnee', 'Wyandotte', 'Sedgwick'] },
+  // The 12 counties that keep their appraisal data on their own servers instead of the state's (Kansas Department of Revenue, form PVD 75)
+  KS: { url: 'https://orkahub.kansasgis.org/', text: 'Kansas’s ORKA property search',
+    except: ['Johnson', 'Shawnee', 'Wyandotte', 'Sedgwick', 'Butler', 'Douglas', 'Ellis', 'Finney', 'Miami', 'Reno', 'Riley', 'Saline'] },
 };
 const countyBase = (c) => t2clean(c).replace(/\s+(County|Parish)$/i, '');
 // The state's own search, when this county is on it (the county must be known: the counties left out are the most populous)
@@ -3692,8 +3694,8 @@ const REGIONS = {
     // The county's parcels (lot lines and parcel ids) joined to its assessments on the Western Pennsylvania Regional Data Center
     // (alleExpand). Owner names, mailing addresses, deed references and the legal description are in the assessments too, and are never asked for.
     services: ['https://gisdata.alleghenycounty.us/arcgis/rest/services/OPENDATA/Parcels/MapServer/0'],
-    detect: ['PIN', 'MAPBLOCKLOT', 'CALCACREAGE'],
-    fields: { PROP_ID: ['PIN'] },
+    detect: ['PIN', 'MAPBLOCKLOT'],
+    fields: { PROP_ID: ['PIN'], MAP_PAR_ID: ['MAPBLOCKLOT'] },    // the layer is known by fields the app asks for (the tests replay only those)
     expand: (feats, sv) => alleExpand(feats, sv),
     noSales: false, onePerId: true,
     noDelta: true,       // a 2012 value against a recent sale would mislead
