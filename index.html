@@ -2368,7 +2368,9 @@ async function phlExpand(feats, sv) {
   const named = (r) => { const loc = t2clean(r.location), u = t2clean(r.unit).replace(/^0+(?=\w)/, '');
     return { __SITE_ADDR: u ? `${loc} UNIT ${u}` : loc, __ZIP: r.zip_code, __USE_CODE: r.category_code_description, __USE_DESC: r.building_code_description,
       __TOTAL_VAL: r.market_value, __LAND_VAL: (num(r.taxable_land) || 0) + (num(r.exempt_land) || 0), __BLDG_VAL: (num(r.taxable_building) || 0) + (num(r.exempt_building) || 0),
-      __YEAR_BUILT: /^Y/i.test(t2clean(r.year_built_estimate)) ? null : r.year_built, __RES_AREA: r.total_livable_area, __BEDS: r.number_of_bedrooms,
+      // an estimated year, or a condo unit's 1900 (the office's stand-in when the year isn't known), isn't shown
+      __YEAR_BUILT: /^Y/i.test(t2clean(r.year_built_estimate)) || (/CONDO/i.test(t2clean(r.building_code_description)) && t2clean(r.year_built) === '1900') ? null : r.year_built,
+      __RES_AREA: r.total_livable_area, __BEDS: r.number_of_bedrooms,
       __BATHS: r.number_of_bathrooms, __STORIES: r.number_stories, __SALE_DATE: r.sale_date, __LS_PRICE: r.sale_price,
       __RECORD_URL: /^\d{9}$/.test(t2clean(r.parcel_number)) ? `https://property.phila.gov/?p=${t2clean(r.parcel_number)}` : null }; };
   const byId = new Map(); for (const f of lots) (byId.get(String(f.attributes[ID])) || byId.set(String(f.attributes[ID]), []).get(String(f.attributes[ID]))).push(f.attributes);
@@ -2408,10 +2410,12 @@ const ALLE_TABLE = '65855e14-549e-4992-b5be-d629afc676fa';
 async function alleExpand(feats, sv) {
   const ID = sv.canon.get('PROP_ID'); if (!ID) return;
   const byId = new Map(); for (const f of feats) { const k = f.attributes && t2clean(f.attributes[ID]); if (/^[0-9A-Z]{16}$/.test(k || '')) (byId.get(k) || byId.set(k, []).get(k)).push(f.attributes); }
-  const ids = [...byId.keys()], parts = []; for (let i = 0; i < ids.length; i += 100) parts.push(ids.slice(i, i + 100));
-  const rows = (await Promise.all(parts.map((c) => jsonp(`https://data.wprdc.org/api/3/action/datastore_search_sql?sql=${encodeURIComponent(
-    `SELECT ${ALLE_COLS.map((x) => `"${x}"`).join(',')} FROM "${ALLE_TABLE}" WHERE "PARID" IN (${c.map((x) => `'${x}'`).join(',')})`)}`, 'callback', EXPAND_MS)
-    .then((j) => (j && j.result && j.result.records) || []).catch((e) => { console.warn('Allegheny assessments', e); return []; })))).flat();
+  // 40 parcels a request: a request for 100 failed from a browser on GitHub (November 13, 2026), and a failed one is asked once more
+  const ids = [...byId.keys()], parts = []; for (let i = 0; i < ids.length; i += 40) parts.push(ids.slice(i, i + 40));
+  const ask = (c) => jsonp(`https://data.wprdc.org/api/3/action/datastore_search_sql?sql=${encodeURIComponent(
+    `SELECT ${ALLE_COLS.map((x) => `"${x}"`).join(',')} FROM "${ALLE_TABLE}" WHERE "PARID" IN (${c.map((x) => `'${x}'`).join(',')})`)}`, 'callback', EXPAND_MS / 2)
+    .then((j) => (j && j.result && j.result.records) || []);
+  const rows = (await Promise.all(parts.map((c) => ask(c).catch(() => ask(c)).catch((e) => { console.warn('Allegheny assessments', String((e && e.message) || e)); return []; })))).flat();
   for (const r of rows) for (const a of byId.get(t2clean(r.PARID)) || []) {
     if (a.__TOTAL_VAL !== undefined) continue;
     const unit = t2clean(r.PROPERTYUNIT), frac = t2clean(r.PROPERTYFRACTION);
