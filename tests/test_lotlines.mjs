@@ -179,7 +179,10 @@ const R = {
     fields: ['OBJECTID', 'CleanParcelID', 'CountyID', 'COUNTY', 'FullPhysicalAddress', 'CALC_ACRE'],
     owner: { FullOwnerName: 'SECRET OWNER', FullOwnerAddress: 'SECRET MAILING', FullLegalDescription: 'SECRET LEGAL', OWNER1: 'SECRET OWNER 1' },
     lot: { CleanParcelID: '31110010002500000000', FullPhysicalAddress: '345 SPRUCE ST, MORGANTOWN, WV 26505' },
-    card: [/345 Spruce St \|/, /Morgantown/, /Lot lines only/] },
+    // a row of attached houses drawn as one outline, longer than the lot: it's a home, but the row's size isn't this lot's
+    bldgs: [[[-20, -6, 60, 6], { OCC_CLS: 'Residential', PRIM_OCC: 'Single Family Dwelling', HEIGHT: 9, SQFEET: 10300 }]],
+    buy: true,
+    card: [/345 Spruce St \|/, /Morgantown · House/, /Lot lines only/], notCard: [/Footprint|Main building|10,300/i] },
   NV: { url: 'https://arcgis.water.nv.gov/arcgis/rest/services/BaseLayers/County_Parcels_in_Nevada/MapServer/0', spot: [39.5200, -119.8100],
     fields: ['OBJECTID', 'APN', 'SiteCity', 'Website', 'Acres', 'County', 'PIN'],
     owner: {},

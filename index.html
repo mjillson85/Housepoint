@@ -4895,7 +4895,9 @@ async function queryBuildingsNear(lat, lon, radius = QUERY_RADIUS) {
 const BLDG_FACT_FIELDS = ['OCC_CLS', 'PRIM_OCC', 'OUTBLDG', 'HEIGHT', 'SQFEET'];
 // What stands on a lot-line state's lot, from the outlines on it: the main building (the biggest; garages, barns and sheds left out),
 // how many buildings, and its use, footprint and height. Nothing when no outline counts (never "no buildings": outlines can be missing).
-function bldgFacts(list) {
+// An outline bigger than the lot runs across several (a row of attached houses drawn as one): its use still says what the lot is,
+// but its size and the count aren't this lot's, so they aren't shown.
+function bldgFacts(list, lotM2) {
   const g = (a, k) => a[k] ?? a[k.toLowerCase()];
   const keep = list.filter((b) => b.m2 >= SHED_M2 && !/^(Y|YES|1|TRUE)$/i.test(t2clean(g(b.a, 'OUTBLDG'))));
   if (!keep.length) return null;
@@ -4907,6 +4909,7 @@ function bldgFacts(list) {
   if (kind === 'otherRes') kind = keep.length === 1 && sqft < 4000 ? 'single' : 'otherRes';
   const label = { single: 'House', multi: 'Multi-family house', apartments: 'Apartment building', mobile: 'Manufactured home', otherRes: 'Residential building' }[kind]
     || (kind === 'unknown' ? null : basicLabel(r));
+  if (lotM2 > 0 && main.m2 > lotM2 * 1.1) return { n: null, sqft: null, heightFt: null, kind, label, spans: true };
   return { n: keep.length, sqft, heightFt: h > 0 && h < 500 ? Math.round(h * 3.28084) : null, kind, label };
 }
 // Each outline goes with the smallest lot it sits on.
@@ -4932,7 +4935,7 @@ function setBuildings(list) {
     out.push(b);
     if (!Array.isArray(item) && (REGIONS[best.p.region] || {}).noValues) (facts.get(best) || facts.set(best, []).get(best)).push({ m2: b.area, a: item.a || {} });
   }
-  for (const [L, fl] of facts) L.p.bldg = bldgFacts(fl);
+  for (const [L, fl] of facts) L.p.bldg = bldgFacts(fl, lotSqft(L) / 10.7639);
   S.bldgs = out; S.bldgVer++;
   for (const L of S.local) L.badges = null;
   if (S.mode === 'map') drawMap();
@@ -5244,7 +5247,7 @@ function renderCard(cand, total, idx) {
   } else cells.push(['Lot', lotText(L)]);
   // A lot-line state's lot: what stands on it, from the national building outlines
   const ob = s.region.noValues && !s.region.basic && !s.condo ? L.p.bldg : null;
-  if (ob) {
+  if (ob && ob.sqft) {
     if (ob.n > 1) cells.push(['Buildings', ob.n]);
     cells.push([ob.n > 1 ? 'Main building' : 'Footprint', `${ob.sqft.toLocaleString('en-US')} ft²`]);
     if (ob.heightFt) cells.push(['Height', `≈ ${ob.heightFt} ft`]);
