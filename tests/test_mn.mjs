@@ -35,13 +35,17 @@ await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 const asked = { where: [], outFields: '' };
 let empty = false;          // a county that doesn't share its records: the layer answers with nothing
+let moved = false;          // the parcels renumbered to layer 0 and layer 1 now a metadata layer: the app finds them in the same service
+const MN_ROOT = MN_SVC.replace(/\/1$/, ''), layerNow = () => (moved ? MN_ROOT + '/0' : MN_SVC);
 await page.setRequestInterception(true);
 page.on('request', (req) => {
   const u = req.url();
   const json = (o) => req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) });
   if (u.startsWith(ORIGIN)) return req.continue();
-  if (u.startsWith(MN_SVC + '?f=json')) return json({ objectIdField: 'objectid', maxRecordCount: 2000, geometryType: 'esriGeometryPolygon', fields: MN_FIELDS.map((name) => ({ name })) });
-  if (u.startsWith(MN_SVC + '/query')) {
+  if (moved && u.startsWith(MN_SVC + '?f=json')) return json({ name: 'Open Parcels Metadata Layer', geometryType: 'esriGeometryPolygon', fields: [{ name: 'objectid' }, { name: 'co_name' }, { name: 'edit_date' }] });
+  if (moved && u.startsWith(MN_ROOT + '?f=json')) return json({ layers: [{ id: 0, name: 'Open Parcels', geometryType: 'esriGeometryPolygon' }, { id: 1, name: 'Open Parcels Metadata Layer', geometryType: 'esriGeometryPolygon' }] });
+  if (u.startsWith(layerNow() + '?f=json')) return json({ objectIdField: 'objectid', maxRecordCount: 2000, geometryType: 'esriGeometryPolygon', fields: MN_FIELDS.map((name) => ({ name })) });
+  if (u.startsWith(layerNow() + '/query')) {
     const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]);
     asked.outFields = q.get('outFields');
     if (q.get('where') && !q.get('geometry')) {
@@ -219,6 +223,14 @@ console.log('search where:', asked.where.join(' || '));
 check(asked.where.some((w) => /anumber=4332/.test(w) && /UPPER\(ctu_name\) LIKE 'MINNEAPOLIS%' OR UPPER\(postcomm\) LIKE 'MINNEAPOLIS%'/.test(w)), 'search asks by number and street name, in either town field');
 const found = await page.evaluate(() => document.body.innerText);
 check(/4332 Xerxes Ave S/i.test(found), 'the address is found');
+
+// The state renumbers its layers: the app looks through the same service and finds the parcels on another layer
+moved = true; asked.outFields = '';
+await page.evaluate(() => { const sv = window.__hp.SVC.MN; for (const k of Object.keys(sv)) delete sv[k]; sv.ready = null; });
+await page.evaluate(() => window.__hp.centerMap(44.9244, -93.3195, true)); await sleep(2500);
+const movedTo = await page.evaluate(() => window.__hp.SVC.MN.layerUrl);
+check(movedTo === MN_ROOT + '/0', 'a renumbered layer is found in the same service: ' + movedTo);
+check(asked.outFields && !/owner_|tax_name|tax_add|abb_legal|own_add/i.test(asked.outFields), 'the moved layer is asked, and only for the app’s fields');
 
 // A county that doesn't share its records
 empty = true;

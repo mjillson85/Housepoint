@@ -4075,8 +4075,18 @@ function initService(region) {
   if (sv.ready) return sv.ready;
   sv.ready = (async () => {
     if (DEMO) return true;
+    const answered = [];
     for (const u of region.services || []) {
-      try { if (await tryLayer(region, u)) return true; } catch (e) { console.warn(region.id, 'service failed', e); }
+      try { if (await tryLayer(region, u)) return true; answered.push(u); } catch (e) { console.warn(region.id, 'service failed', e); }
+    }
+    // A layer that answers without the region's fields was most likely renumbered (Minnesota's open parcels left layer 1 in
+    // November 2026): look through the same service's other layers. Only for a layer that answered, so a server that's down
+    // isn't waited on twice.
+    for (const u of answered) {
+      const root = String(u).replace(/\/+$/, '').replace(/\/(FeatureServer|MapServer)\/\d+$/i, '/$1');
+      if (root === String(u).replace(/\/+$/, '')) continue;
+      try { if (await tryLayer(region, root)) { console.warn(region.id, 'answered from', svcFor(region.id).layerUrl, 'not', u); return true; } }
+      catch (e) { console.warn(region.id, 'service root failed', e); }
     }
     for (const id of region.items || []) {     // public ArcGIS Online items: look up their current service address
       try { const it = await getJSON(`https://www.arcgis.com/sharing/rest/content/items/${id}?f=json`); if (it.url && await tryLayer(region, it.url)) return true; }
