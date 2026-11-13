@@ -30,6 +30,7 @@ const ASK = {
 for (const [k, fs] of Object.entries(ASK)) for (const f of fs) if (isOwnerish(f)) { console.log(`STOP: ${k}.${f} is on the owner list`); process.exit(1); }
 
 const out = await page.evaluate(async (ASK) => {
+  const js = (v, n = 700) => (JSON.stringify(v ?? null) || '').slice(0, n);
   const get = async (u, ms = 30000) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms), t0 = performance.now();
     try { const r = await fetch(u, { signal: c.signal }); const j = await r.json(); return { status: r.status, j, ms: Math.round(performance.now() - t0) }; }
     catch (e) { return { err: String(e && e.message || e), ms: Math.round(performance.now() - t0) }; } finally { clearTimeout(t); } };
