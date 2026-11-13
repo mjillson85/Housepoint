@@ -102,6 +102,12 @@ const SPOTS = {
   HI: [['Honolulu Kaimuki', 21.2790, -157.8000, 250], ['Hilo', 19.7200, -155.0900, 300]],
   DE: [['Wilmington', 39.7500, -75.5500, 250], ['Dover', 39.1580, -75.5240, 300]],
   VA: [['Richmond', 37.5500, -77.4600, 250], ['Arlington', 38.8800, -77.1000, 250], ['Norfolk', 36.8500, -76.2900, 300]],
+  // More big counties (November 13, 2026)
+  CA_LA: [['Torrance', 33.8350, -118.3400, 250], ['Pasadena', 34.1500, -118.1400, 250], ['Koreatown', 34.0635, -118.3000, 200], ['Santa Clarita', 34.4000, -118.5400, 300]],
+  PA_PHILA: [['Philadelphia Roxborough', 40.0350, -75.2150, 250], ['Rittenhouse condos', 39.9493, -75.1707, 150], ['Northern Liberties', 39.9690, -75.1340, 200]],
+  PA_ALLEGHENY: [['Mt. Lebanon', 40.3770, -80.0450, 250], ['Pittsburgh Oakland', 40.4440, -79.9530, 250], ['Pittsburgh Shadyside', 40.4540, -79.9350, 200]],
+  TX_TRAVIS: [['Austin Hyde Park', 30.3050, -97.7270, 250], ['Austin Zilker', 30.2470, -97.7700, 250], ['Downtown Austin condos', 30.2655, -97.7460, 150]],
+  TX_BEXAR: [['Alamo Heights', 29.4870, -98.4650, 250], ['San Antonio King William', 29.4100, -98.5000, 250], ['Stone Oak', 29.6300, -98.4800, 300]],
 };
 // Lots that have shown problems before, found by their MassGIS LOC_ID through the state's own server (indexed there).
 const NAMED = { MA: [['47-49 River St (commercial condo, land and master records)', 'F_751960_2913839']] };

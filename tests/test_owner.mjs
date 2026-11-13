@@ -30,7 +30,7 @@ await page.waitForFunction(() => window.__hp && window.__hp.REGIONS);
 // 1. Every region's fields (the basic card's states made too), and the fields it finds its layer by
 const regions = await page.evaluate(() => {
   const hp = window.__hp;
-  for (const st of ['SC', 'PA', 'TX', 'CA']) hp.regionFor(...{ SC: [34.0, -81.03], PA: [40.44, -79.99], TX: [30.27, -97.74], CA: [34.06, -118.3] }[st]);
+  for (const st of ['SC', 'PA', 'TX', 'CA']) hp.regionFor(...{ SC: [34.0, -81.03], PA: [40.273, -76.887], TX: [31.762, -106.485], CA: [32.716, -117.161] }[st]);
   return Object.values(hp.REGIONS).map((r) => ({ id: r.id, fields: Object.values(r.fields || {}).flat(), detect: r.detect || [], scrub: Object.keys(r.scrub || {}) }));
 });
 check(regions.length > 40, `${regions.length} regions read`);
@@ -61,6 +61,15 @@ for (const [name, src] of files) {
   });
 }
 check(true, `field lists in ${files.length} files read`);
+// The column lists for the tables joined to the lots (Philadelphia's property office on Carto, Allegheny's assessments on the WPRDC):
+// property columns only. Their owner, mailing ("change notice"), legal and deed columns don't all match the shared list's names, so
+// they're named here too.
+for (const name of ['PHL_OPA_COLS', 'ALLE_COLS']) {
+  const m = new RegExp(`const ${name} = (\\[[\\s\\S]*?\\]);`).exec(html);
+  const cols = m ? Function(`return ${m[1]}`)() : [];
+  const bad = cols.filter((c) => isOwnerish(c) || /owner|mail|care_?of|notice|legal|deed|book|registry|beginning_point|cross_reference/i.test(c));
+  check(cols.length > 10 && !bad.length, `${name}: ${cols.length} property columns, none an owner's, mailing, legal or deed column${bad.length ? ': ' + bad.join(', ') : ''}`);
+}
 const basic = await page.evaluate(() => (window.__hp.REGIONS.US_SC ? true : false));
 check(basic, 'the basic card regions were made');
 

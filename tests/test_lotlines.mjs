@@ -1,5 +1,5 @@
 // The big counties (Harris, Tarrant, Alameda, San Bernardino, Franklin, Hamilton, Nashville, Bismarck, the Portland area, Ada,
-// Oakland, Macomb, Wichita, Atlanta, Maricopa), Maine, and the lot-line states (Indiana, New Hampshire, West Virginia, Nevada,
+// Oakland, Macomb, Wichita, Atlanta, Maricopa; then Los Angeles, Philadelphia, Allegheny, Travis and Bexar), Maine, and the lot-line states (Indiana, New Hampshire, West Virginia, Nevada,
 // Hawaii, Delaware, Virginia). Outlines and state lines, compass, property types, each layer faked with its real field names (owner,
 // mailing and legal fields included, so the test sees they're never asked for) and the card at a lot in each.
 import puppeteer from 'puppeteer-core';
@@ -118,6 +118,49 @@ const R = {
     lot: { STATE_ID: '05170_033  K008', PROP_LOC: '00341 CUMBERLAND AVE', TOWN: 'Portland', COUNTY: 'Cumberland', MAP_BK_LOT: '033  K008' },
     table: [{ STATE_ID: '05170_033  K008', LAND_VAL: 118300, BLDG_VAL: 300000, LS_DATE: -2209143600000, LS_PRICE: 0, LAND_USE_D: 'SINGLE FAM', LIV_UNITS: 1, RES_AREA: 1800 }],
     card: [/341 Cumberland Ave \|/, /Portland · Single-family home/, /ASSESSED VALUE \| \$418,300/i] },
+  CA_LA: { url: 'https://rpgis.isd.lacounty.gov/arcgis/rest/services/GISNET_Public/MapServer/333', spot: [33.8350, -118.3400],
+    fields: ['OBJECTID', 'AIN', 'APN', 'SitusAddress', 'SitusCity', 'SitusZIP', 'TaxRateArea', 'UseDescription', 'TaxRateCity', 'UseCode', 'UseType', 'DesignType1',
+      'YearBuilt1', 'Units1', 'Bedrooms1', 'Bathrooms1', 'SQFTmain1', 'EffectiveYear1', 'Roll_Year', 'Roll_LandValue', 'Roll_ImpValue', 'Roll_LandBaseYear',
+      'Roll_ImpBaseYear', 'SitusFullAddress'],
+    owner: { RecDate: 'SECRET RECORDING', RecDocNo: 'SECRET DEED' },
+    lot: { APN: '7362-003-099', SitusAddress: '1320 MAPLE AVE', SitusCity: 'TORRANCE CA', SitusZIP: '90503-5923', UseCode: '0100', UseDescription: 'Single',
+      UseType: 'Residential', YearBuilt1: '1951', Units1: 1, Bedrooms1: 3, Bathrooms1: 2, SQFTmain1: 1400, Roll_Year: '2026', Roll_LandValue: 500000, Roll_ImpValue: 200000 },
+    card: [/1320 Maple Ave \|/, /Torrance · Single-family home/, /ASSESSED VALUE[^|]*\| \$700,000/i, /Proposition 13/, /Built 1951/, /Los Angeles County Assessor’s page/] },
+  PA_PHILA: { url: 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/PWD_PARCELS/FeatureServer/0', spot: [40.0350, -75.2150],
+    fields: ['OBJECTID', 'parcelid', 'tencode', 'address', 'bldg_code', 'bldg_desc', 'brt_id', 'num_brt', 'num_accounts', 'gross_area', 'pin', 'parcel_id'],
+    owner: { owner1: 'SECRET OWNER', owner2: 'SECRET OWNER 2' },
+    lot: { brt_id: '213269999', address: '540 DUPONT ST', bldg_desc: 'SEMI DET 2 STY MASONRY', num_brt: 1, num_accounts: 1, parcelid: 99999 },
+    carto: [{ parcel_number: '213269999', location: '540 DUPONT ST', unit: null, zip_code: '19128', category_code_description: 'SINGLE FAMILY',
+      building_code_description: 'SEMI/DET 2 STY MASONRY', market_value: 410000, taxable_land: 80000, taxable_building: 330000, exempt_land: 0, exempt_building: 0,
+      year_built: '1925', year_built_estimate: 'N', total_livable_area: 1500, number_of_bedrooms: 3, number_of_bathrooms: 1, number_stories: 2,
+      sale_date: '2019-06-14T04:00:00Z', sale_price: 305000 }],
+    card: [/540 Dupont St \|/, /Philadelphia · Twin \(semi-detached\)/, /\$410,000/, /Last sold \$305,000 · Jun 2019/, /Built 1925/, /Philadelphia’s property page/] },
+  PA_ALLEGHENY: { url: 'https://gisdata.alleghenycounty.us/arcgis/rest/services/OPENDATA/Parcels/MapServer/0', spot: [40.3770, -80.0450],
+    fields: ['OBJECTID', 'PIN', 'MAPBLOCKLOT', 'MUNICODE', 'CALCACREAGE'],
+    owner: {},
+    lot: { PIN: '0141N00099000000', MAPBLOCKLOT: '141-N-99', MUNICODE: 935, CALCACREAGE: 0.2 },
+    wprdc: [{ PARID: '0141N00099000000', PROPERTYHOUSENUM: '31', PROPERTYFRACTION: ' ', PROPERTYADDRESS: 'ELM DR', PROPERTYUNIT: ' ', PROPERTYZIP: '15228',
+      MUNIDESC: 'Mt.Lebanon  ', CLASSDESC: 'RESIDENTIAL', USEDESC: 'SINGLE FAMILY', SALEDATE: '04-14-2021', SALEPRICE: 520000, FAIRMARKETTOTAL: 250000,
+      FAIRMARKETLAND: 60000, FAIRMARKETBUILDING: 190000, YEARBLT: 1924, FINISHEDLIVINGAREA: 2100, BEDROOMS: 4, FULLBATHS: 2, HALFBATHS: 1, STORIES: '2', STYLEDESC: 'COLONIAL' }],
+    card: [/31 Elm Dr \|/, /Mt\. Lebanon · Single-family home/, /\$250,000/, /2012/, /Last sold \$520,000 · Apr 2021 \(\d+ yrs ago\) \|/] },
+  TX_TRAVIS: { url: 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0', spot: [30.3050, -97.7270],
+    fields: ['OBJECTID', 'PROP_ID', 'geo_id', 'situs_num', 'situs_street', 'situs_zip', 'situs_address', 'abs_subdv_cd', 'sub_dec', 'land_state_cd', 'land_type_desc',
+      'entities', 'tcad_acres', 'GIS_acres', 'legal_acre', 'F1year_imprv', 'market_value', 'appraised_val', 'assessed_val', 'imprv_homesite_val', 'imprv_non_homesite_val',
+      'land_homesite_val', 'land_non_homesite_val', 'hyperlink', 'situs_street_prefx', 'situs_street_suffix', 'situs_city', 'LOTS'],
+    owner: { py_owner_id: 'SECRET ID', py_owner_name: 'SECRET OWNER', py_address: 'SECRET MAILING', deed_num: 'SECRET DEED', deed_book_id: 'SECRET BOOK',
+      deed_book_page: 'SECRET PAGE', deed_date: 'SECRET DATE', legal_desc: 'SECRET LEGAL' },
+    lot: { PROP_ID: 215999, situs_num: '4211', situs_street_prefx: ' ', situs_street: 'AVENUE H', situs_street_suffix: ' ', situs_city: 'AUSTIN', situs_zip: '78751',
+      land_state_cd: 'A1', land_type_desc: 'SINGLE FAMILY RESIDENCE', F1year_imprv: 1930, market_value: 700000, appraised_val: 700000, assessed_val: 650000,
+      imprv_homesite_val: 300000, imprv_non_homesite_val: 0, land_homesite_val: 400000, land_non_homesite_val: '0', hyperlink: 'https://travis.prodigycad.com/property-detail/215999' },
+    card: [/4211 Avenue H \|/, /Austin · Single-family home/, /MARKET VALUE \(TCAD\)[^|]*\| \$700,000/i, /Texas doesn’t make sale prices public/, /Travis Central Appraisal District’s page/] },
+  TX_BEXAR: { url: 'https://maps.bexar.org/arcgis/rest/services/Parcels/MapServer/0', spot: [29.4870, -98.4650],
+    fields: ['OBJECTID', 'PropID', 'Situs', 'AcctNumb', 'LandVal', 'ImprVal', 'TotVal', 'Nbhd', 'GBA', 'TOT_GBA', 'YrBlt', 'Stories', 'NumRooms', 'Houses', 'Detached',
+      'State_cd', 'LglAcres', 'Acres', 'TaxUnits', 'Exempts', 'IS_UDI', 'UDIPARNT', 'Roll', 'SWP', 'PropUse'],
+    owner: { Owner: 'SECRET OWNER', AddrLn1: 'SECRET MAILING', AddrLn2: 'SECRET MAILING 2', AddrLn3: 'SECRET MAILING 3', AddrCity: 'SECRET CITY', AddrSt: 'SECRET ST',
+      Zip: 'SECRET ZIP', Zip4: 'SECRET Z4', Country: 'SECRET COUNTRY', DBA: 'SECRET DBA', LglDesc: 'SECRET LEGAL' },
+    lot: { PropID: 346999, Situs: '150 WILDROSE AVE \r\nALAMO HEIGHTS, TX 78209', State_cd: 'A1', PropUse: '001', LandVal: 350000, ImprVal: 500000, TotVal: 850000,
+      YrBlt: '1928', GBA: '2400', Stories: '2' },
+    card: [/150 Wildrose Ave \|/, /Alamo Heights · Single-family home/, /MARKET VALUE \(BCAD\)[^|]*\| \$850,000/i, /Built 1928/] },
   IN: { url: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0', spot: [39.7900, -86.1500],
     fields: ['objectid', 'state_parcel_id', 'parcel_id', 'prop_add', 'prop_city', 'prop_state', 'prop_zip', 'dlgf_prop_class_code', 'county_fips', 'tax_county'],
     owner: {},
@@ -155,6 +198,10 @@ const R = {
     card: [/26 Hillcrest Road \|/, /Lot lines only/, /county or city assessor/] },
 };
 const ME_TABLE = R.ME.url.replace(/\/10$/, '/9');
+// Philadelphia's property office table (Carto) and Allegheny's assessments (WPRDC, by JSONP): what each was asked, and a condo's units
+const cartoAsked = [], wprdcAsked = [];
+const PHL_CONDO = [['888001103', '101'], ['888092750', '905'], ['888092788', '1006']].map(([parcel_number, unit]) => ({ ...R.PA_PHILA.carto[0], parcel_number,
+  location: '219-29 S 18TH ST', unit, category_code_description: 'SINGLE FAMILY', building_code_description: 'RES CONDO 5+ STY MASONRY', market_value: 300000 + +unit * 100 }));
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
@@ -168,6 +215,12 @@ page.on('request', (req) => {
   if (u.startsWith(ORIGIN)) return req.continue();
   if (u.startsWith('https://api.geoapify.com/v1/geocode/reverse')) { const q = new URL(u).searchParams;
     return json({ results: [{ housenumber: '26', street: 'Hillcrest Road', distance: 12, lat: +q.get('lat'), lon: +q.get('lon') }] }); }
+  if (u.startsWith('https://phl.carto.com/api/v2/sql')) { const q = new URLSearchParams(req.postData() || u.split('?')[1] || '').get('q') || ''; cartoAsked.push(q);
+    const rows = [...R.PA_PHILA.carto, ...PHL_CONDO].filter((r) => (q.includes('parcel_number IN') && q.includes(`'${r.parcel_number}'`)) || (q.includes('location IN') && q.includes(`'${r.location}'`)));
+    return json({ rows }); }
+  if (u.startsWith('https://data.wprdc.org/api/3/action/datastore_search_sql')) { const p = new URL(u).searchParams, sql = p.get('sql') || ''; wprdcAsked.push(sql);
+    const recs = R.PA_ALLEGHENY.wprdc.filter((r) => sql.includes(`'${r.PARID}'`));
+    return req.respond({ status: 200, contentType: 'application/javascript', body: `${p.get('callback')}(${JSON.stringify({ success: true, result: { records: recs } })})` }); }
   if (u.startsWith(ME_TABLE + '/query')) { const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]); tableAsked.push(q.get('outFields') || '');
     return json({ features: R.ME.table.filter((r) => (q.get('where') || '').includes(r.STATE_ID)).map((attributes) => ({ attributes })) }); }
   for (const [rid, c] of Object.entries(R)) {
@@ -198,25 +251,33 @@ const rg = await page.evaluate(() => {
     reno: [39.5296, -119.8138], lasVegas: [36.1699, -115.1398], honolulu: [21.3069, -157.8583], hilo: [19.7241, -155.0868], wilmington: [39.7391, -75.5398],
     richmond: [37.5407, -77.436], arlington: [38.8816, -77.091], georgetownDC: [38.9097, -77.0654], bristolVA: [36.5951, -82.1887], virginiaBeach: [36.8529, -75.978],
     currituckNC: [36.4507, -76.0168], portlandME: [43.6591, -70.2568], kitteryME: [43.0882, -70.7362], portsmouthNH: [43.0718, -70.7626], bangor: [44.8016, -68.7712],
-    salisburyMD: [38.3607, -75.5994], cumberlandMD: [39.6528, -78.7625], keyserWV: [39.4362, -78.9817], keyWestFL: [24.5551, -81.78], memphis: [35.1495, -90.049] };
+    salisburyMD: [38.3607, -75.5994], cumberlandMD: [39.6528, -78.7625], keyserWV: [39.4362, -78.9817], keyWestFL: [24.5551, -81.78], memphis: [35.1495, -90.049],
+    losAngeles: [34.0522, -118.2437], longBeach: [33.7701, -118.1937], avalon: [33.3428, -118.3278], pomona: [34.0551, -117.75], upland: [34.0975, -117.6484],
+    anaheim: [33.8366, -117.9143], thousandOaks: [34.1706, -118.8376], philadelphia: [39.9526, -75.1652], camden: [39.9259, -75.1196], jenkintown: [40.0959, -75.1252],
+    pittsburgh: [40.4406, -79.9959], washingtonPA: [40.174, -80.2462], harrisburg: [40.2732, -76.8867], sanAntonio: [29.4241, -98.4936], newBraunfels: [29.703, -98.1245],
+    sanMarcos: [29.8833, -97.9414], roundRock: [30.5083, -97.6789] };
   return Object.fromEntries(Object.entries(P).map(([k, [a, o]]) => [k, f(a, o)]));
 });
 console.log('regions:', JSON.stringify(rg));
-const wantR = { houston: 'TX_HARRIS', katy: 'TX_HARRIS', fortWorth: 'TX_TARRANT', dallas: 'US_TX', austin: 'US_TX', oakland: 'CA_ALAMEDA', sanFrancisco: 'US_CA', redlands: 'CA_SBD',
+const wantR = { houston: 'TX_HARRIS', katy: 'TX_HARRIS', fortWorth: 'TX_TARRANT', dallas: 'US_TX', austin: 'TX_TRAVIS', oakland: 'CA_ALAMEDA', sanFrancisco: 'US_CA', redlands: 'CA_SBD',
   needles: 'CA_SBD', laughlinNV: 'NV', columbus: 'OH_FRANKLIN', cincinnati: 'OH_HAMILTON', lawrenceburgIN: 'IN', covingtonKY: 'US_KY', nashville: 'TN_DAVIDSON',
   bismarck: 'ND_BISMARCK', mandan: 'US_ND', portland: 'OR_METRO', vancouverWA: 'WA', beaverton: 'OR_METRO', boise: 'ID_ADA', royalOak: 'MI_OAKLAND', detroit: 'US_MI',
   mountClemens: 'MI_MACOMB', wichita: 'KS_SEDGWICK', atlanta: 'GA_ATLANTA', decatur: 'US_GA', phoenix: 'AZ_MARICOPA', tucson: 'US_AZ', indianapolis: 'IN', concord: 'NH',
   hanover: 'NH', whiteRiverVT: 'VT', charleston: 'WV', harpersFerry: 'WV', reno: 'NV', lasVegas: 'NV', honolulu: 'HI', hilo: 'HI', wilmington: 'DE', richmond: 'VA',
   arlington: 'VA', georgetownDC: 'DC', bristolVA: 'VA', virginiaBeach: 'VA', currituckNC: 'NC', portlandME: 'ME', kitteryME: 'ME', portsmouthNH: 'NH', bangor: 'ME',
-  salisburyMD: 'MD', cumberlandMD: 'MD', keyserWV: 'WV', keyWestFL: 'FL', memphis: 'US_TN' };
+  salisburyMD: 'MD', cumberlandMD: 'MD', keyserWV: 'WV', keyWestFL: 'FL', memphis: 'US_TN', losAngeles: 'CA_LA', longBeach: 'CA_LA', avalon: 'CA_LA', pomona: 'CA_LA',
+  upland: 'CA_SBD', anaheim: 'US_CA', thousandOaks: 'US_CA', philadelphia: 'PA_PHILA', camden: 'NJ', jenkintown: 'US_PA', pittsburgh: 'PA_ALLEGHENY', washingtonPA: 'US_PA',
+  harrisburg: 'US_PA', sanAntonio: 'TX_BEXAR', newBraunfels: 'US_TX', sanMarcos: 'US_TX', roundRock: 'US_TX' };
 const badR = Object.entries(wantR).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
 check(!badR.length, 'places land in the right state or county, along the lines too (outside the counties, the state’s basic card)' + (badR.length ? ': ' + badR.join(', ') : ''));
 
 // Compass: near the World Magnetic Model (2026.9) at a place in each
 const decl = await page.evaluate(() => [[29.76, -95.37], [32.76, -97.33], [37.8, -122.27], [34.06, -117.18], [39.96, -83.0], [39.1, -84.51], [36.16, -86.78], [46.81, -100.78],
   [45.52, -122.68], [43.62, -116.2], [42.49, -83.14], [42.6, -82.88], [37.69, -97.33], [33.75, -84.39], [33.45, -112.07], [43.66, -70.26], [39.77, -86.16], [43.21, -71.54],
-  [38.35, -81.63], [36.17, -115.14], [21.31, -157.86], [39.74, -75.54], [37.54, -77.44]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
-const wantD = [1.7, 2.8, 12.8, 11.1, -7.2, -6.1, -4.3, 5.4, 14.5, 12.6, -7.5, -7.7, 2.9, -5.6, 9.6, -14.4, -5.0, -13.9, -7.9, 11.0, 9.3, -11.6, -10.3];
+  [38.35, -81.63], [36.17, -115.14], [21.31, -157.86], [39.74, -75.54], [37.54, -77.44], [34.05, -118.24], [39.95, -75.17], [40.44, -80.0], [30.27, -97.74],
+  [29.42, -98.49], [33.34, -118.33]].map(([a, o]) => +window.__hp.regionFor(a, o).declination(a, o).toFixed(1)));
+const wantD = [1.7, 2.8, 12.8, 11.1, -7.2, -6.1, -4.3, 5.4, 14.5, 12.6, -7.5, -7.7, 2.9, -5.6, 9.6, -14.4, -5.0, -13.9, -7.9, 11.0, 9.3, -11.6, -10.3,
+  11.3, -11.8, -9.2, 3.1, 3.5, 11.2];
 const offD = decl.map((d, i) => Math.abs(d - wantD[i]) < 0.8 ? null : `${i}: ${d} (want ${wantD[i]})`).filter(Boolean);
 check(!offD.length, `compass declination near the World Magnetic Model${offD.length ? ': ' + offD.join(', ') : ''}`);
 
@@ -237,19 +298,32 @@ const kinds = await page.evaluate(() => {
     tnCondo: k('TN_DAVIDSON', { FEATURE: 'Multistory Cond', USE_DESC: 'RESIDENTIAL CONDO' }), ksDuplex: k('KS_SEDGWICK', { USE_CODE: 'R', UNITS: 2 }),
     atlLot: k('GA_ATLANTA', { USE_CODE: 'R4', BLDG_VAL: 0 }), bisDuplex: k('ND_BISMARCK', { USE_DESC: 'RESIDENTIAL TWO FAMILY', UNITS: 2 }),
     sbdApts: k('CA_SBD', { USE_DESC: 'APARTMENT, 15 UNITS AND UP', USE_CODE: 'COMMERCIAL' }), meHouse: k('ME', { USE_DESC: 'Single Fam  MDL-01' }), nhNone: k('NH', {}),
+    laHouse: k('CA_LA', { USE_CODE: '0100', LAND_USE: 'Residential' }), laCondo: k('CA_LA', { USE_CODE: '010C', LAND_USE: 'Residential' }),
+    laConverted: k('CA_LA', { USE_CODE: '01HE', LAND_USE: 'Residential' }), laTwo: k('CA_LA', { USE_CODE: '0200', LAND_USE: 'Residential' }),
+    laApts: k('CA_LA', { USE_CODE: '0501', LAND_USE: 'Residential' }), laLot: k('CA_LA', { USE_CODE: '010V', LAND_USE: 'Residential' }),
+    laOffice: k('CA_LA', { USE_CODE: '1700', LAND_USE: 'Commercial' }), laOfficeCondo: k('CA_LA', { USE_CODE: '170C', LAND_USE: 'Commercial' }),
+    phlRow: k('PA_PHILA', { USE_CODE: 'SINGLE FAMILY', USE_DESC: 'ROW 2 STY MASONRY' }), phlCondo: k('PA_PHILA', { USE_CODE: 'SINGLE FAMILY', USE_DESC: 'RES CONDO 5+ STY MASONRY' }),
+    phlWaterOnly: k('PA_PHILA', { USE_DESC: 'APT 2-4  UNTS 2STY FRAME' }), phlMixed: k('PA_PHILA', { USE_CODE: 'MIXED USE', USE_DESC: 'STR/OFF+APTS 3STY MASONRY' }),
+    alleHouse: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'SINGLE FAMILY' }), alleTwo: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'TWO FAMILY' }),
+    alleGov: k('PA_ALLEGHENY', { USE_CODE: 'GOVERNMENT', USE_DESC: 'MUNICIPAL GOVERNMENT' }), alleCondo: k('PA_ALLEGHENY', { USE_CODE: 'RESIDENTIAL', USE_DESC: 'CONDOMINIUM' }),
+    tcadDuplex: k('TX_TRAVIS', { USE_CODE: 'B2', USE_DESC: 'DUPLEX' }), tcadCondo: k('TX_TRAVIS', { USE_CODE: 'A4', USE_DESC: 'CONDOS' }),
+    tcadApts: k('TX_TRAVIS', { USE_CODE: 'B1', USE_DESC: 'MULTIFAMILY' }), bexarHouse: k('TX_BEXAR', { USE_CODE: 'A1' }), bexarLot: k('TX_BEXAR', { USE_CODE: 'C1' }),
   };
 });
 const wantK = { hcadHouse: 'single', hcadCondo: 'resCondo', hcadDuplex: 'multi', hcadApts: 'apartments', hcadLot: 'vacant', hcadExempt: 'exempt', alaHouse: 'single',
   alaCondo: 'resCondo', alaCommon: 'condoMaster', alaFourplex: 'multi', alaApts: 'apartments', alaExempt: 'exempt', ohHouse: 'single', ohCondo: 'resCondo', ohApts: 'apartments',
   ohLot: 'vacant', ohChurch: 'exempt', inHouse: 'single', inCondo: 'resCondo', inFarm: 'farmForest', inVacant: 'vacant', miHouse: 'single', miCondo: 'resCondo', miLot: 'vacant',
   orHouse: 'single', orApts: 'apartments', orDuplex: 'multi', azTownhouse: 'single', azCommon: 'other', azMobile: 'mobile', tnCondo: 'resCondo', ksDuplex: 'multi',
-  atlLot: 'vacant', bisDuplex: 'multi', sbdApts: 'apartments', meHouse: 'single', nhNone: 'unknown' };
+  atlLot: 'vacant', bisDuplex: 'multi', sbdApts: 'apartments', meHouse: 'single', nhNone: 'unknown', laHouse: 'single', laCondo: 'resCondo', laConverted: 'resCondo',
+  laTwo: 'multi', laApts: 'apartments', laLot: 'vacant', laOffice: 'commercial', laOfficeCondo: 'comCondo', phlRow: 'single', phlCondo: 'resCondo', phlWaterOnly: 'multi',
+  phlMixed: 'mixed', alleHouse: 'single', alleTwo: 'multi', alleGov: 'exempt', alleCondo: 'resCondo', tcadDuplex: 'multi', tcadCondo: 'resCondo', tcadApts: 'apartments',
+  bexarHouse: 'single', bexarLot: 'vacant' };
 const badK = Object.entries(wantK).filter(([k, v]) => kinds[k] !== v).map(([k, v]) => `${k}: ${kinds[k]} (want ${v})`);
 check(!badK.length, 'property types read as the right kind' + (badK.length ? ': ' + badK.join(', ') : ''));
 
 // Search: a state covered county by county is searched in its counties; a state with none is outside
 const inSt = await page.evaluate(() => ({ tx: window.__hp.regionsIn ? window.__hp.regionsIn('TX').map((r) => r.id) : null, sc: window.__hp.regionsIn ? window.__hp.regionsIn('SC').length : null }));
-check(JSON.stringify(inSt.tx) === '["TX_HARRIS","TX_TARRANT"]' && inSt.sc === 0, `Texas is searched in Harris and Tarrant counties; South Carolina has nothing: ${JSON.stringify(inSt)}`);
+check(JSON.stringify(inSt.tx) === '["TX_HARRIS","TX_TARRANT","TX_TRAVIS","TX_BEXAR"]' && inSt.sc === 0, `Texas is searched in its four counties; South Carolina has nothing: ${JSON.stringify(inSt)}`);
 
 // A card in each
 async function cardAt(lat, lon) {
@@ -270,9 +344,22 @@ for (const [rid, c] of Object.entries(R)) {
   check(!/SECRET/.test(r.card || ''), `${rid}: no owner, mailing or legal text on the card`);
   const outs = (asked[rid] || []).join(',').split(',');
   const bad = Object.keys(c.owner).filter((f) => outs.includes(f));
-  check(outs.length > 1 && !bad.length, `${rid}: owner, mailing and legal fields are never asked for` + (bad.length ? `: ${bad.join(', ')}` : ''));
+  check(outs.filter(Boolean).length >= 1 && !bad.length, `${rid}: owner, mailing and legal fields are never asked for` + (bad.length ? `: ${bad.join(', ')}` : ''));
 }
 check(tableAsked.length && tableAsked.every((f) => !/OWN|MAIL/i.test(f)), `Maine: the assessing table is asked for values only: ${tableAsked[0]}`);
+check(cartoAsked.length && cartoAsked.every((q) => !/owner|mailing|care_of|legal|book_and_page|registry|beginning_point/i.test(q)),
+  `Philadelphia: the property office's table is asked for property columns only: ${(cartoAsked[0] || '').slice(0, 160)}`);
+check(wprdcAsked.length && wprdcAsked.every((q) => !/OWNER|CHANGENOTICE|LEGAL|DEED/i.test(q)), `Allegheny: the assessments are asked for property columns only: ${(wprdcAsked[0] || '').slice(0, 160)}`);
+// A Philadelphia condo building: one parcel holding several accounts; its units come by the building's address and stack on its outline
+const condo = await page.evaluate(async () => {
+  const hp = window.__hp, ring = [[-75.17, 39.949], [-75.1695, 39.949], [-75.1695, 39.9495], [-75.17, 39.9495], [-75.17, 39.949]];
+  const feats = [{ geometry: { rings: [ring] }, attributes: { brt_id: '888001103', address: '219-29 S 18TH ST', num_brt: 3, bldg_desc: 'RES.CONDO.5+STY MASONRY' } }];
+  const sv = { canon: new Map([['PROP_ID', 'brt_id'], ['SITE_ADDR', 'address'], ['BRT_COUNT', 'num_brt']]) };
+  await hp.REGIONS.PA_PHILA.expand(feats, sv);
+  return feats.map((f) => [f.attributes.brt_id, f.attributes.__SITE_ADDR, f.geometry === feats[0].geometry]);
+});
+check(condo.length === 3 && condo[0][1] === '219-29 S 18TH ST UNIT 101' && condo.every((x) => x[2]) && new Set(condo.map((x) => x[0])).size === 3,
+  `Philadelphia: a condo building's units stack on its outline, each once: ${JSON.stringify(condo)}`);
 check(!errors.length, 'no page errors: ' + errors.join(' | '));
 await browser.close(); srv.close();
 console.log(fails.length ? `\n${fails.length} failed` : '\nAll passed');

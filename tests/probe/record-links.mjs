@@ -17,7 +17,15 @@ const links = [
   ...Object.entries(vgsi).map(([t, slug]) => [t, `https://gis.vgsi.com/${slug}`]),
   ...nereval.map((t) => [t, `https://data.nereval.com/SearchInfo.aspx?town=${encodeURIComponent(t).replace(/%20/g, '+')}`]),
 ];
-console.log(`== ${links.length} assessor links: the statewide searches, then Rhode Island's towns`);
+// The county record pages the big counties' cards link to, at a commercial or public parcel each (a page that answers is enough:
+// some are apps that fill in after loading). Allegheny's and Bexar's are candidates, not linked yet.
+links.push(['Los Angeles County Assessor', 'https://portal.assessor.lacounty.gov/parceldetail/5502031011', /./],
+  ['Philadelphia property', 'https://property.phila.gov/?p=882971656', /./],
+  ['Travis CAD', 'https://travis.prodigycad.com/property-detail/303036', /./],
+  ['Allegheny real estate (candidate)', 'https://www2.alleghenycounty.us/RealEstate/GeneralInfo?ParcelID=0027S00150000003', /./],
+  ['Bexar CAD (candidate)', 'https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=1296114', /./],
+  ['Bexar CAD esearch (candidate)', 'https://esearch.bcad.org/Property/View/1296114', /./]);
+console.log(`== ${links.length} assessor links: the statewide searches, then Rhode Island's towns, then the big counties' record pages`);
 let bad = 0;
 for (const [town, url, nameRe] of links) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), 20000), t0 = Date.now();
@@ -28,9 +36,9 @@ for (const [town, url, nameRe] of links) {
     // A dead town page on either site still answers 200 with an error or the vendor's home page: check the town's name is on it
     const named = (nameRe || new RegExp(town.replace(/\s+/g, '\\s*'), 'i')).test(body.slice(0, 200000));
     const ok = r.ok && named, robots = r.status === 403;     // a firewall that turns away robots (and GitHub's servers): check by hand
-    if (!ok && !robots) bad++;
+    if (!ok && !robots && !/candidate/.test(town)) bad++;     // a candidate's answer is news, not a failure
     console.log(`${ok ? 'ok  ' : robots ? 'BOT ' : 'BAD '} ${town}: ${r.status} ${Date.now() - t0} ms${r.url !== url ? ` → ${r.url}` : ''} · "${title}"${named ? '' : ' · town not named on the page'}`);
-  } catch (e) { bad++; console.log(`BAD  ${town}: ${e.name === 'AbortError' ? 'no answer in 20 s' : e.message} · ${url}`); }
+  } catch (e) { if (!/candidate/.test(town)) bad++; console.log(`BAD  ${town}: ${e.name === 'AbortError' ? 'no answer in 20 s' : e.message} · ${url}`); }
   finally { clearTimeout(t); }
 }
 console.log(bad ? `${bad} of ${links.length} links need a look` : `none broken (BOT: the site turns away robots, so open those by hand)`);

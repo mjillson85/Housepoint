@@ -69,12 +69,12 @@ await page.click('#goMap'); await sleep(300);
 // Which region: the covered ones as before; elsewhere in the US the basic one for its state; nothing outside the US
 const rg = await page.evaluate(() => {
   const f = (la, lo) => { const r = window.__hp.regionFor(la, lo); return r ? r.id : null; };
-  return { columbia: f(33.998, -81.03), philly: f(39.952, -75.18), albuquerque: f(35.09, -106.63), austin: f(30.27, -97.74), houston: f(29.76, -95.37),
-    losAngeles: f(34.06, -118.3), cleveland: f(41.49, -81.69), boston: f(42.36, -71.06), charlotte: f(35.227, -80.843), toronto: f(43.65, -79.38), mexicali: f(32.62, -115.45),
+  return { columbia: f(33.998, -81.03), harrisburg: f(40.273, -76.887), albuquerque: f(35.09, -106.63), elPaso: f(31.762, -106.485), houston: f(29.76, -95.37),
+    sanDiego: f(32.716, -117.161), cleveland: f(41.49, -81.69), boston: f(42.36, -71.06), charlotte: f(35.227, -80.843), toronto: f(43.65, -79.38), mexicali: f(32.62, -115.45),
     gulf: f(28.5, -90.0), keyWest: f(24.555, -81.78), valdosta: f(30.83, -83.28), orangeBeach: f(30.28, -87.6), bellevueNE: f(41.137, -95.8908), lambertvilleNJ: f(40.3657, -74.9429), newOrleans: f(29.95, -90.07), providence: f(41.82, -71.41), siouxFalls: f(43.545, -96.73), memphis: f(35.1495, -90.049) };
 });
 console.log('regions:', JSON.stringify(rg));
-const want = { columbia: 'US_SC', philly: 'US_PA', albuquerque: 'US_NM', austin: 'US_TX', houston: 'TX_HARRIS', losAngeles: 'US_CA', cleveland: 'US_OH', boston: 'MA',
+const want = { columbia: 'US_SC', harrisburg: 'US_PA', albuquerque: 'US_NM', elPaso: 'US_TX', houston: 'TX_HARRIS', sanDiego: 'US_CA', cleveland: 'US_OH', boston: 'MA',
   charlotte: 'NC', toronto: null, mexicali: null, gulf: null, keyWest: 'FL', valdosta: 'US_GA', orangeBeach: 'US_AL', bellevueNE: 'NE', lambertvilleNJ: 'NJ', newOrleans: 'US_LA', providence: 'US_RI', siouxFalls: 'US_SD', memphis: 'US_TN' };
 const bad = Object.entries(want).filter(([k, v]) => rg[k] !== v).map(([k, v]) => `${k}: ${rg[k]} (want ${v})`);
 check(!bad.length, 'places land in their state’s basic region, covered places in theirs, other countries in none' + (bad.length ? ': ' + bad.join(', ') : ''));
@@ -94,8 +94,8 @@ const edgeBad = edges.filter(([, got, w]) => got !== w).map(([n, got, w]) => `${
 check(!edgeBad.length, `state and country lines: ${edges.length} places on either side land right` + (edgeBad.length ? ': ' + edgeBad.join(', ') : ''));
 
 // Compass: the World Magnetic Model where no region has its own fit
-const decl = await page.evaluate(() => [[33.998, -81.03], [39.952, -75.18], [35.09, -106.63], [30.27, -97.74], [47.6, -122.3]].map(([a, o]) => +window.__hp.declinationAt({ lat: a, lon: o }).toFixed(1)));
-check([-7.8, -11.8, 7.8, 3.1, 14.9].every((w, i) => Math.abs(decl[i] - w) < 0.4), `compass correction from the World Magnetic Model: ${decl.join(', ')}`);
+const decl = await page.evaluate(() => [[33.998, -81.03], [40.273, -76.887], [35.09, -106.63], [31.762, -106.485], [47.6, -122.3]].map(([a, o]) => +window.__hp.declinationAt({ lat: a, lon: o }).toFixed(1)));
+check([-7.8, -11.0, 7.8, 7.4, 14.9].every((w, i) => Math.abs(decl[i] - w) < 0.4), `compass correction from the World Magnetic Model: ${decl.join(', ')}`);
 
 // The lots are the buildings (no shed, no outbuilding), and the card for each
 const card = async (pickId) => page.evaluate(async (pickId) => {
