@@ -175,7 +175,16 @@ await page.evaluate(() => document.querySelector('#buyBox').scrollIntoView()); a
 const buy2 = await page.$eval('#buyBox', (el) => el.innerText.replace(/\n+/g, ' | '));
 check(!(await page.$('#buyBtn')) && /Thinking of buying\?/.test(buy2), 'after the first tap, cards open the section by themselves');
 check(count.schQ === before.schQ && count.overpass === before.overpass, 'the house next door reuses schools and places already loaded');
+check(/Loads by itself on each home’s card/.test(buy2) && !!(await page.$('#buyBox [data-buyoff]')), 'the section says it loads by itself, with a Turn off button');
 check(/Grocery \| Stop & Shop \| \d+ min walk \| 0\.4 mi/.test(buy2) && /Coffee \| Main Street Creamery/.test(buy2), 'distances are measured from the new house');
+// Turned off: back to the button, the choice forgotten, and nothing sent for the next house until it's tapped
+await page.click('#buyBox [data-buyoff]'); await sleep(200);
+const offState = await page.evaluate(() => ({ btn: !!document.querySelector('#buyBtn'), stored: localStorage.getItem('housepoint.buyOpen') }));
+const beforeOff = { ...count };
+await page.evaluate(() => { const S = window.__hp.S; const L = S.local.find((l) => l.p.records[0].SITE_ADDR === '220 MAIN ST'); window.__hp.openSheet([{ L, dist: 20, cdist: 30, bearing: 270 }], 0); });
+await sleep(400); await page.evaluate(() => { const b = document.querySelector('#buyBox'); if (b) b.scrollIntoView(); }); await sleep(800);
+check(offState.btn && offState.stored === null && !!(await page.$('#buyBtn')) && count.schQ === beforeOff.schQ, `Turn off brings back the button and loads nothing more: ${JSON.stringify(offState)}`);
+await page.click('#buyBtn'); await sleep(1500);      // on again for the checks below
 
 // Far away with OpenStreetMap down: that part says so, the rest still loads
 overpassDown = true;

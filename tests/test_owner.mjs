@@ -61,6 +61,23 @@ for (const [name, src] of files) {
   });
 }
 check(true, `field lists in ${files.length} files read`);
+// 2b. In the scripts, every field list written as text (outFields: F, FEW, OUT and the like), not only those beside outFields
+for (const [name, src] of files.slice(1)) {
+  src.split('\n').forEach((l, i) => {
+    for (const m of l.matchAll(/'([A-Za-z][A-Za-z0-9_]*(?:,\s*[A-Za-z][A-Za-z0-9_]*){2,})'/g)) {
+      const bad = m[1].split(',').map((x) => x.trim()).filter(isOwnerish);
+      if (bad.length) check(false, `${name}:${i + 1}: owner-like fields in a field list: ${bad.join(', ')}`);
+    }
+  });
+}
+// 2c. A script that builds its field list from a layer's own fields (whatever the layer has) filters it through the shared owner list:
+// its own list alone can miss a name, and the probes' logs are public
+for (const [name, src] of files.slice(1)) {
+  // outFields from anything but a quoted list or a constant holding one (those are checked above)
+  const consts = new Set([...src.matchAll(/const ([A-Z][A-Z0-9_]*) = '/g)].map((m) => m[1]));
+  const builds = /\.fields\b/.test(src) && [...src.matchAll(/outFields:\s*([^,}\s]+)/g)].some((m) => !/^'/.test(m[1]) && !consts.has(m[1]));
+  if (builds) check(/from '\.\.?\/(\.\.\/)?owner-fields\.mjs'|from '\.\/owner-fields\.mjs'/.test(src), `${name}: builds its field list from a layer's fields, through the shared owner list`);
+}
 // The column lists for the tables joined to the lots (Philadelphia's property office on Carto, Allegheny's assessments on the WPRDC):
 // property columns only. Their owner, mailing ("change notice"), legal and deed columns don't all match the shared list's names, so
 // they're named here too.

@@ -68,8 +68,5 @@ for (const [st, cfg] of Object.entries(STATES)) {
     log(`== search "${q}": ${r.ms} ms ${JSON.stringify(r.x || r.err).slice(0, 300)}`);
   }
 }
-await page.goto('http://localhost:8800/?health=1');
-for (let i = 0; i < 600 && !(await page.$eval('#hDone', (e) => /^Done/.test(e.textContent)).catch(() => false)); i++) await sleep(250);
-const rows = await page.evaluate(() => [...document.querySelectorAll('#hRows li')].map((li) => `${li.className}|${li.innerText.replace(/\s+/g, ' ')}`));
-log('== health rows'); for (const h of rows) if (/Los Angeles|Philadelphia|Allegheny|Travis|Bexar|Building outlines|Flood|elevation|Aerial/.test(h)) log('   ' + h.slice(0, 300));
+// The service check (?health=1) is its own step now: probe/health.mjs
 await browser.close(); srv.close();

@@ -1,6 +1,7 @@
 // Tries the services behind "Thinking of buying?" from a real browser (on GitHub, which can reach them), and logs what each
 // one answers, so a section that doesn't load on the phone can be traced. Run by the "probe services" workflow; nothing is saved.
 //   cd tests && node probe/services.mjs
+import { OWNERISH, KEEP_NAME } from '../owner-fields.mjs';
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -47,12 +48,13 @@ for (const [name, lat, lon] of [['Boston Back Bay', 42.3505, -71.0810], ['Worces
   for (const [k, v] of Object.entries(r)) log(`  ${k}: ${JSON.stringify(v).slice(0, 400)}`);
 }
 // 3. The school query, taken apart: which part does the service refuse?
-const variants = await page.evaluate(async () => {
+const variants = await page.evaluate(async (OWN, KEEP) => {
+  const ownerish = (f) => new RegExp(OWN, 'i').test(f) && !new RegExp(KEEP, 'i').test(f);     // the shared owner list
   const layer = 'https://services1.arcgis.com/Ua5sjt3LWTPigjyD/arcgis/rest/services/School_Characteristics_Current/FeatureServer/1';
   const meta = await (await fetch(layer + '?f=json')).json();
   const names = (meta.fields || []).map((f) => f.name);
   const want = ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME', 'SCHOOL_LEVEL', 'GSLO', 'GSHI', 'TOTAL', 'MEMBER', 'STUTERATIO', 'CHARTER_TEXT', 'MAGNET_TEXT', 'VIRTUAL', 'SCHOOL_TYPE_TEXT', 'SY_STATUS_TEXT', 'SURVYEAR', 'LATCOD', 'LONCOD'];
-  const up = new Map(names.map((n) => [n.toUpperCase(), n])), have = want.map((n) => up.get(n)).filter(Boolean);
+  const up = new Map(names.map((n) => [n.toUpperCase(), n])), have = want.map((n) => up.get(n)).filter((n) => n && !ownerish(n));
   const base = { geometry: '-71.0810,42.3505', geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json' };
   const tries = {
     app: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400', distance: '6500', units: 'esriSRUnit_Meter' },
@@ -71,7 +73,7 @@ const variants = await page.evaluate(async () => {
     catch (e) { out[k] = { ms: Math.round(performance.now() - t0), fetchError: String(e) }; }
   }
   return out;
-});
+}, OWNERISH.source, KEEP_NAME.source);
 const nces = await page.evaluate(async () => {
   const out = {};
   for (const svc of ['https://nces.ed.gov/opengis/rest/services/K12_School_Locations/EDGE_ADMINDATA_PUBLICSCH_2324/MapServer/1',

@@ -50,6 +50,18 @@ await page.goto(ORIGIN + '/');
 const REGION_NAMES = await page.evaluate(() => Object.fromEntries(Object.values(window.__hp.REGIONS).map((r) => [r.id, r.name])));
 svcUrls = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hp.REGIONS).map(([k, v]) => [k, [...(v.services || []), ...(v.layersFor ? v.layersFor(0, 0, 1e9) : [])].map((x) => String(x).replace(/\/+$/, ''))])));
 for (const set of sets) set.noAddress = await page.evaluate((id) => !!(window.__hp.REGIONS[id] && window.__hp.REGIONS[id].addrByPosition), set.state);
+// Each fixture holds only what the app asks for today: its region's fields (and the fields it finds the layer by), the layer's own
+// id, and what its joins add (a "__" name the app reads). A field the app stopped asking for means the fixture needs capturing again.
+const asks = await page.evaluate(() => {
+  const hp = window.__hp, all = new Set(Object.values(hp.REGIONS).flatMap((r) => [...Object.keys(r.fields), ...(r.extraFields || [])]).concat(['FOOTPRINT', 'HEIGHT_FT', 'STATE', 'LS_DATE', 'TOTAL_VAL', 'FY']));
+  return { all: [...all], by: Object.fromEntries(Object.values(hp.REGIONS).map((r) => [r.id, [...Object.values(r.fields || {}).flat(), ...(r.detect || [])].map((f) => String(f).toUpperCase())])) };
+});
+for (const set of sets) {
+  const own = new Set(asks.by[set.state] || []), all = new Set(asks.all), oid = String(set.objectIdField || 'OBJECTID').toUpperCase();
+  const keys = new Set(set.lots.flatMap((l) => l.features.flatMap((f) => Object.keys(f.attributes || {}))));
+  const stale = [...keys].filter((k) => (k.startsWith('__') ? !all.has(k.slice(2)) : !own.has(k.toUpperCase()) && k.toUpperCase() !== oid && !/^(OBJECTID|FID|OID)$/i.test(k)));
+  check(!stale.length, `${set.state}: the fixture holds only fields the app asks for${stale.length ? ` (capture again; no longer asked: ${stale.slice(0, 8).join(', ')})` : ''}`);
+}
 await page.click('#goMap'); await sleep(300);
 
 // Clearly not a home, read straight from the use codes (independent of the app's own reading)

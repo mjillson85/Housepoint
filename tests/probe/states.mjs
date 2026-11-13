@@ -3,6 +3,7 @@
 // plan which states to add next. Run by the "probe services" workflow; nothing is saved.
 // Owner and mailing fields are never requested: the spot queries ask only for the layer's property fields (SHOW, not HIDE).
 //   cd tests && node probe/states.mjs
+import { OWNERISH, KEEP_NAME } from '../owner-fields.mjs';
 import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
@@ -44,8 +45,11 @@ const LAYERS = [
 const DIRS = ['https://mdgeodata.md.gov/imap/rest/services/PlanningCadastre', 'https://services1.arcgis.com/RbMX0mRVOFNTdLzd/arcgis/rest/services/Maine_Parcels_Organized_Towns/FeatureServer'];
 const AGOL = [];
 
-const res = await page.evaluate(async (LAYERS, DIRS, AGOL) => {
-  const HIDE = /(^|_)OWN|OWNER|MAIL|^NAME|_NAME|NAME_|NAME\d|TAXPAYER|CARE|GRANT|BUYER|SELLER|ADDRESSEE|PSTLADR|DEED_?NAME|ADD|ADR|CITY|ZIP|STREET|SITUS|SITE|LOCATION|^M(ADDR|UNIT|CITY|ZIP|STATE|STNAME)|ASSESSOR$/i;
+const res = await page.evaluate(async (LAYERS, DIRS, AGOL, OWN, KEEP) => {
+  // the shared owner list (owner-fields.mjs) first, then this probe's own wider net
+  const own = new RegExp(OWN, 'i'), keep = new RegExp(KEEP, 'i'), ownerish = (f) => own.test(f) && !keep.test(f);
+  const HIDE0 = /(^|_)OWN|OWNER|MAIL|^NAME|_NAME|NAME_|NAME\d|TAXPAYER|CARE|GRANT|BUYER|SELLER|ADDRESSEE|PSTLADR|DEED_?NAME|ADD|ADR|CITY|ZIP|STREET|SITUS|SITE|LOCATION|^M(ADDR|UNIT|CITY|ZIP|STATE|STNAME)|ASSESSOR$/i;
+  const HIDE = { test: (f) => ownerish(f) || HIDE0.test(f) };
   const SHOW = /VAL|VL$|MKT|MARKET|ASSESS|APPR|PARVAL|EMV|AV$|_AV|FLV|YR|YEAR|BLT|BUILT|SALE|PRICE|CONSID|TRADATE|USE|CLASS|SQFT|SQ_FT|GBA|LIVING|STRUC|UNIT|BED|BATH|STOR|TAX|ACRE|TYPE/i;
   const timed = async (f) => { const t0 = performance.now(); try { const v = await f(); return { ms: Math.round(performance.now() - t0), ...v }; } catch (e) { return { ms: Math.round(performance.now() - t0), fetchError: String(e && e.message || e).slice(0, 160) }; } };
   const get = async (u, ms = 25000) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); try { const r = await fetch(u, { signal: c.signal }); const txt = await r.text(); try { return JSON.parse(txt); } catch (e) { return { notJson: txt.slice(0, 120), status: r.status }; } } finally { clearTimeout(t); } };
@@ -95,7 +99,7 @@ const res = await page.evaluate(async (LAYERS, DIRS, AGOL) => {
     })) });
   }
   return out;
-}, LAYERS, DIRS, AGOL);
+}, LAYERS, DIRS, AGOL, OWNERISH.source, KEEP_NAME.source);
 
 log('== statewide parcel layers');
 for (const r of res.layers) {

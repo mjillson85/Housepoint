@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer-core';
 import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
+import { OWNERISH, KEEP_NAME } from '../owner-fields.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 const html = fs.readFileSync(`${ROOT}/index.html`);
@@ -15,8 +16,10 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '
 const page = await browser.newPage();
 await page.goto('http://localhost:8796/');
 
-const out = await page.evaluate(async () => {
-  const BAD = /own|mail|careof|address1|address2|citystzip|legal|grantor|grantee|asrname|deed|book|page_num/i;
+const out = await page.evaluate(async (OWN, KEEP) => {
+  // the shared owner list (owner-fields.mjs), and this probe's own wider net
+  const own = new RegExp(OWN, 'i'), keep = new RegExp(KEEP, 'i'), BAD0 = /own|mail|careof|address1|address2|citystzip|legal|grantor|grantee|asrname|deed|book|page_num/i;
+  const BAD = { test: (f) => (own.test(f) && !keep.test(f)) || BAD0.test(f) };
   const get = async (u, ms = 30000) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); const t0 = performance.now();
     try { const r = await fetch(u, { signal: c.signal }); return { j: await r.json(), ms: Math.round(performance.now() - t0) }; }
     catch (e) { return { err: String(e && e.message || e), ms: Math.round(performance.now() - t0) }; } finally { clearTimeout(t); } };
@@ -60,7 +63,7 @@ const out = await page.evaluate(async () => {
     res.search.push(`${where} | ${r.ms} ms | ${r.j && r.j.features ? r.j.features.length + ' ' + JSON.stringify(r.j.features.slice(0, 2).map((f) => f.attributes)) : (r.err || JSON.stringify(r.j && r.j.error)).slice(0, 150)}`);
   }
   return res;
-});
+}, OWNERISH.source, KEEP_NAME.source);
 console.log('#### DC condos');
 console.log('== services'); for (const s of out.services) console.log('  ', s);
 console.log('== layers and tables'); for (const l of out.layers) console.log('  ', l);

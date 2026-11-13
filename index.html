@@ -281,6 +281,8 @@
   .buy-btn { width: 100%; padding: 13px 16px; border-radius: 14px; background: var(--ink); color: var(--paper); font-weight: 600; font-size: 15px; text-align: left; line-height: 1.3; }
   .buy-btn span { display: block; font-weight: 500; font-size: 12.5px; opacity: .75; margin-top: 2px; }
   .buy-h { font-family: var(--serif); font-weight: 700; font-size: 21px; margin: 18px 0 2px; }
+  .buy-auto { font-size: 12.5px; color: var(--mute); margin: 2px 0 4px; line-height: 1.4; }
+  .buy-auto .buy-off { min-height: 32px; padding: 0 12px; margin-left: 4px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-size: 12.5px; font-weight: 600; }
   .bsec { margin: 10px 0 4px; padding: 12px 14px 12px; border-radius: 14px; background: #fffaf1; border: 1px solid var(--line); }
   .bsec .bt { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
   .bsec .bl { font-size: 13px; color: var(--mute); line-height: 1.42; margin-top: 4px; }
@@ -3459,7 +3461,7 @@ const REGIONS = {
       if (c && a.endsWith(' ' + c)) a = a.slice(0, -c.length - 1); o.SITE_ADDR = a; o.VALUE_KIND = 'assessed'; },
     kindOf: (r) => alaKind(r), labelOf: (r) => alaLabel(r),
     valueLabel: 'Assessed value', valueWord: 'Assessed', valueTitle: 'Assessed value',
-    source: () => 'Source: the Alameda County Assessor’s roll on the county’s parcels. California’s assessed value rises at most 2% a year until the property sells (Proposition 13), so it’s often far below market value. California doesn’t make sale prices public.',
+    source: () => 'Source: the Alameda County Assessor’s roll on the county’s parcels. California’s assessed value rises at most 2% a year until the property sells, so it’s often far below market value. California doesn’t make sale prices public.',
     shareSource: 'Alameda County Assessor records',
   }),
   CA_SBD: mkRegion({
@@ -3476,7 +3478,7 @@ const REGIONS = {
     kindOf: (r) => { const k = kindFromWords(r.USE_DESC, r); return k === 'unknown' ? kindFromWords(r.USE_CODE, r) : k; },
     labelOf: (r) => { const k = kindFromWords(r.USE_DESC, r); return k === 'unknown' ? wordsLabel(kindFromWords(r.USE_CODE, r), r.USE_CODE) : wordsLabel(k, r.USE_DESC); },
     valueLabel: 'Assessed value', valueWord: 'Assessed', valueTitle: 'Assessed value',
-    source: () => 'Source: the San Bernardino County Assessor’s values on the county’s parcels. California’s assessed value rises at most 2% a year until the property sells (Proposition 13), so it’s often far below market value.',
+    source: () => 'Source: the San Bernardino County Assessor’s values on the county’s parcels. California’s assessed value rises at most 2% a year until the property sells, so it’s often far below market value.',
     shareSource: 'San Bernardino County Assessor records',
   }),
   OH_FRANKLIN: mkRegion({
@@ -3686,7 +3688,7 @@ const REGIONS = {
     kindOf: (r) => laKind(r), labelOf: (r) => laLabel(r),
     recordLinkText: 'Los Angeles County Assessor’s page for this parcel',
     valueLabel: 'Assessed value', valueWord: 'Assessed', valueTitle: 'Assessed value',
-    source: (fy) => `Source: the Los Angeles County Assessor’s roll on the county’s parcels${fy ? `, ${fy}` : ''}. California’s assessed value rises at most 2% a year until the property sells (Proposition 13), so it’s often far below market value. California doesn’t make sale prices public.`,
+    source: (fy) => `Source: the Los Angeles County Assessor’s roll on the county’s parcels${fy ? `, ${fy}` : ''}. California’s assessed value rises at most 2% a year until the property sells, so it’s often far below market value. California doesn’t make sale prices public.`,
     shareSource: 'Los Angeles County Assessor records',
   }),
   PA_PHILA: mkRegion({
@@ -4808,8 +4810,7 @@ async function ensureData(lat, lon, force = false) {
       setData(lots, lat, lon); S.failAt = 0;
       const proj = S.proj;
       // Lots that are building outlines already (the basic card, and its stand-in where a state's records have a gap) need no second fetch
-      if (lots.some((p) => !(REGIONS[p.region] || {}).basic))
-        queryBuildingsNear(lat, lon).then((b) => { if (S.proj === proj) setBuildings(b); }).catch((e) => console.warn('building outlines unavailable', e));
+      if (lots.some((p) => !(REGIONS[p.region] || {}).basic)) loadBuildings(lat, lon, lots, proj);
     }
     catch (e) {
       console.error(e); S.failAt = Date.now();
@@ -4873,24 +4874,53 @@ function bldgLayer(rid) {
   BSVC[rid].then((l) => { if (!l) setTimeout(() => { delete BSVC[rid]; }, 60000); }, () => { delete BSVC[rid]; });
   return BSVC[rid];
 }
-async function queryBuildingsNear(lat, lon, radius = QUERY_RADIUS) {
+// Building outlines for every region whose lots are loaded, not only the one the phone stands in: aiming from Methuen, MA at
+// Salem, NH needs New Hampshire's outlines (MassGIS draws only Massachusetts), and from Pennsylvania's basic card at Delaware's lots
+// Delaware's. Each source is asked once (most regions share Esri's USA Structures). Each outline carries its source, so a lot keeps
+// only its own region's outlines (no doubled roofs where two sources overlap). A source that fails throws, so the caller can retry.
+async function queryBuildingsNear(lat, lon, radius = QUERY_RADIUS, lots = null) {
   if (DEMO) return demoParcels.cache ? demoParcels.cache.bldgs : [];
-  const rg = regionFor(lat, lon); if (!rg || rg.basic) return [];     // the basic card's lots are the outlines themselves
-  const l = await bldgLayer(rg.id); if (!l) return [];
-  // The lot-line states (no records on the lots): the outlines' own facts too, asked for by name (the layer has no owner fields at all)
-  const facts = !!(rg.noValues && l.usa);
-  const out = [];
-  for (let page = 0, offset = 0; page < 4; page++) {
-    const params = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
-      distance: String(radius), units: 'esriSRUnit_Meter', returnGeometry: 'true', outSR: '4326', geometryPrecision: '7',
-      ...(facts ? { outFields: BLDG_FACT_FIELDS.join(',') } : {}), resultOffset: String(offset), resultRecordCount: String(l.page), f: 'json' });
-    const j = await getJSON(l.url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }, 15000);
-    const got = j.features || [];
-    for (const ft of got) if (ft.geometry && ft.geometry.rings && ft.geometry.rings.length) out.push(facts ? { rings: ft.geometry.rings, a: ft.attributes || {} } : ft.geometry.rings);
-    if (!j.exceededTransferLimit || !got.length) break;
-    offset += got.length;
+  const here = regionFor(lat, lon);
+  const ids = new Set((lots || []).map((p) => p.region).filter((id) => REGIONS[id] && !REGIONS[id].basic));
+  if (here && !here.basic) ids.add(here.id);
+  if (!ids.size) return [];      // the basic card's lots are the outlines themselves
+  const srcOf = {}, bySrc = new Map();
+  for (const id of ids) {
+    const l = await bldgLayer(id); if (!l) throw new Error(`no building outlines for ${id}`);
+    srcOf[id] = l.url;
+    const g = bySrc.get(l.url) || { l, facts: false }; bySrc.set(l.url, g);
+    // The lot-line states (no records on the lots): the outlines' own facts too, asked for by name (the layer has no owner fields at all)
+    if (REGIONS[id].noValues && l.usa) g.facts = true;
   }
+  const out = [];
+  await Promise.all([...bySrc].map(async ([url, { l, facts }]) => {
+    for (let page = 0, offset = 0; page < 4; page++) {
+      const params = new URLSearchParams({ geometry: `${lon},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects',
+        distance: String(radius), units: 'esriSRUnit_Meter', returnGeometry: 'true', outSR: '4326', geometryPrecision: '7',
+        ...(facts ? { outFields: BLDG_FACT_FIELDS.join(',') } : {}), resultOffset: String(offset), resultRecordCount: String(l.page), f: 'json' });
+      const j = await getJSON(url + '/query', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }, 15000);
+      if (j.error) throw new Error(`building outlines: ${j.error.message || j.error.code}`);
+      const got = j.features || [];
+      for (const ft of got) if (ft.geometry && ft.geometry.rings && ft.geometry.rings.length) out.push({ rings: ft.geometry.rings, a: facts ? ft.attributes || {} : null, src: url });
+      if (!j.exceededTransferLimit || !got.length) break;
+      offset += got.length;
+    }
+  }));
+  out.srcOf = srcOf; out.here = here && !here.basic ? srcOf[here.id] : null;
   return out;
+}
+// Outlines for the lots just loaded, asked again (after 3 s, then 8 s) if a source fails. If they never come, lots in a region with
+// nothing else saying they're built (the lot-line states, Wyoming) count as built, so point mode still has houses to aim at.
+function loadBuildings(lat, lon, lots, proj, tries = 0) {
+  queryBuildingsNear(lat, lon, QUERY_RADIUS, lots).then((b) => { if (S.proj === proj) setBuildings(b); }).catch((e) => {
+    if (S.proj !== proj) return;
+    if (tries < 2) { setTimeout(() => { if (S.proj === proj) loadBuildings(lat, lon, lots, proj, tries + 1); }, tries ? 8000 : 3000); return; }
+    console.warn('building outlines unavailable', e);
+    const byRegion = new Map(); for (const L of S.local) (byRegion.get(L.p.region) || byRegion.set(L.p.region, []).get(L.p.region)).push(L);
+    for (const [, ls] of byRegion) if (!ls.some((L) => L.p.built)) for (const L of ls) { L.p.built = true; L.p.builtGuess = true; }
+    S.bldgVer++; for (const L of S.local) L.badges = null;
+    if (S.mode === 'map') drawMap();
+  });
 }
 const BLDG_FACT_FIELDS = ['OCC_CLS', 'PRIM_OCC', 'OUTBLDG', 'HEIGHT', 'SQFEET'];
 // What stands on a lot-line state's lot, from the outlines on it: the main building (the biggest; garages, barns and sheds left out),
@@ -4918,6 +4948,7 @@ function setBuildings(list) {
   const cur = S.candidates && S.candidates[S.cIdx], was = cur && cur.L ? JSON.stringify(cur.L.p.bldg || null) : null;
   for (const L of S.local) { L.hasBldg = false; L.p.bldg = null; }
   const out = [], facts = new Map();
+  const srcOf = (list && list.srcOf) || null;
   for (const item of list || []) {
     const ringsLL = Array.isArray(item) ? item : item.rings;
     const rings = ringsLL.map((r) => r.map(([lo, la]) => S.proj.fwd(la, lo)));
@@ -4929,6 +4960,8 @@ function setBuildings(list) {
       const a = lotSqft(L); if (a < bestA) { bestA = a; best = L; }
     }
     if (!best) continue;
+    // a lot keeps only its own region's outlines (Massachusetts lots MassGIS's, not USA Structures' copy of the same roofs)
+    if (srcOf && item.src && srcOf[best.p.region] !== item.src) continue;
     best.hasBldg = true;
     if ((REGIONS[best.p.region] || {}).builtByOutline) best.p.built = true;   // Wyoming: no building values, so a roof on the lot says it's built
     const b = { rings, c, bb, L: best, area: Math.abs(rings.reduce((t, r) => t + ringArea(r), 0)) };
@@ -4940,7 +4973,12 @@ function setBuildings(list) {
   for (const L of S.local) L.badges = null;
   if (S.mode === 'map') drawMap();
   // The card that's open, if what stands on its lot just arrived
-  if (cur && cur.L && $('#sheet').classList.contains('open') && JSON.stringify(cur.L.p.bldg || null) !== was) renderCard(cur, S.candidates.length, S.cIdx);
+  // (where the reader is in the card stays put: the redraw doesn't jump back to the top)
+  if (cur && cur.L && $('#sheet').classList.contains('open') && JSON.stringify(cur.L.p.bldg || null) !== was) {
+    const body = $('#cardBody'), top = body ? body.scrollTop : 0;
+    renderCard(cur, S.candidates.length, S.cIdx);
+    if (body && top) { body.scrollTop = top; requestAnimationFrame(() => { body.scrollTop = top; }); }
+  }
 }
 /* =========================================================================
    Targeting: which house is the phone pointing at?
@@ -5899,15 +5937,26 @@ const REPORT_CARDS = { MA: 'https://profiles.doe.mass.edu/', CT: 'https://edsigh
   MS: 'https://msrc.mdek12.org/', MO: 'https://apps.dese.mo.gov/MCDS/home.aspx', NM: 'https://nmvistas.org/', OK: 'https://www.oklaschools.com/',
   PA: 'https://futurereadypa.org/', RI: 'https://reportcard.ride.ri.gov/', SC: 'https://screportcards.com/', SD: 'https://sdschools.sd.gov/' };
 
+const BUY_BTN = '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>';
 function buyBoxHtml(L) {
-  return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : '<button class="buy-btn" id="buyBtn">Thinking of buying?<span>For-sale status, schools, neighborhood, safety and what’s nearby</span></button>'}</div>`;
+  return `<div class="buy" id="buyBox" data-k="${esc(L.p.key)}">${buyAuto ? '' : BUY_BTN}</div>`;
+}
+// Once opened, the panel loads by itself on every home's card (that's the point of opening it once). It says so, and turns off here:
+// back to the button, and nothing sent for a house until it's tapped again.
+const buyHead = () => `<div class="buy-h">Thinking of buying?</div>${buyAuto ? '<div class="buy-auto">Loads by itself on each home’s card, sending the house’s map location to the services in the privacy notes. <button class="buy-off" data-buyoff>Turn off</button></div>' : ''}`;
+function buyOff(L, s) {
+  buyAuto = false; try { localStorage.removeItem(BUY_KEY); } catch (e) { /* fine */ }
+  if (wireBuy.io) { wireBuy.io.disconnect(); wireBuy.io = null; }
+  const box = $('#buyBox'); if (!box) return;
+  box.innerHTML = BUY_BTN; box.onclick = null; wireBuy(L, s);
 }
 function wireBuy(L, s) {
   if (wireBuy.io) { wireBuy.io.disconnect(); wireBuy.io = null; }
   if (buyAuto) {
     // Wait until it's on screen: flipping past houses with "Not it" shouldn't fire a dozen requests each.
     const box = $('#buyBox'); if (!box) return;
-    box.innerHTML = '<div class="buy-h">Thinking of buying?</div><div class="bsec"><div class="bl">Scroll down to load schools, neighborhood, safety and what’s nearby.</div></div>';
+    box.innerHTML = `${buyHead()}<div class="bsec"><div class="bl">Scroll down to load schools, neighborhood, safety and what’s nearby.</div></div>`;
+    box.onclick = (e) => { if (e.target.closest('[data-buyoff]')) buyOff(L, s); };
     if (!('IntersectionObserver' in window)) { setTimeout(() => { const b = $('#buyBox'); if (b && b.dataset.k === L.p.key) openBuy(L, s); }, 800); return; }
     const io = new IntersectionObserver((es) => {
       if (!es.some((e) => e.isIntersecting)) return;
@@ -5924,13 +5973,13 @@ function openBuy(L, s) {
   // No street address on the record (Vermont, Alaska, the basic card): the listing links and the town for safety wait for the
   // nearest one on the map, then use the card as it is then.
   if (s.region.addrByPosition && !DEMO && !s.placeReady) {
-    box.innerHTML = '<div class="buy-h">Thinking of buying?</div><div class="bsec"><div class="bl">Finding the address…</div></div>';
+    box.innerHTML = `${buyHead()}<div class="bsec"><div class="bl">Finding the address…</div></div>`;
     posAddrFor(L.p).then(() => { const b = $('#buyBox'); if (b && b.dataset.k === L.p.key) openBuy(L, { ...summarize(L.p), placeReady: true }); });
     return;
   }
   const key = L.p.key, [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
   const sec = (id, t, msg) => `<div class="bsec" id="${id}"><div class="bt">${t}</div><div class="bl">${msg}</div></div>`;
-  box.innerHTML = `<div class="buy-h">Thinking of buying?</div>${listingHtml(s)}${calcApplies(s) ? calcHtml(L, s) : ''}
+  box.innerHTML = `${buyHead()}${listingHtml(s)}${calcApplies(s) ? calcHtml(L, s) : ''}
     ${sec('bSchools', 'Schools', 'Finding schools…')}${sec('bHood', 'Neighborhood', 'Loading Census figures…')}
     ${sec('bSafety', 'Safety', 'Loading crime reports…')}${sec('bNear', 'Nearby', 'Finding stores, parks and transit…')}`;
   const put = (id, title, work) => work.then((html) => ({ html }), (e) => { console.warn(id, e); return { err: e }; }).then(({ html, err }) => {
@@ -5939,7 +5988,10 @@ function openBuy(L, s) {
     // A short reason in small print makes a failure on someone's phone something we can actually fix.
     el.innerHTML = html || `<div class="bt">${title}</div><div class="bl">Couldn’t load this right now.</div><div class="why">${esc(whyFailed(err))}</div><button class="bretry" data-retry>Try again</button>`;
   });
-  box.onclick = (e) => { if (e.target.closest('[data-retry]')) openBuy(L, s); };     // finished sections come back from memory; failed ones are asked again
+  box.onclick = (e) => {
+    if (e.target.closest('[data-buyoff]')) { buyOff(L, s); return; }
+    if (e.target.closest('[data-retry]')) openBuy(L, s);       // finished sections come back from memory; failed ones are asked again
+  };
   setTimeout(() => { const el = $('#bNear .bl'); if ($('#buyBox') && $('#buyBox').dataset.k === key && el && /^Finding/.test(el.textContent)) el.textContent = 'Still waiting on OpenStreetMap. Its servers are run by volunteers and can be slow; this tries another one if the first is busy.'; }, 9000);
   wireCalc(L, s);
   put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => {
@@ -7917,7 +7969,7 @@ async function runHealth() {
 if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); }
 
 // test hooks
-window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
   SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, recordSiteFor, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };

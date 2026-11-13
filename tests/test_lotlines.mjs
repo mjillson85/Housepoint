@@ -36,7 +36,7 @@ const R = {
     fields: ['OBJECTID', 'APN', 'SitusStreetNumber', 'SitusStreetName', 'SitusUnit', 'SitusCity', 'SitusZip', 'Land', 'Imps', 'TotalNetValue', 'UseCode', 'SitusAddress'],
     owner: { MailingAddressStreet: 'SECRET MAILING', MailingAddress: 'SECRET MAILING 2' },
     lot: { APN: '57-2021-12', SitusAddress: '2125 BONAR ST BERKELEY 94702', SitusCity: 'BERKELEY', SitusZip: '94702', Land: 300000, Imps: 450000, TotalNetValue: 743000, UseCode: '2502' },
-    card: [/2125 Bonar St \|/, /Berkeley · Home with a backyard ADU/, /ASSESSED VALUE \| \$750,000/i, /Proposition 13/] },
+    card: [/2125 Bonar St \|/, /Berkeley · Home with a backyard ADU/, /ASSESSED VALUE \| \$750,000/i, /rises at most 2% a year until the property sells/] },
   CA_SBD: { url: 'https://services.arcgis.com/aA3snZwJfFkVyDuP/arcgis/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0', spot: [34.0590, -117.1810],
     fields: ['OBJECTID', 'ParcelNumber', 'LandValue', 'ImprovementValue', 'Acreage', 'Jurisdiction', 'BaseYear', 'AssessDescription', 'AssessClass'],
     owner: { OwnerName: 'SECRET OWNER' },
@@ -125,7 +125,7 @@ const R = {
     owner: { RecDate: 'SECRET RECORDING', RecDocNo: 'SECRET DEED' },
     lot: { APN: '7362-003-099', SitusAddress: '1320 MAPLE AVE', SitusCity: 'TORRANCE CA', SitusZIP: '90503-5923', UseCode: '0100', UseDescription: 'Single',
       UseType: 'Residential', YearBuilt1: '1951', Units1: 1, Bedrooms1: 3, Bathrooms1: 2, SQFTmain1: 1400, Roll_Year: '2026', Roll_LandValue: 500000, Roll_ImpValue: 200000 },
-    card: [/1320 Maple Ave \|/, /Torrance · Single-family home/, /ASSESSED VALUE[^|]*\| \$700,000/i, /Proposition 13/, /Built 1951/, /Los Angeles County Assessor’s page/] },
+    card: [/1320 Maple Ave \|/, /Torrance · Single-family home/, /ASSESSED VALUE[^|]*\| \$700,000/i, /rises at most 2% a year until the property sells/, /Built 1951/, /Los Angeles County Assessor’s page/] },
   PA_PHILA: { url: 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/PWD_PARCELS/FeatureServer/0', spot: [40.0350, -75.2150],
     fields: ['OBJECTID', 'parcelid', 'tencode', 'address', 'bldg_code', 'bldg_desc', 'brt_id', 'num_brt', 'num_accounts', 'gross_area', 'pin', 'parcel_id'],
     owner: { owner1: 'SECRET OWNER', owner2: 'SECRET OWNER 2' },
@@ -216,7 +216,8 @@ const ME_TABLE = R.ME.url.replace(/\/10$/, '/9');
 const BLDG_ITEM = 'https://www.arcgis.com/sharing/rest/content/items/0ec8512ad21e4bb987d7e848d14e7e24';
 const BLDG_LAYER = 'https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/USA_Structures_View/FeatureServer/0';
 const BLDG_FIELDS = ['OBJECTID', 'BUILD_ID', 'OCC_CLS', 'PRIM_OCC', 'SEC_OCC', 'PROP_ADDR', 'PROP_CITY', 'PROP_ST', 'PROP_ZIP', 'PROP_CNTY', 'OUTBLDG', 'HEIGHT', 'SQMETERS', 'SQFEET'];
-const bldgAsked = [];
+const bldgAsked = [], bldgLayersAsked = []; let bldgFail = false;
+const MASSGIS_BLDG = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0';
 // Philadelphia's property office table (Carto) and Allegheny's assessments (WPRDC, by JSONP): what each was asked, and a condo's units
 const cartoAsked = [], wprdcAsked = [];
 const PHL_CONDO = [['888001103', '101'], ['888092750', '905'], ['888092788', '1006']].map(([parcel_number, unit]) => ({ ...R.PA_PHILA.carto[0], parcel_number,
@@ -242,7 +243,11 @@ page.on('request', (req) => {
     return req.respond({ status: 200, contentType: 'application/javascript', body: `${p.get('callback')}(${JSON.stringify({ success: true, result: { records: recs } })})` }); }
   if (u.startsWith(BLDG_ITEM)) return json({ title: 'USA Structures', url: BLDG_LAYER });
   if (u.startsWith(BLDG_LAYER + '?f=json')) return json({ geometryType: 'esriGeometryPolygon', maxRecordCount: 2000, fields: BLDG_FIELDS.map((name) => ({ name })) });
+  if (u.startsWith(MASSGIS_BLDG + '?f=json')) return json({ geometryType: 'esriGeometryPolygon', maxRecordCount: 2000, fields: [{ name: 'OBJECTID' }, { name: 'STRUCT_ID' }] });
+  if (u.startsWith(MASSGIS_BLDG + '/query')) { bldgLayersAsked.push('MassGIS'); return json({ features: [] }); }
   if (u.startsWith(BLDG_LAYER + '/query')) {
+    if (bldgFail) return req.respond({ status: 503, body: '' });
+    bldgLayersAsked.push('USA Structures');
     const q = new URLSearchParams(req.method() === 'POST' ? req.postData() || '' : u.split('?')[1]), g = (q.get('geometry') || '').split(',').map(Number);
     const c = Object.values(R).find((x) => x.bldgs && Math.hypot(x.spot[0] - g[1], x.spot[1] - g[0]) < 0.01);
     if (c) bldgAsked.push(q.get('outFields') || '');
@@ -382,6 +387,37 @@ for (const [rid, c] of Object.entries(R)) {
 }
 check(tableAsked.length && tableAsked.every((f) => !/OWN|MAIL/i.test(f)), `Maine: the assessing table is asked for values only: ${tableAsked[0]}`);
 check(bldgAsked.length && bldgAsked.every((f) => f === 'OCC_CLS,PRIM_OCC,OUTBLDG,HEIGHT,SQFEET'), `the lot-line states ask the building outlines for their use, size and height by name: ${bldgAsked[0]}`);
+// Across a state line: standing in Massachusetts (MassGIS's outlines) with New Hampshire's lots loaded, both sources are asked,
+// and each outline says which source it came from
+bldgLayersAsked.length = 0;
+const across = await page.evaluate(async () => {
+  const b = await window.__hp.queryBuildingsNear(42.7300, -71.1900, 300, [{ region: 'MA' }, { region: 'NH' }]);
+  return { srcOf: b.srcOf, srcs: [...new Set(b.map((x) => x.src))] };
+});
+check(bldgLayersAsked.includes('MassGIS') && bldgLayersAsked.includes('USA Structures') && /Building_Structures/.test(across.srcOf.MA) && /USA_Structures/.test(across.srcOf.NH),
+  `near a state line, each loaded region's own building outlines are asked for: ${JSON.stringify(bldgLayersAsked)} ${JSON.stringify(across.srcOf)}`);
+// Outlines that never come: a lot-line state's lots still count as built, so point mode has houses to aim at
+bldgFail = true;
+const fallback = await page.evaluate(async (spot) => {
+  const hp = window.__hp, S = hp.S;
+  await hp.centerMap(spot[0], spot[1]); await new Promise((r) => setTimeout(r, 300));
+  for (const L of S.local) { L.p.built = false; L.p.builtGuess = false; }
+  hp.loadBuildings(spot[0], spot[1], S.parcels, S.proj, 2); await new Promise((r) => setTimeout(r, 800));
+  return { n: S.local.length, built: S.local.filter((L) => L.p.built && L.p.builtGuess).length };
+}, R.HI.spot);
+bldgFail = false;
+// The outlines arriving (or changing) while a card is open redraw it where the reader is, not back at the top
+const kept = await page.evaluate(async (spot) => {
+  const hp = window.__hp, S = hp.S;
+  await hp.centerMap(spot[0], spot[1]); await new Promise((r) => setTimeout(r, 1200));
+  const L = S.local.find((l) => l.p.bldg); if (!L) return { none: true };
+  hp.selectLot(L); await new Promise((r) => setTimeout(r, 400));
+  const body = document.querySelector('#cardBody'); body.scrollTop = 60; const before = body.scrollTop;
+  hp.setBuildings([]); await new Promise((r) => setTimeout(r, 100));
+  return { before, after: body.scrollTop, redrawn: !/Footprint/i.test(body.innerText) };
+}, R.DE.spot);
+check(kept.before > 0 && kept.after === kept.before && kept.redrawn, `an open card keeps its place when the outlines change: ${JSON.stringify(kept)}`);
+check(fallback.n > 0 && fallback.built === fallback.n, `when the outlines fail after the retries, a lot-line state's lots count as built: ${JSON.stringify(fallback)}`);
 check(cartoAsked.length && cartoAsked.every((q) => !/owner|mailing|care_of|legal|book_and_page|registry|beginning_point/i.test(q)),
   `Philadelphia: the property office's table is asked for property columns only: ${(cartoAsked[0] || '').slice(0, 160)}`);
 check(wprdcAsked.length && wprdcAsked.every((q) => !/OWNER|CHANGENOTICE|LEGAL|DEED/i.test(q)), `Allegheny: the assessments are asked for property columns only: ${(wprdcAsked[0] || '').slice(0, 160)}`);
