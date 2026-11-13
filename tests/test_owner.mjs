@@ -81,6 +81,8 @@ check(JSON.stringify(vt.raw) === JSON.stringify(['CONDO', '']), `Vermont's descr
 check(vt.flags[0] === 'condo', `the condo is still read from it: ${JSON.stringify(vt.flags)}`);
 check(!/JANE|DOE|SMITH|DWL/.test(vt.all), 'none of the free text is kept anywhere: records, memory or the copy');
 check(JSON.stringify(vt.copied) === JSON.stringify(['CONDO', '']), `the copied records hold the word, not the text: ${JSON.stringify(vt.copied)}`);
+const lower = await page.evaluate(() => window.__hp.scrubAttrs('VT', { descprop: 'JANE DOE CONDO UNIT 4', Descprop: 'SMITH FARM' }));
+check(lower.descprop === 'CONDO' && lower.Descprop === '', `the description is reduced whatever case the field's name comes in: ${JSON.stringify(lower)}`);
 
 // 4. A parcel layer found by searching ArcGIS Online is used only if it's the same publisher's (same organization or server): a copy
 // anyone could publish under the right title, with owner names or made-up values in it, is never read.

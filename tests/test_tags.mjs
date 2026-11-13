@@ -22,6 +22,15 @@ const mv = await page.evaluate(() => {
   return { same: g.innerHTML === d0, moved: g.getAttribute('transform') !== t0 };
 });
 console.log(mv.same && mv.moved ? 'PASS panning the map moves the lots without redrawing them' : 'FAIL panning the map: ' + JSON.stringify(mv));
+// ...but redraws them when the building outlines arrive, since a roof can mark a lot built (Wyoming, the basic card's regions)
+const roofs = await page.evaluate(() => {
+  const hp = window.__hp, S = hp.S, g = document.querySelector('#mParcels');
+  const L = S.local.find((l) => l.p.built); if (!L) return { err: 'no built lot' };
+  L.p.built = false; S.bldgVer++; hp.drawMap(); const vacant = g.innerHTML;     // drawn as empty land
+  L.p.built = true; S.bldgVer++; hp.drawMap();                                   // a roof arrives (setBuildings bumps the version)
+  return { changed: g.innerHTML !== vacant };
+});
+console.log(roofs.changed ? 'PASS lots are drawn again when building outlines arrive' : 'FAIL the lots stayed as they were after the outlines arrived: ' + JSON.stringify(roofs));
 await page.screenshot({ path: 'n_map.png' });
 await page.mouse.click(250, 520); await new Promise(r => setTimeout(r, 500));
 const mapAddr = await page.$eval('#cardBody .addr', el => el.innerText);

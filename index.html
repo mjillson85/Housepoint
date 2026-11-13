@@ -2434,7 +2434,10 @@ const STATE_SITES = {
 };
 const countyBase = (c) => t2clean(c).replace(/\s+(County|Parish)$/i, '');
 // The state's own search, when this county is on it (the county must be known: the counties left out are the most populous)
-function recordSiteFor(st, county) { const x = STATE_SITES[st], c = countyBase(county); return x && c && !x.except.includes(c) ? x : null; }
+function recordSiteFor(st, county) {
+  const x = STATE_SITES[st], c = countyBase(county).toLowerCase();               // in any case: the building outlines may send SHELBY
+  return x && c && !x.except.some((e) => e.toLowerCase() === c) ? x : null;
+}
 // The basic card's record link, once the county is known: the state's search with a web search beside it, or the web search alone
 function patchRecordLink(L, s, county) {
   const rl = $('#cardBody .rec-link'), el = $('#cardBody .addr'); if (!rl || !el || el.dataset.k !== L.p.key || !county) return;   // the card has moved on
@@ -3849,7 +3852,8 @@ function shapeHash(rings) {
 // A region's free-text fields, reduced to what the card reads from them the moment they arrive (Vermont's property description).
 function scrubAttrs(rid, a) {
   const sc = REGIONS[rid] && REGIONS[rid].scrub; if (!sc || !a) return a || {};
-  const o = { ...a }; for (const [k, f] of Object.entries(sc)) if (k in o) o[k] = f(o[k]);
+  const o = { ...a };
+  for (const k of Object.keys(o)) { const f = sc[k] || sc[Object.keys(sc).find((n) => n.toLowerCase() === k.toLowerCase())]; if (f) o[k] = f(o[k]); }   // descprop too
   return o;
 }
 function buildParcels(features, rid = 'MA') {
@@ -6218,7 +6222,7 @@ function toggleSave(L, s) {
     toast(a.length > MAX_SAVED ? `Saved. Only the newest ${MAX_SAVED} are kept.` : S.mode === 'map' ? 'Saved. Compare saved houses under Highlights › Saved.' : 'Saved. Compare saved houses from the list button.', 2200);
   }
   const b = $('#saveBtn'); if (b) b.outerHTML = saveBtnHtml(L.p.key);
-  const nb = $('#saveBtn'); if (nb) nb.onclick = () => toggleSave(L, s);
+  const nb = $('#saveBtn'); if (nb) nb.onclick = () => toggleSave(L, summarize(L.p));   // the card as it is then (the address may arrive in between)
 }
 // What the buying section found for a house, kept so saving it later (or now) fills in the comparison.
 const BUY_FACTS = new Map();
@@ -6887,7 +6891,7 @@ function mapScale() {
   if (mode === 'plain' || !S.local.length) return null;
   const rid = ridAt(S.map.center || S.center);
   const old = S.map.sc;
-  if (old && old.mode === mode && old.local === S.local && old.rid === rid) return old;
+  if (old && old.mode === mode && old.local === S.local && old.rid === rid && old.bv === S.bldgVer) return old;   // roofs can mark lots built
   const built = S.local.filter((L) => L.p.built).map(lotMetrics);
   let sc;
   if (mode === 'age') {
@@ -6909,7 +6913,7 @@ function mapScale() {
     sc = { mode, title: 'Last sold', sub: `${recent} sold since ${THIS_YEAR - 4}`, get: (m) => m.sold, colors: RAMP,      // more recent = darker
       cls: (y) => (y < b[0] ? 0 : y < b[1] ? 1 : y < b[2] ? 2 : y < b[3] ? 3 : 4), labels: ['Pre-1990', '1990s', '2000s', '2010s', '2020+'] };
   }
-  sc.mode = mode; sc.local = S.local; sc.rid = rid;
+  sc.mode = mode; sc.local = S.local; sc.rid = rid; sc.bv = S.bldgVer;
   sc.empty = !built.some((m) => sc.get(m) != null);
   return (S.map.sc = sc);
 }
@@ -6969,8 +6973,8 @@ function drawMap() {
   // The lots: drawn once per set of lots, selection and color scale, then only moved (a drag redraws nothing but the offset)
   const par = svg.querySelector('#mParcels');
   par.setAttribute('transform', `translate(${(-cx).toFixed(2)},${cy.toFixed(2)})`);
-  if (par._local !== S.local || par._sel !== S.map.selectedKey || par._sc !== sc) {
-    par._local = S.local; par._sel = S.map.selectedKey; par._sc = sc;
+  if (par._local !== S.local || par._sel !== S.map.selectedKey || par._sc !== sc || par._bv !== S.bldgVer) {   // roofs can mark lots built
+    par._local = S.local; par._sel = S.map.selectedKey; par._sc = sc; par._bv = S.bldgVer;
     let out = '', selOut = '';
     for (const L of S.local) {
       const sel = L.p.key === S.map.selectedKey;

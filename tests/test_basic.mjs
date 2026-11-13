@@ -150,9 +150,25 @@ const town = await page.evaluate(() => [['Burrillville', 'Central Falls', 'West 
 check(town[0].every(Boolean) && /town=Central\+Falls$/.test(town[0][1]) && town[0][3] === 'https://gis.vgsi.com/CranstonRI' && town[1] === null, `Rhode Island: every town has its site, none for a town that isn't one: ${JSON.stringify(town)}`);
 // Tennessee and Kansas: the state's own property search for the counties on it, the county's web search for the big ones that aren't
 const sites = await page.evaluate(() => { const f = (st, c) => (window.__hp.recordSiteFor(st, c) || {}).url || null;
-  return [f('TN', 'Sumner County'), f('TN', 'Knox'), f('TN', 'Shelby County'), f('TN', null), f('KS', 'Riley'), f('KS', 'Johnson County'), f('SC', 'Richland')]; });
-check(JSON.stringify(sites) === JSON.stringify(['https://assessment.cot.tn.gov/TPAD', null, null, null, 'https://orkahub.kansasgis.org/', null, null]),
+  return [f('TN', 'Sumner County'), f('TN', 'Knox'), f('TN', 'Shelby County'), f('TN', null), f('KS', 'Riley'), f('KS', 'Johnson County'), f('SC', 'Richland'),
+    f('TN', 'SHELBY'), f('KS', 'JOHNSON COUNTY'), f('TN', 'SUMNER')]; });   // the outlines may send county names in capitals
+check(JSON.stringify(sites) === JSON.stringify(['https://assessment.cot.tn.gov/TPAD', null, null, null, 'https://orkahub.kansasgis.org/', null, null, null, null, 'https://assessment.cot.tn.gov/TPAD']),
   `Tennessee's and Kansas's statewide searches only for counties on them (and only once the county is known): ${JSON.stringify(sites)}`);
+// Saved before the address arrived, then un-saved and saved again after: the second save has the address
+const resave = await page.evaluate(async () => {
+  const hp = window.__hp, S = hp.S;
+  const L = S.local.find((l) => l.p.records.some((r) => String(r.PROP_ID) === '101'));     // its address comes from the lookup
+  hp.selectLot(L); await new Promise((r) => setTimeout(r, 300));
+  if (hp.loadSaved().some((x) => x.key === L.p.key)) document.querySelector('#saveBtn').click();   // saved above: start unsaved
+  L.p.posAddr = undefined; L.p.posAddrP = undefined; L.p.posPlace = undefined;
+  hp.selectLot(L);
+  document.querySelector('#saveBtn').click();                                   // before the address lookup answers
+  const first = (hp.loadSaved().find((x) => x.key === L.p.key) || {}).addr;
+  await new Promise((r) => setTimeout(r, 800));
+  document.querySelector('#saveBtn').click(); document.querySelector('#saveBtn').click();   // un-save, save again
+  return { first, again: (hp.loadSaved().find((x) => x.key === L.p.key) || {}).addr };
+});
+check(resave.first === 'Address not listed' && /^\d+ \S/.test(resave.again || ''), `saving again after the address arrives keeps the address: ${JSON.stringify(resave)}`);
 const h2 = await card('102');
 check(/1712 Pickens St \|/.test(h2.card) && /Columbia · House/.test(h2.card) && !/nearest one on OpenStreetMap/.test(h2.card), `an outline with its own address uses it: ${h2.card.slice(0, 200)}`);
 const ap = await card('104');
