@@ -253,7 +253,11 @@ async function captureState(page, st) {
         try {
           const g = feats[0].geometry, xs = g.rings.flat().map((p) => p[0]), ys = g.rings.flat().map((p) => p[1]);
           const env = `${lo(xs)},${lo(ys)},${hi(xs)},${hi(ys)}`;
-          const again = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 3, v.layer || sv.layerUrl)).filter((f) => lotKey(f) === k);
+          let again = (await fetchAll({ geometry: env, geometryType: 'esriGeometryEnvelope' }, 3, v.layer || sv.layerUrl)).filter((f) => lotKey(f) === k);
+          // the joined tables again too (Maine's, Philadelphia's, Allegheny's values; DC's units), or the copy would lose them
+          const joined = again.length && await page.evaluate(async (id, fs) => { const hp = window.__hp, rg = hp.REGIONS[id]; if (!rg.expand) return null;
+            try { await rg.expand(fs, hp.SVC[id]); return fs; } catch (e) { return null; } }, st, again).catch(() => null);
+          if (joined) again = joined;
           if (again.length >= feats.length) feats = again;
         } catch (e) { log('  re-fetch failed, keeping the first copy', k); }
       }
