@@ -110,6 +110,40 @@ for (const set of sets) {
         r0Sale: { p: +s.r0.LS_PRICE || 0, d: s.r0.LS_DATE ?? s.r0.SALE_YR ?? null }, fy: s.fy, stale: !!hp.staleRecord(s), commonOnly: s.commonOnly, copied: JSON.parse(hp.lotRecordsJson(L)), year: s.year, recs: s.recs.length, rid: s.region.id };
     }, lot.lat, lot.lon);
     if (st.err || st.none) { skipped++; continue; }     // e.g. a road or water outline: the app doesn't load those as lots
+    // The new look (on trial): the same card rearranged into the small card, the overview and its sections, with nothing lost.
+    // (The flood and buying boxes fill in later, and the photo's credit changes if its imagery falls back, so those are only
+    // checked for being there.)
+    const lk = await page.evaluate(() => {
+      const hp = window.__hp, S = hp.S, body = document.querySelector('#cardBody'), norm = (x) => x.replace(/\s+/g, ' ').trim();
+      const parts = [...body.children].filter((el) => !el.matches('.grid, #floodBox, #buyBox, .aerial')).map((el) => norm(el.innerText)).filter(Boolean);
+      const cells = [...body.querySelectorAll('.grid > div')].map((c) => [norm(c.querySelector('.k').textContent), norm(c.querySelector('.v').textContent)]).filter(([k]) => k);
+      const had = { flood: !!body.querySelector('#floodBox'), buy: !!body.querySelector('#buyBox'), rec: !!body.querySelector('.rec-link'), aerial: !!body.querySelector('.aerial') };
+      let err = null;
+      hp.setLook(true, false);
+      try { hp.openSheet(S.candidates, S.cIdx); } catch (e) { err = String(e && e.stack || e); }
+      // What's visible in some view (the small card, the overview, each section), not just in the page's text
+      const fit = [...body.querySelectorAll('.cv-nums .v')].every((el) => el.scrollWidth <= el.clientWidth + 1);
+      const views = [['peek'], ['hub'], ...[...body.querySelectorAll('.cv-page')].map((sec) => ['pg', sec.dataset.page])];
+      let seen = '';
+      for (const [v, pg] of views) { hp.calmView(v, pg); seen += ' ' + body.innerText; }
+      hp.calmView('peek');
+      const t = norm(seen).toLowerCase(), has = (x) => t.includes(norm(x).toLowerCase());
+      const lost = parts.filter((p) => !has(p)).concat(cells.filter(([k, v]) => !has(`${k} ${v}`) && !(has(k) && has(v))).map(([k, v]) => `${k} ${v}`));
+      const out = { err, lost, nums: [...body.querySelectorAll('.cv-nums > div')].map((d) => norm(d.textContent)), rows: [...body.querySelectorAll('.cv-rows.cv-hub-only > .cv-row')].map((b) => b.dataset.cv),
+        peek: document.querySelector('#sheet').classList.contains('cv-peek'), fit, money: (body.querySelector('.cv-sum-money') || {}).textContent || '', flood: !!body.querySelector('.cv-page #floodBox') === had.flood, buy: !!body.querySelector('.cv-page #buyBox') === had.buy,
+        rec: !!body.querySelector('.cv-page .rec-link') === had.rec, aerial: !!body.querySelector('.cv-media .aerial') === had.aerial, back: [...body.querySelectorAll('.cv-back')].every((b) => !/Save/.test(b.textContent)) };
+      hp.setLook(false, false);
+      try { hp.openSheet(S.candidates, S.cIdx); } catch (e) { out.err = out.err || String(e); }
+      out.oldBack = !document.querySelector('#sheet').className.match(/cv-/) && !body.querySelector('.cv-head');
+      return out;
+    });
+    check(!lk.err, `the new look threw: ${lk.err}: ${name}`);
+    check(!lk.lost.length, `the new look loses ${JSON.stringify(lk.lost.slice(0, 3))}: ${name}`);
+    check(lk.peek && lk.nums.length >= 1 && lk.nums.length <= 3 && lk.nums.every((x) => x.length > 2), `the new look's small card numbers ${JSON.stringify(lk.nums)}: ${name}`);
+    check(lk.fit, `the small card's numbers are cut off ${JSON.stringify(lk.nums)}: ${name}`);
+    check(lk.money.length > 3, `the Money row has no line: ${name}`);
+    check(lk.rows[0] === 'money' && lk.rows[1] === 'house' && lk.flood && lk.buy && lk.rec && lk.aerial && lk.back, `the new look's sections ${JSON.stringify(lk)}: ${name}`);
+    check(lk.oldBack, `back to the old look, the card isn't the old card: ${name}`);
     if (REPORT) REPORT.push({ name, town: st.town, value: st.value, chip: st.chip.replace(/\s+/g, ' ').trim(), share: st.share, kind: st.kind, home: st.isHome, units: st.condo ? st.units : null, heads: st.heads, lists: st.lists.map((l) => l.slice(0, 4)),
       codes: lot.features.map((f) => f.attributes.USE_CODE ?? f.attributes.DOR_UC ?? f.attributes.PROP_CLASS ?? f.attributes.State_Use_Description ?? f.attributes.PROPCLASS ?? f.attributes.LANDUSE_CD ?? f.attributes.Property_Parcel_Type ?? null).slice(0, 12) });
     shown++;
