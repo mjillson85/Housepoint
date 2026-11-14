@@ -121,6 +121,25 @@ r = await raw(p3, { alpha: 0, beta: 10, gamma: 5, webkitCompassHeading: 10 });
 check(r.pose === 'flat' && r.elev < -55, `lying nearly flat: the camera's at the ground: ${JSON.stringify(r)}`);
 await sleep(400); const dbg = await p3.$eval('#debug', (el) => el.textContent);
 check(/gamma -?\d+° · flat · camera -\d+°/.test(dbg), 'debug overlay shows the pose and the camera’s angle: ' + (/tilt[^\n]*/.exec(dbg) || [''])[0]);
+// Rotation lock on, phone on its side (the screen stays portrait): the aim circle moves to the screen's middle (the camera's
+// middle) and the mini map, label, hint and button icons turn to stay upright for the person holding it. Not in between,
+// and not when the screen turns too.
+const turned = async (b, g) => { await raw(p3, { alpha: 0, beta: b, gamma: g, webkitCompassHeading: 10 }); await sleep(450);
+  return p3.evaluate(() => { const r = document.querySelector('#reticle').getBoundingClientRect(), rw = getComputedStyle(document.querySelector('#radarWrap')).transform;
+    return { on: document.body.classList.contains('turned'), rot: document.body.style.getPropertyValue('--uirot'), ry: Math.round(r.top + r.height / 2), radar: rw === 'none' ? 0 : Math.round(Math.atan2(+rw.split(/[(,]/)[2], +rw.split(/[(,]/)[1]) * 180 / Math.PI) }; }); };
+let tu = await turned(0, -90);
+check(tu.on && tu.rot === '90deg' && tu.ry === 422 && tu.radar === 90, `on its side, top to the left: turned 90°, aim circle in the middle, mini map turned: ${JSON.stringify(tu)}`);
+tu = await turned(0, 90);
+check(tu.on && tu.rot === '-90deg' && tu.radar === -90, `on its side, top to the right: turned −90°: ${JSON.stringify(tu)}`);
+tu = await turned(40, 60);      // part-way round (about 46°): stays as it was
+check(tu.on && tu.rot === '-90deg', `part-way back: no flicker, stays turned: ${JSON.stringify(tu)}`);
+tu = await turned(85, 0);
+check(!tu.on && tu.rot === '0deg' && tu.ry < 422, `upright again: back to normal: ${JSON.stringify(tu)}`);
+await p3.setViewport({ width: 844, height: 390, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+tu = await turned(0, -90);
+check(!tu.on, 'on its side with the screen turned too (landscape): nothing to turn');
+await p3.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+await raw(p3, { alpha: 0, beta: 10, gamma: 5, webkitCompassHeading: 10 }); await sleep(200);
 const log = await p3.evaluate(() => (window.__hp.S.sensLog || []).slice(-1)[0]);
 check(log && 'ios' in log && 'b' in log && 'g' in log && 'used' in log && 'scr' in log && (await p3.$('#dbgCopy')) !== null, 'debug mode keeps the raw readings, with a Copy readings button: ' + JSON.stringify(log));
 check(!p3.errors.length, 'no page errors (on its side) ' + p3.errors.join('; '));
