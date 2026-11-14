@@ -222,7 +222,7 @@
   #sheet.tabbed #cardHead .town { padding-bottom: 0; }
   #sheet.tabbed .card { height: 66vh; height: 66dvh; transition: height .25s ease; }
   #sheet.tabbed.tall .card { height: calc(88vh - 10px); height: calc(88dvh - 10px); }
-  #sheet.tabbed #cardBody { flex: 1; min-height: 0; }
+  #sheet.tabbed #cardBody { flex: 1; min-height: 0; overflow-x: hidden; }
   @media (max-height: 700px) { #sheet.tabbed .card { height: calc(88vh - 10px); height: calc(88dvh - 10px); } }   /* a small phone, or one on its side: full height from the start */
   #sheet.tabcard.headin #cardHead { display: none; }
   .theadin { margin: 0 0 6px; }
@@ -5491,6 +5491,7 @@ function renderTabs(L, s, part) {
   });
 }
 function wireTabs(L, s) {
+  wireTabs.cur = { L, s };     // for swiping between tabs
   const bar = $('#sheet .tabbar');
   if (bar) {
     bar.onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab, L, s); };
@@ -6885,6 +6886,48 @@ $('#shareC').onclick = async () => {
   $('.grab').onclick = closeSheet;
   // The card in tabs grows to full height once you scroll it
   $('#cardBody').addEventListener('scroll', () => { if (TABS && $('#cardBody').scrollTop > 24) $('#sheet').classList.add('tall'); }, { passive: true });
+  // The card in tabs: swipe sideways to the next or previous tab. Not from things that scroll sideways themselves (Nearby's
+  // filter chips), the price and rate boxes, or the buttons along the bottom.
+  const card = $('#sheet .card'); let sw = null;
+  const sideScroller = (el) => { for (let e = el; e && e !== card; e = e.parentElement) if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(e).overflowX) && e.id !== 'cardBody') return true; return false; };
+  const tabList = () => [...document.querySelectorAll('#sheet .tabbar [data-tab]')].map((b) => b.dataset.tab);
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const settle = () => { if (sw && sw.pane) { sw.pane.style.transition = ''; sw.pane.style.transform = ''; } sw = null; };
+  card.addEventListener('touchstart', (e) => {
+    settle();                                            // a second finger, or a new touch: put the tab back where it was
+    if (!TABS || !$('#sheet').classList.contains('tabbed') || e.touches.length !== 1) return;
+    if (e.target.closest('input, textarea, select, .card-actions, .grab') || sideScroller(e.target)) return;
+    const x = e.touches[0].clientX;
+    if (x < 24 || x > innerWidth - 24) return;           // the screen's edges belong to the browser's own back and forward swipes
+    sw = { x, y: e.touches[0].clientY, t: Date.now(), dir: '', dx: 0, dy: 0, pane: $('#tp-' + S.tab) };
+  }, { passive: true });
+  card.addEventListener('touchmove', (e) => {
+    if (!sw || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - sw.x, dy = e.touches[0].clientY - sw.y;
+    if (!sw.dir) { if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; sw.dir = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y'; }
+    if (sw.dir !== 'x') { sw = null; return; }          // scrolling up and down: leave it alone
+    if (e.cancelable) e.preventDefault();               // sideways: the card doesn't scroll at the same time
+    sw.dx = dx; sw.dy = dy;
+    const list = tabList(), i = list.indexOf(S.tab), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);
+    if (sw.pane && !calm()) { sw.pane.style.transition = 'none'; sw.pane.style.transform = `translateX(${Math.round(dx * (edge ? 0.2 : 0.5))}px)`; }   // follows the finger
+  }, { passive: false });
+  const swipeEnd = () => {
+    const g = sw; sw = null;
+    if (!g || g.dir !== 'x') return;
+    if (g.pane) { g.pane.style.transition = 'transform .18s ease'; g.pane.style.transform = ''; }
+    const list = tabList(), i = list.indexOf(S.tab), j = i + (g.dx < 0 ? 1 : -1), quick = Math.abs(g.dx) > 45 && Date.now() - g.t < 250;
+    if (!$('#sheet').classList.contains('open') || Math.abs(g.dx) < 1.5 * Math.abs(g.dy)) return;   // closed by a pull down, or more down than across
+    if ((Math.abs(g.dx) < 60 && !quick) || i < 0 || j < 0 || j >= list.length || !wireTabs.cur) return;
+    showTab(list[j], wireTabs.cur.L, wireTabs.cur.s);
+    const np = $('#tp-' + list[j]);
+    if (np && !calm()) {        // the new tab slides in from the side it came from
+      np.style.transition = 'none'; np.style.transform = `translateX(${g.dx < 0 ? 48 : -48}px)`; np.style.opacity = '0.4';
+      void np.offsetWidth;
+      np.style.transition = 'transform .2s ease, opacity .2s ease'; np.style.transform = ''; np.style.opacity = '';
+    }
+  };
+  card.addEventListener('touchend', swipeEnd);
+  card.addEventListener('touchcancel', settle);
   // Turning the phone between tall and short: the card in tabs moves its address and strip in or out of the scrolling part
   const redraw = () => { const c = S.candidates && S.candidates[S.cIdx]; if (TABS && c && $('#sheet').classList.contains('open')) renderCard(c, S.candidates.length, S.cIdx); };
   if (SHORT_SCREEN.addEventListener) SHORT_SCREEN.addEventListener('change', redraw); else if (SHORT_SCREEN.addListener) SHORT_SCREEN.addListener(redraw);

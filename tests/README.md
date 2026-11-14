@@ -17,7 +17,7 @@ Set `CHROME=/path/to/chrome` if Chrome isn't at `/usr/bin/google-chrome`. Run on
 | test_features, test_fixes | Card, map, flood zone, share, earlier bug fixes |
 | test_more | Monthly cost calculator, save & compare, nearby map |
 | test_buy, test_buy2 | "Thinking of buying?": schools, Census, FBI, nearby places, backups when a service fails |
-| test_tabs | The card in tabs (`?tabs=1`): the long card untouched without it, five tabs for a home, nothing sent until Schools, Nearby or Area is opened, "Not it" back to Home, Walk Score link, retry, a store with no tabs, a phone on its side and a narrow phone |
+| test_tabs | The card in tabs (`?tabs=1`): the long card untouched without it, five tabs for a home, nothing sent until Schools, Nearby or Area is opened, "Not it" back to Home, swiping between tabs (not on the filter chips), Walk Score link, retry, a store with no tabs, a phone on its side and a narrow phone |
 | test_ct, test_nj, test_nc, test_wi, test_wa, test_ne, test_mn, test_dc, test_md, test_ny, test_regions | Connecticut, New Jersey, North Carolina, Wisconsin, Washington, Nebraska, Minnesota, DC, Maryland, New York, state borders |
 | test_tier2 | Vermont, Montana, Arkansas, Cook County, Colorado, Wyoming, Utah and Alaska: outlines and shared state lines, property types, a card in each, owner fields never asked for, Vermont's and Alaska's nearest address, Utah's county layers |
 | test_lotlines | The big counties, Maine and the lot-line states: outlines and the lines between states and counties, compass, property types, Texas searched in its counties, a card in each, owner fields never asked for, Maine's assessing table |

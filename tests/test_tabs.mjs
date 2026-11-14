@@ -117,6 +117,8 @@ const outside = (a) => a.sch + a.near + a.census + a.fbi;
 const pick = (addr) => `(() => { const S = window.__hp.S; const L = S.local.find((l) => l.p.records[0].SITE_ADDR === '${addr}'); return [{ L, dist: 20, cdist: 30, bearing: 90 }]; })()`;
 const text = (sel) => page.$eval(sel, (el) => el.innerText.replace(/\n+/g, ' | '));
 const shown = () => page.evaluate(() => [...document.querySelectorAll('#cardBody .tpane')].filter((p) => !p.hidden).map((p) => p.id));
+const swipe = async (x0, y0, x1, y1) => { await page.touchscreen.touchStart(x0, y0); await page.touchscreen.touchMove((x0 + x1) / 2, (y0 + y1) / 2); await page.touchscreen.touchMove(x1, y1); await page.touchscreen.touchEnd(); await sleep(400); };
+const onTab = () => page.evaluate(() => (document.querySelector('.tabbar [aria-selected="true"]') || {}).id);
 const cardH = () => page.$eval('#sheet .card', (el) => Math.round(el.getBoundingClientRect().height));
 await page.setGeolocation({ latitude: lat0, longitude: lon0, accuracy: 5 });
 
@@ -167,6 +169,18 @@ check(outside(asks()) === outside(before), 'still nothing sent');
 await page.click('#tb-home'); await sleep(200);
 await page.screenshot({ path: 'tabs_home.png' });
 
+// C2. Swiping sideways moves between tabs; up and down still just scrolls
+await swipe(320, 650, 90, 660);
+const sw1 = await onTab();
+await swipe(80, 650, 320, 655);
+const sw2 = await onTab();
+await swipe(80, 650, 320, 655);
+const sw3 = await onTab();
+check(sw1 === 'tb-fin' && sw2 === 'tb-home' && sw3 === 'tb-home', `swipe left for the next tab, right for the one before; nothing before Home (${sw1}, ${sw2}, ${sw3})`);
+await swipe(200, 700, 215, 450);
+check((await onTab()) === 'tb-home', 'an up-and-down drag doesn’t change tabs');
+check(outside(asks()) === outside(before), 'swiping to Financing sends nothing');
+
 // D. Schools: schools and safety load when opened, and only they
 await page.click('#tb-sch'); await sleep(1800);
 const sch = await text('#tp-sch'); const a1 = asks();
@@ -188,6 +202,10 @@ const g = chip && await page.evaluate((b) => b.dataset.g, chip);
 if (chip) { await chip.click(); await sleep(300); }
 check(!!chip && (await page.$eval(`#tp-near .nchips button[data-g="${g}"]`, (b) => b.classList.contains('on'))), `Nearby’s filter chips work in the tab (${g})`);
 await page.screenshot({ path: 'tabs_nearby.png' });
+const chipBox = await page.$eval('#tp-near .nchips', (el) => { el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: el.scrollWidth > el.clientWidth }; });
+await sleep(200);
+await swipe(chipBox.x + 60, chipBox.y, chipBox.x - 110, chipBox.y + 4);
+check((await onTab()) === 'tb-near', `a sideways drag on the filter chips scrolls them, not the tabs (chips scroll: ${chipBox.w})`);
 
 // F. Area
 await page.click('#tb-hood'); await sleep(1500);
@@ -251,6 +269,22 @@ const narrow = await page.$$eval('.tabbar [role="tab"]', (bs) => bs.filter((b) =
 check(narrow.length === 0, `every tab name fits on a 320px-wide phone (${narrow.join(', ') || 'all fit'})`);
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(800);
 check(!(await page.evaluate(() => document.querySelector('#sheet').classList.contains('headin'))) && !!(await page.$('#cardHead .tabbar')), 'upright again: the address and tabs stay put');
+
+// N. Swipe edge cases: a second finger puts the tab back; a drag that turns into a pull down closes the card without switching tabs
+await page.evaluate(() => { const S = window.__hp.S; const L = S.local.find((l) => l.p.records[0].SITE_ADDR === '211 MAIN ST'); window.__hp.openSheet([{ L, dist: 20, cdist: 30, bearing: 90 }], 0); });
+await sleep(600);
+const t1 = await page.touchscreen.touchStart(300, 650);
+await t1.move(260, 652); await t1.move(220, 654); await sleep(50);
+const midT = await page.$eval('#tp-home', (p) => p.style.transform);
+const t2 = await page.touchscreen.touchStart(120, 500); await sleep(100);
+const afterT = await page.$eval('#tp-home', (p) => p.style.transform);
+await t2.end(); await t1.end(); await sleep(400);
+check(/translateX/.test(midT) && afterT === '' && (await onTab()) === 'tb-home', `a second finger mid-swipe puts the tab back (${midT || 'none'} → ${afterT || 'none'})`);
+const a4 = asks();
+const t3 = await page.touchscreen.touchStart(300, 600);
+await t3.move(288, 606); await t3.move(270, 780); await t3.end(); await sleep(500);
+const st = await page.evaluate(() => ({ open: document.querySelector('#sheet').classList.contains('open'), tab: (document.querySelector('.tabbar [aria-selected="true"]') || {}).id }));
+check(!st.open && st.tab === 'tb-home' && outside(asks()) === outside(a4), `a sideways start that turns into a pull down just closes the card (${JSON.stringify(st)})`);
 
 // K. ?tabs=0 turns it off again
 await page.goto(ORIGIN + '/?tabs=0'); await sleep(400);
