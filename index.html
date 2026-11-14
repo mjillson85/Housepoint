@@ -7084,6 +7084,7 @@ function startPointMode(tapped = false) {
     startPointMode.tipped = true;
     const tip = (n) => setTimeout(() => {
       if (n < 3 && !$('#toast').classList.contains('off')) return tip(n + 1);
+      if (TABS && $('#sheet').classList.contains('open')) return;       // a card is already open: the tip would sit over its address
       toast('Aim the circle at a house, then tap the button. Wrong house? Tap “Not it”.', 4200);
     }, n ? 2500 : 1200);
     tip(0);
