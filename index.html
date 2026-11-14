@@ -215,6 +215,32 @@
   .card-actions button { flex: 1; height: 46px; border-radius: 12px; background: var(--paper-2); color: var(--ink); font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .card-actions button.main { background: var(--ink); color: var(--paper); }
   .card-actions button:disabled { opacity: .4; }
+  /* the card in tabs (?tabs=1): the address and the tab strip stay put while a tab scrolls */
+  #cardHead { display: none; flex: none; padding: 0 20px; }
+  #sheet.tabcard #cardHead { display: block; border-bottom: 1px solid var(--line); }
+  #sheet.tabcard #cardHead .town { padding-bottom: 12px; }
+  #sheet.tabbed #cardHead .town { padding-bottom: 0; }
+  #sheet.tabbed .card { height: 66vh; height: 66dvh; transition: height .25s ease; }
+  #sheet.tabbed.tall .card { height: calc(88vh - 10px); height: calc(88dvh - 10px); }
+  #sheet.tabbed #cardBody { flex: 1; min-height: 0; }
+  @media (max-height: 700px) { #sheet.tabbed .card { height: calc(88vh - 10px); height: calc(88dvh - 10px); } }   /* a small phone, or one on its side: full height from the start */
+  #sheet.tabcard.headin #cardHead { display: none; }
+  .theadin { margin: 0 0 6px; }
+  .theadin .tabbar { border-bottom: 1px solid var(--line); }
+  .tabbar { display: flex; margin: 8px -14px 0; }
+  .tabbar button { flex: 1; min-width: 0; height: 46px; padding: 0 2px; position: relative; font-size: 13.5px; font-weight: 500; color: var(--mute); white-space: nowrap; }
+  .tabbar button[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+  .tabbar button[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 2px; background: var(--brick); }
+  .tpane[hidden] { display: none; }
+  .tpane > :first-child { margin-top: 6px; }
+  .vnote { font-size: 13px; color: var(--mute); margin-top: 2px; line-height: 1.4; }
+  .tax .tmore { display: block; margin-top: 4px; padding: 6px 0; font-size: 13px; font-weight: 600; color: var(--brick-2); }
+  .tnote { font-size: 12.5px; color: var(--mute); line-height: 1.45; margin: 6px 0 2px; }
+  .tnote a { color: var(--brick-2); }
+  .twalk { display: flex; align-items: center; gap: 12px; margin: 10px 0 2px; }
+  .twalk a { flex: none; padding: 11px 16px; border-radius: 12px; border: 1px solid var(--line); background: #fffaf1; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+  .twalk .tnote { margin: 0; }
+  @media (max-width: 350px) { .tabbar button { flex: 1 1 auto; font-size: 12.5px; } }   /* a narrow phone: longer names get more room */
 
   /* ---------- map mode ---------- */
   #mapView { position: fixed; inset: 0; z-index: 8; background: #ece4d3; }
@@ -491,6 +517,7 @@
 <!-- CARD -->
 <div id="sheet"><div class="card">
   <div class="grab" role="button" tabindex="0" aria-label="Close"></div>
+  <div id="cardHead"></div>
   <div class="card-scroll" id="cardBody"></div>
   <div class="card-actions">
     <button id="prevC" aria-label="Previous candidate">‹ Not it</button>
@@ -557,6 +584,16 @@ const qs = new URLSearchParams(location.search);
 let AIM_WIDTH_POW = qs.has('aimpow') ? parseFloat(qs.get('aimpow')) : 0.25;  // how much a house's on-screen width is discounted (see findCandidates; 0.25 measured best in tests/test_aim.mjs)
 const DEMO = qs.has('demo');
 const DEBUG = qs.has('debug');
+// The card in tabs (Home · Financing · Schools · Nearby · Area), being tried out: on with ?tabs=1, off again with ?tabs=0, and
+// remembered on this phone in between. Off, the card is the one long card as before.
+const TABS_KEY = 'housepoint.tabs';
+const SHORT_SCREEN = matchMedia('(max-height: 600px)');
+const TABS = (() => {
+  try {
+    if (qs.get('tabs') === '1') localStorage.setItem(TABS_KEY, '1'); else if (qs.get('tabs') === '0') localStorage.removeItem(TABS_KEY);
+    return localStorage.getItem(TABS_KEY) === '1';
+  } catch (e) { return qs.get('tabs') === '1'; }   // private mode: this visit only
+})();
 const DECL_OVERRIDE = qs.has('decl') ? parseFloat(qs.get('decl')) : NaN;   // e.g. ?decl=0 if a phone already reports true north
 // ?service= swaps in another copy of the Massachusetts parcel service (testing only). Only MassGIS's own ArcGIS account or a
 // .gov site is accepted, so a shared link can't feed the app made-up records.
@@ -2635,7 +2672,7 @@ function recordSiteFor(st, county) {
 }
 // The basic card's record link, once the county is known: the state's search with a web search beside it, or the web search alone
 function patchRecordLink(L, s, county) {
-  const rl = $('#cardBody .rec-link'), el = $('#cardBody .addr'); if (!rl || !el || el.dataset.k !== L.p.key || !county) return;   // the card has moved on
+  const rl = $('#cardBody .rec-link'), el = $('#sheet .addr'); if (!rl || !el || el.dataset.k !== L.p.key || !county) return;   // the card has moved on
   const st = s.region.state, x = recordSiteFor(st, county), web = basicRecordSearch(st, county);
   if (!x) { rl.href = web; return; }
   rl.href = x.url; rl.textContent = `${x.text} ›`;
@@ -5266,6 +5303,7 @@ function renderCard(cand, total, idx) {
     return s.sales[0] ? `No market sales on record (latest transfer ${fmtMonth(s.sales[0].d)} was for a nominal amount)` : 'No recorded sales';
   };
   let valueBlock = '';
+  const vnote = TABS ? valueNoteHtml(s) : '';     // in tabs, what the value is (from the source note) sits right under it
   if (s.commonOnly) {
     const whole = s.recs.reduce((t, x) => t + (num(x.TOTAL_VAL) || 0), 0);
     valueBlock = `<div class="value"><div class="k">Condo building</div><div class="v">${s.units > 1 ? s.units + ' units' : 'Condo'}</div>
@@ -5276,7 +5314,7 @@ function renderCard(cand, total, idx) {
   } else if (s.condo) {
     const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
     valueBlock = `<div class="value"><div class="k">${s.units} units${s.fy && s.region.yearLabel(s.fy) ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
-      <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>
+      <div class="v">${s.vals.length ? (lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`) : '—'}</div>${vnote}
       <div class="s">${condoSaleLine(s)}</div></div>${staleHtml(s)}`;
   } else {
     const v = num(r.TOTAL_VAL), sale = s.sales[0];
@@ -5297,7 +5335,7 @@ function renderCard(cand, total, idx) {
       if (before) saleLine += `<br>Sold before that for <b>${moneyFull(before.p)}</b> · ${fmtMonth(before.d)}`;
     }
     valueBlock = `${s.park ? `<div class="park">${parkNote(s)}</div>` : ''}<div class="value"><div class="k">${s.park ? 'Whole park · ' : ''}${esc(s.region.valueLabelFor ? s.region.valueLabelFor(r) : s.region.valueLabel)}${s.fy && s.region.yearLabel(s.fy) ? ' · ' + s.region.yearLabel(s.fy) : ''}</div>
-      <div class="v">${v ? moneyFull(v) : '—'}</div><div class="s">${saleLine}</div></div>${staleHtml(s)}`;
+      <div class="v">${v ? moneyFull(v) : '—'}</div>${vnote}<div class="s">${saleLine}</div></div>${staleHtml(s)}`;
   }
 
   const cells = [];
@@ -5334,10 +5372,15 @@ function renderCard(cand, total, idx) {
 
   const where = cand.inside ? 'You’re on this property' : S.mode === 'point' && isFinite(cand.dist) ? `About ${feet(cand.dist)} ${compass8(cand.bearing)}` : '';
   $('#cardBody').scrollTop = 0;                 // a new house starts at its top, not where the last card was scrolled
-  $('#cardBody').innerHTML = `${aerialSvg(L)}
+  const head = `
     <div class="eyebrow"><span>${esc([where, S.mode === 'map' ? '' : (total > 1 ? `match ${idx + 1} of ${total}` : '')].filter(Boolean).join(' · '))}</span><span>${DEMO ? 'Demo data' : esc(s.region.name)}</span></div>
     <div class="addrrow"><div class="addr" data-k="${esc(L.p.key)}">${esc(s.addr)}</div>${saveBtnHtml(L.p.key)}</div>
-    <div class="town">${esc([s.town, s.typeLabel].filter(Boolean).join(' · '))}</div>
+    <div class="town">${esc([s.town, s.typeLabel].filter(Boolean).join(' · '))}</div>`;
+  const recLink = webUrl(r.RECORD_URL) ? `<a class="rec-link" href="${esc(webUrl(r.RECORD_URL))}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : '';
+  const note = `<div class="note">${s.addrApprox ? (s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ') : ''}${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>`;
+  const copyBtn = DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>';
+  if (TABS) renderTabs(L, s, { head, recLink, note, copyBtn, chips: `<div class="chips">${chips.join('')}</div>`, valueBlock, grid, unitList });
+  else $('#cardBody').innerHTML = `${aerialSvg(L)}${head}
     <div class="chips">${chips.join('')}</div>
     ${valueBlock}
     ${taxBoxHtml(s)}
@@ -5345,17 +5388,17 @@ function renderCard(cand, total, idx) {
     ${grid}
     ${unitList}
     ${s.isHome ? buyBoxHtml(L) : ''}
-    ${webUrl(r.RECORD_URL) ? `<a class="rec-link" href="${esc(webUrl(r.RECORD_URL))}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
-    <div class="note">${s.addrApprox ? (s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ') : ''}${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
-    ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
+    ${recLink}
+    ${note}
+    ${copyBtn}`;
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
-  wireBuy(L, s);
+  if (TABS) wireTabs(L, s); else wireBuy(L, s);
   // No street address on the record (Vermont, Alaska): look up the nearest one, then show the card again if it's still open.
   if (s.region.addrByPosition && !DEMO && L.p.posAddr === undefined && s.addr === 'Address not listed') {
     posAddrFor(L.p).then((a) => {
       if (a) patchPlace(L.p);                                                                   // Saved and history, even if the card has moved on
-      const el = $('#cardBody .addr'); if (!a || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
+      const el = $('#sheet .addr'); if (!a || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
       el.textContent = a;
       const n = $('#cardBody .note'); if (n) n.insertAdjacentText('afterbegin', s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ');
     });
@@ -5364,8 +5407,8 @@ function renderCard(cand, total, idx) {
   if (s.region.basic && !DEMO) {
     posAddrFor(L.p).then(() => {
       if (L.p.posPlace) patchPlace(L.p);
-      const pl = L.p.posPlace, el = $('#cardBody .addr'); if (!pl || !el || el.dataset.k !== L.p.key) return;
-      const tw = $('#cardBody .town'); if (tw && !s.town && pl.town) tw.textContent = [pl.town, s.typeLabel].filter(Boolean).join(' · ');
+      const pl = L.p.posPlace, el = $('#sheet .addr'); if (!pl || !el || el.dataset.k !== L.p.key) return;
+      const tw = $('#sheet .town'); if (tw && !s.town && pl.town) tw.textContent = [pl.town, s.typeLabel].filter(Boolean).join(' · ');
       if (!s.r0.COUNTY && s.region.state !== 'RI') patchRecordLink(L, s, pl.county);
     });
   }
@@ -5373,7 +5416,7 @@ function renderCard(cand, total, idx) {
   if (s.region.basic && s.region.state === 'RI' && !DEMO) {
     const [tla, tlo] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
     townAt(tla, tlo).then((town) => {
-      const rl = $('#cardBody .rec-link'), el = $('#cardBody .addr'); if (!town || !rl || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
+      const rl = $('#cardBody .rec-link'), el = $('#sheet .addr'); if (!town || !rl || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
       const u = riAssessorUrl(town);
       rl.href = u || townSearch(town, 'RI'); rl.textContent = `${u ? `${town}’s assessor database` : `Search for ${town}’s property record`} ›`;
       if (u && !$('#cardBody .rec-alt')) rl.insertAdjacentHTML('afterend', `<a class="rec-alt" href="${esc(townSearch(town, 'RI'))}" target="_blank" rel="noopener">or search the web for it ›</a>`);
@@ -5392,6 +5435,113 @@ function renderCard(cand, total, idx) {
   $('#nextC').disabled = idx >= total - 1;
   $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
   $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
+}
+
+/* ---------- The card in tabs (?tabs=1): the same parts as the long card, sorted into Home · Financing · Schools · Nearby · Area.
+   Home and Financing need nothing from outside; Schools, Nearby and Area look their parts up the first time they're opened. ---------- */
+const TAB_NAMES = { home: ['Home'], fin: ['Financing'], sch: ['Schools'], near: ['Nearby'], hood: ['Area'] };
+const TAB_SECS = { sch: ['bSchools', 'bSafety'], near: ['bNear'], hood: ['bHood'] };    // the buying panel's sections, by tab
+const SEC_INFO = { bSchools: ['Schools', 'Finding schools…'], bSafety: ['Safety', 'Loading crime reports…'], bNear: ['Nearby', 'Finding stores, parks and transit…'], bHood: ['Neighborhood', 'Loading Census figures…'] };
+const TAB_SENT_TO = {
+  sch: 'federal school data (NCES) and the FBI’s crime data service',
+  near: 'Geoapify for the places around it (volunteer-run OpenStreetMap servers as a backup) and the USGS for the map',
+  hood: 'the Census Bureau (and the FCC’s census-area lookup if that fails)',
+};
+// Homes get all five (Financing only where the monthly cost applies); anything else is just Home, with no strip.
+function cardTabs(s) { return s.isHome ? ['home', ...(calcApplies(s) ? ['fin'] : []), 'sch', 'near', 'hood'] : ['home']; }
+// What the value is, as the region's source note puts it ("Assessed value is the town's figure for taxes, not a market estimate.")
+function valueNoteHtml(s) {
+  const src = String(s.region.source ? s.region.source(s.fy) : '');
+  const said = src.replace(/\.\s+(?=[A-Z])/g, '.\n').split('\n').slice(1).find((x) => /value/i.test(x) && /tax|market|apprais|assess|price/i.test(x));
+  return said ? `<div class="vnote">${esc(said)}</div>` : '';
+}
+// Walk Score's own page for the address (or just the spot): a link out, nothing fetched.
+function walkScoreUrl(L, s) {
+  const [lat, lon] = (L.proj || S.proj).inv(L.c[0], L.c[1]);
+  const a = s.addr === 'Address not listed' ? '' : String(s.addr || '').replace(/^Near /, '');
+  const slug = a ? [a, s.town, stateOf(s.region.id)].filter(Boolean).join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : '';
+  return `https://www.walkscore.com/score/${slug || 'loc'}/lat=${lat.toFixed(5)}/lng=${lon.toFixed(5)}`;
+}
+function renderTabs(L, s, part) {
+  const tabs = cardTabs(s), many = tabs.length > 1;
+  // "Not it" (another house) always starts on Home, so nothing about the next house is looked up until one of its tabs is opened.
+  // The same house drawn again (its building outline just arrived) stays on its tab.
+  const tab = renderTabs.key === L.p.key && tabs.includes(S.tab) ? S.tab : 'home';
+  S.tab = tab; renderTabs.key = L.p.key;
+  const sheet = $('#sheet'); sheet.classList.add('tabcard'); sheet.classList.toggle('tabbed', many);
+  const strip = many ? `<div class="tabbar" role="tablist" aria-label="Sections">${tabs.map((t) => `<button role="tab" id="tb-${t}" data-tab="${t}" aria-controls="tp-${t}" aria-selected="${t === tab}" tabindex="${t === tab ? 0 : -1}">${TAB_NAMES[t][0]}</button>`).join('')}</div>` : '';
+  // A short screen (a phone on its side): the address and the strip scroll with the card, leaving room for the tab itself
+  const headIn = SHORT_SCREEN.matches; sheet.classList.toggle('headin', headIn);
+  $('#cardHead').innerHTML = headIn ? '' : part.head + strip;
+  const pane = (t, html) => `<div class="tpane" id="tp-${t}"${many ? ` role="tabpanel" aria-labelledby="tb-${t}" tabindex="0"` : ''}${t === tab ? '' : ' hidden'}>${html}</div>`;
+  const sec = (id) => `<div class="bsec" id="${id}"><div class="bt">${SEC_INFO[id][0]}</div><div class="bl">${SEC_INFO[id][1]}</div></div>`;
+  const sentTo = (t) => `<div class="tnote">Looked up when you open this tab, by sending the house’s map location (nothing about you) to ${TAB_SENT_TO[t]}. <a href="privacy.html" target="_blank" rel="noopener">Privacy notes</a></div>`;
+  const fin = tabs.includes('fin');
+  // Where the record has no street address, the listing links wait for the nearest one (which the card asks for anyway)
+  const waitAddr = s.region.addrByPosition && !DEMO && (s.region.basic || s.addr === 'Address not listed');
+  $('#cardBody').innerHTML = (headIn ? `<div class="theadin">${part.head}${strip}</div>` : '') + pane('home', `${part.valueBlock}${taxBoxHtml(s, fin)}${floodBoxHtml(L)}${part.chips}${part.grid}${part.unitList}${s.isHome ? `<div id="tSale">${waitAddr ? '' : listingHtml(s)}</div>` : ''}${aerialSvg(L)}${part.recLink}${part.note}${part.copyBtn}`)
+    + (fin ? pane('fin', `<div class="tnote">Worked out on this phone. Nothing is sent.</div>${calcHtml(L, s)}${taxBoxHtml(s)}`) : '')
+    + (many ? pane('sch', sentTo('sch') + sec('bSchools') + sec('bSafety'))
+      + pane('near', sentTo('near') + `<div class="twalk"><a href="${esc(walkScoreUrl(L, s))}" target="_blank" rel="noopener">Walk Score ↗</a><div class="tnote">Opens walkscore.com for this address in your browser.</div></div>` + sec('bNear'))
+      + pane('hood', sentTo('hood') + sec('bHood')) : '');
+  if (s.isHome && waitAddr) posAddrFor(L.p).then(() => {
+    const el = $('#tSale'), a = $('#sheet .addr'); if (!el || !a || a.dataset.k !== L.p.key) return;     // the card has moved on
+    const s2 = summarize(L.p); el.innerHTML = listingHtml(s2);
+    const w = $('#tp-near .twalk a'); if (w) w.href = walkScoreUrl(L, s2);
+  });
+}
+function wireTabs(L, s) {
+  const bar = $('#sheet .tabbar');
+  if (bar) {
+    bar.onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab, L, s); };
+    bar.onkeydown = (e) => {      // arrow keys, Home and End move along the strip
+      const bs = [...bar.querySelectorAll('[data-tab]')], i = bs.findIndex((b) => b.getAttribute('aria-selected') === 'true');
+      const n = { ArrowRight: bs[(i + 1) % bs.length], ArrowLeft: bs[(i + bs.length - 1) % bs.length], Home: bs[0], End: bs[bs.length - 1] }[e.key];
+      if (!n) return;
+      e.preventDefault(); showTab(n.dataset.tab, L, s); n.focus();
+    };
+  }
+  const more = $('#tp-home .tmore'); if (more) more.onclick = () => { showTab('fin', L, s); const b = $('#tb-fin'); if (b) b.focus(); };
+  for (const t of Object.keys(TAB_SECS)) {
+    const p = $('#tp-' + t); if (!p) continue;
+    p.onclick = (e) => {
+      if (e.target.closest('[data-retry]')) { loadTab(t, L, s, true); return; }                   // just the parts that failed
+      const b = e.target.closest('.nchips button'); if (!b) return;                                // Nearby's filter chips
+      const v = NEAR_VIEW.get(L.p.key), el = p.querySelector('#bNear'); if (v && el) el.innerHTML = nearHtml(v.d, v.lat, v.lon, v.L, b.dataset.g);
+    };
+  }
+  wireCalc(L, s);
+  if (S.tab !== 'home') loadTab(S.tab, L, s);
+}
+function showTab(t, L, s) {
+  if (!$('#tp-' + t)) return;
+  S.tab = t;
+  document.querySelectorAll('#sheet .tabbar [data-tab]').forEach((b) => { const on = b.dataset.tab === t; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
+  document.querySelectorAll('#cardBody .tpane').forEach((p) => { p.hidden = p.id !== 'tp-' + t; });
+  $('#cardBody').scrollTop = 0;
+  if (t !== 'home') $('#sheet').classList.add('tall');     // another tab: the card grows to full height
+  loadTab(t, L, s);
+}
+function loadTab(t, L, s, retry = false) {
+  const p = $('#tp-' + t); if (!TAB_SECS[t] || !p || (p.dataset.loaded && !retry)) return;
+  const ids = retry ? TAB_SECS[t].filter((id) => p.querySelector(`#${id} [data-retry]`)) : TAB_SECS[t];
+  p.dataset.loaded = '1';
+  const say = (id, msg) => { const el = p.querySelector('#' + id); if (el) el.innerHTML = `<div class="bt">${SEC_INFO[id][0]}</div><div class="bl">${msg}</div>`; };
+  // No street address on the record (Vermont, Alaska, the basic card): safety needs the town, so the nearest address comes first.
+  if (s.region.addrByPosition && !DEMO && !s.placeReady) {
+    for (const id of ids) say(id, 'Finding the address…');
+    posAddrFor(L.p).then(() => { if (!p.isConnected) return; p.dataset.loaded = ''; loadTab(t, L, { ...summarize(L.p), placeReady: true }); });
+    return;
+  }
+  const [lat, lon] = L.proj.inv(L.c[0], L.c[1]);
+  for (const id of ids) {
+    say(id, SEC_INFO[id][1]);
+    buyWork(id, L, s, lat, lon).then((html) => ({ html }), (e) => { console.warn(id, e); return { err: e }; }).then(({ html, err }) => {
+      const el = p.isConnected && p.querySelector('#' + id); if (!el) return;            // the card has moved on
+      el.innerHTML = html || `<div class="bt">${SEC_INFO[id][0]}</div><div class="bl">Couldn’t load this right now.</div><div class="why">${esc(whyFailed(err))}</div><button class="bretry" data-retry>Try again</button>`;
+    });
+  }
+  if (t === 'near') setTimeout(() => { const el = p.isConnected && p.querySelector('#bNear .bl'); if (el && /^Finding/.test(el.textContent)) el.textContent = 'Still waiting on OpenStreetMap. Its servers are run by volunteers and can be slow; this tries another one if the first is busy.'; }, 9000);
 }
 
 // The lot's records exactly as the state's service sent them (only the fields the app asks for, so no owner names), with its
@@ -5772,7 +5922,7 @@ const WA_TAXED = new Set(['single', 'multi', 'apartments', 'resCondo', 'comCondo
 const NE_TAX_YEAR = 2025;
 const NE_RATES = '1.4015 0.9129 1.1129 1.2929 0.8740 0.6746 1.3492 0.9891 1.0351 1.5477 1.2810 1.0352 1.6643 0.8775 0.8953 0.7705 1.6980 1.0365 1.2844 0.8467 1.1540 1.3259 1.5299 1.3847 1.2879 1.0440 1.3471 2.0381 0.9720 1.0337 1.2103 1.1626 1.1506 1.2544 1.0066 1.2865 0.9019 0.6658 0.9485 1.5861 0.9750 1.0656 0.9061 1.1277 1.0357 0.7297 1.1417 1.2244 1.2176 1.1071 1.0352 0.6745 1.3385 0.9655 1.5955 1.4513 1.0792 0.8304 1.3152 0.9951 1.1218 1.3897 1.1286 1.2334 1.4025 1.3665 1.0786 0.9101 1.0628 0.9784 1.1620 0.9280 1.2115 1.0458 0.9289 1.3089 2.0028 1.3470 1.6389 1.1232 1.1231 1.0269 0.9557 1.0403 0.8996 0.9783 1.2818 1.2701 1.3272 1.1063 1.1638 0.8437 1.0150'.split(' ').map(Number);
 const round10 = (v) => Math.round(v / 10) * 10;
-function taxBoxHtml(s) {
+function taxBoxHtml(s, brief = false) {     // brief: just the figure, with the rest under Financing (the card in tabs)
   const t = estimateTax(s);
   if (!t) return '';
   if (t.exempt) return `<div class="tax"><div class="k">${s.region.actualTax ? 'Property tax' : 'Estimated property tax'}</div><div class="v">None</div><div class="s">Tax-exempt property: government, school, charity or religious.</div></div>`;
@@ -5782,6 +5932,7 @@ function taxBoxHtml(s) {
   const lines = t.notes.slice();
   if (t.buyer) lines.unshift(`A new owner living here would pay about <b>${moneyFull(round10(t.buyer))}</b> a year: Florida’s homestead cap resets when a house sells.`);
   const title = t.title ? t.title : t.actual ? 'Property tax · last year’s bill' : t.rough || s.region.id === 'FL' ? 'Rough property tax estimate' : 'Estimated property tax';
+  if (brief) return `<div class="tax"><div class="k">${title}${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div>${t.buyer ? `<div class="s">${lines[0]}</div>` : ''}<button class="tmore" data-tab="fin">How it’s figured, in Financing ›</button></div>`;
   return `<div class="tax"><div class="k">${title}${s.park ? ' · whole park' : ''}</div><div class="v">${big} <span>${unit}</span></div><div class="s">${lines.join('<br>')}</div></div>`;
 }
 
@@ -6025,18 +6176,10 @@ function openBuy(L, s) {
   };
   setTimeout(() => { const el = $('#bNear .bl'); if ($('#buyBox') && $('#buyBox').dataset.k === key && el && /^Finding/.test(el.textContent)) el.textContent = 'Still waiting on OpenStreetMap. Its servers are run by volunteers and can be slow; this tries another one if the first is busy.'; }, 9000);
   wireCalc(L, s);
-  put('bSchools', 'Schools', schoolsFor(lat, lon).then((d) => {
-    const el = schoolPicks(d, lat, lon)[0]; if (el && el.s) noteBuy(key, { school: `${el.s.name} · ${miles(el.s.d)}` });
-    return schoolsHtml(d, s, lat, lon);
-  }));
-  put('bHood', 'Neighborhood', neighborhoodFor(lat, lon).then((d) => hoodHtml(d, s)));
-  put('bSafety', 'Safety', safetyFor(s, lat, lon).then((d) => safetyHtml(d, s)));
-  put('bNear', 'Nearby', nearbyFor(lat, lon).then((d) => {
-    const g = nearCats(d, lat, lon).find((c) => c.label === 'Grocery');
-    if (g && g.best) noteBuy(key, { grocery: `${g.best.name || 'Grocery store'} · ${miles(g.best.d)}` });
-    NEAR_VIEW.set(key, { d, lat, lon, L }); capMap(NEAR_VIEW, 40);
-    return nearHtml(d, lat, lon, L, 'all');
-  }));
+  put('bSchools', 'Schools', buyWork('bSchools', L, s, lat, lon));
+  put('bHood', 'Neighborhood', buyWork('bHood', L, s, lat, lon));
+  put('bSafety', 'Safety', buyWork('bSafety', L, s, lat, lon));
+  put('bNear', 'Nearby', buyWork('bNear', L, s, lat, lon));
   if (!box.dataset.wired) {          // filter chips in Nearby
     box.dataset.wired = '1';
     box.addEventListener('click', (e) => {
@@ -6047,6 +6190,22 @@ function openBuy(L, s) {
   }
 }
 
+// One outside section's lookup, as the HTML to show (the buying panel and the card's tabs both use these).
+function buyWork(id, L, s, lat, lon) {
+  const key = L.p.key;
+  if (id === 'bSchools') return schoolsFor(lat, lon).then((d) => {
+    const el = schoolPicks(d, lat, lon)[0]; if (el && el.s) noteBuy(key, { school: `${el.s.name} · ${miles(el.s.d)}` });
+    return schoolsHtml(d, s, lat, lon);
+  });
+  if (id === 'bHood') return neighborhoodFor(lat, lon).then((d) => hoodHtml(d, s));
+  if (id === 'bSafety') return safetyFor(s, lat, lon).then((d) => safetyHtml(d, s));
+  return nearbyFor(lat, lon).then((d) => {
+    const g = nearCats(d, lat, lon).find((c) => c.label === 'Grocery');
+    if (g && g.best) noteBuy(key, { grocery: `${g.best.name || 'Grocery store'} · ${miles(g.best.d)}` });
+    NEAR_VIEW.set(key, { d, lat, lon, L }); capMap(NEAR_VIEW, 40);
+    return nearHtml(d, lat, lon, L, 'all');
+  });
+}
 function whyFailed(e) {
   const m = String((e && e.message) || e || 'unknown error');
   if (/census key/i.test(m)) return m;
@@ -6565,7 +6724,7 @@ function wireCalc(L, s) {
     const row = (l, v, sub) => `<div class="brow"><div class="l">${l}</div><div class="m">${sub ? `<small>${sub}</small>` : ''}</div><div class="r">${dollars(v)}</div></div>`;
     $('#cRows').innerHTML = row('Loan payment', m.pi, `${dollars(m.loan)} at ${c.rate}% for ${c.term} years`) + row('Property tax', m.tax, c.taxKind === 'none' ? 'No figure for this property' : '')
       + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
-    const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: 'the estimate above', none: 'not included' }[c.taxKind];
+    const taxWhy = { actual: 'last year’s actual bill', buyer: 'what a new owner would pay (Florida’s homestead cap resets on sale)', estimate: TABS ? 'the estimate below' : 'the estimate above', none: 'not included' }[c.taxKind];
     $('#cNote').innerHTML = `Rate: Freddie Mac’s average 30-year rate was ${RATE30.rate}% (${RATE30.asOf}); yours depends on credit and points${c.term !== 30 ? ', and shorter loans usually run a bit lower' : ''}. `
       + `${calcDefaults(s).price > 0 ? `Price starts at the ${s.condo ? 'typical unit value' : num(s.r0.MKT_EST) > 0 ? 'state’s market estimate' : 'town’s value or the last sale, whichever is higher'}` : 'There’s no value or sale on file here to start the price from'}; type the asking price${s.region.id === 'NJ' ? ' (New Jersey towns often assess well below market value)' : staleRecord(s) ? ` (the town’s value here is from FY${s.fy})` : ''}. Tax: ${taxWhy}. `
       + `Insurance: ${s.condo ? 'add your condo policy quote' : `${esc(stateNameOf(s.region))}’s average policy; get a real quote`}.${m.pmi ? ` Mortgage insurance is a rough ${PMI_RATE * 100}% a year.` : ''} `
@@ -6659,7 +6818,7 @@ function renderSaved() {
     ['Beds · baths', (x) => cell(x.beds || x.baths ? `${x.beds || '—'} · ${x.baths || '—'}` : null)],
     ['Lot', (x) => cell(x.lot ? (x.lot >= 21780 ? `${(x.lot / 43560).toFixed(1)} ac` : `${x.lot.toLocaleString('en-US')} ft²`) : null)],
     ['Flood zone', (x) => cell(x.flood)],
-    ['Elementary', (x) => cell(x.school, x.school ? '' : 'open its card’s buying section')],
+    ['Elementary', (x) => cell(x.school, x.school ? '' : TABS ? 'open its card’s Schools tab' : 'open its card’s buying section')],
     ['Grocery', (x) => cell(x.grocery)],
   ];
   const head = `<tr><th></th>${cols.map(({ x, i }) => `<th class="h"><a href="#" data-open="${i}">${esc(x.addr)}</a><small>${esc([x.town, stateOf(x.rid)].filter(Boolean).join(', '))}</small><button data-remove="${i}" aria-label="Remove ${esc(x.addr)} from Saved">Remove</button></th>`).join('')}</tr>`;
@@ -6686,6 +6845,8 @@ function paintFlood(L) {
    ========================================================================= */
 function openSheet(cands, idx = 0) {
   S.candidates = cands; S.cIdx = idx; S.locked = true;
+  if (!$('#sheet').classList.contains('open')) { $('#sheet').classList.remove('tall'); renderTabs.key = null; }   // tabs: a fresh card opens two-thirds tall, on Home
+  if (TABS) { clearTimeout(toast._t); $('#toast').classList.add('off'); }     // the aiming hint would sit over the card's address
   renderCard(cands[idx], cands.length, idx);
   // Only houses you actually looked at go in "Your houses", not every "Not it" on the way.
   clearTimeout(openSheet.hist); const seenCand = cands[idx];
@@ -6722,6 +6883,11 @@ $('#shareC').onclick = async () => {
 (() => {
   pullToClose($('#sheet'), $('#cardBody'), closeSheet);
   $('.grab').onclick = closeSheet;
+  // The card in tabs grows to full height once you scroll it
+  $('#cardBody').addEventListener('scroll', () => { if (TABS && $('#cardBody').scrollTop > 24) $('#sheet').classList.add('tall'); }, { passive: true });
+  // Turning the phone between tall and short: the card in tabs moves its address and strip in or out of the scrolling part
+  const redraw = () => { const c = S.candidates && S.candidates[S.cIdx]; if (TABS && c && $('#sheet').classList.contains('open')) renderCard(c, S.candidates.length, S.cIdx); };
+  if (SHORT_SCREEN.addEventListener) SHORT_SCREEN.addEventListener('change', redraw); else if (SHORT_SCREEN.addListener) SHORT_SCREEN.addListener(redraw);
 })();
 
 /* =========================================================================
