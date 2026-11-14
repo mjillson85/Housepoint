@@ -5,6 +5,7 @@ import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8781);
 const ORIGIN = 'http://localhost:8781';
@@ -39,7 +40,7 @@ async function newPage(url) {
   await page.evaluateOnNewDocument(FAKE);
   await page.setRequestInterception(true);
   page.on('request', (req) => (req.url().startsWith(ORIGIN) ? req.continue() : req.abort()));
-  await page.setGeolocation({ latitude: 42.0, longitude: -71.0, accuracy: 5 });
+  await page.setGeolocation({ latitude: 42.32, longitude: -72.63, accuracy: 5 });
   await page.goto(ORIGIN + url);
   await page.evaluate((g) => { window.__hp.CAM.graceMs = g; }, page.grace ?? 0);   // most checks: the map stops the camera at once
   return page;
@@ -133,7 +134,7 @@ check(!p2b.errors.length, 'no page errors (busy) ' + p2b.errors.join('; '));
 const p3 = await newPage('/');
 await p3.click('#goMap'); await sleep(400);
 await setHidden(p3, true); await setHidden(p3, false); await sleep(200);
-await p3.evaluate(() => window.__hp.centerMap(42.0, -71.0)); await sleep(500);
+await p3.evaluate(() => window.__hp.centerMap(42.32, -72.63)); await sleep(500);
 s = await state(p3);
 check(s.calls === 0 && s.mode === 'map', 'map-only use never asks for the camera ' + JSON.stringify(s));
 

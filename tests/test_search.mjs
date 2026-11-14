@@ -5,6 +5,7 @@ import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8783);
 const ORIGIN = 'http://localhost:8783';
@@ -150,7 +151,7 @@ async function newPage(url) {
         f.push({ attributes: { BASENAME: 'Washington', STATE: '34', INTPTLAT: '+40.7584', INTPTLON: '-074.9790' } });
         f.push({ attributes: { BASENAME: 'Washington', STATE: '34', INTPTLAT: '+39.7500', INTPTLON: '-075.0700' } });
       }
-      if (id === 22 && /'BRAINTREE TOWN'/.test(w)) f.push({ attributes: { BASENAME: 'Braintree Town', STATE: '25', INTPTLAT: '+42.2049', INTPTLON: '-071.0050' } });   // how the Census names it
+      if (id === 22 && /'AGAWAM TOWN'/.test(w)) f.push({ attributes: { BASENAME: 'Agawam Town', STATE: '25', INTPTLAT: '+42.0695', INTPTLON: '-072.6148' } });   // how the Census names it
       if (id === 28 && /'PORT ST\. LUCIE'/.test(w)) f.push({ attributes: { BASENAME: 'Port St. Lucie', STATE: '12', INTPTLAT: '+27.2810', INTPTLON: '-080.3830' } });
       if (id === 22 && /'EVILTOWN'/.test(w)) f.push({ attributes: { BASENAME: '<b>Evil</b>town', STATE: '25', INTPTLAT: '+' + H.lat.toFixed(7), INTPTLON: H.lon.toFixed(7) } });
       return json({ features: f });
@@ -381,8 +382,8 @@ await page.evaluate(() => { window.__hp.S.map.center = { lat: 39.76, lon: -75.06
 r = await search(page, 'Washington, NJ');
 check(near(r.center, { lat: 39.75, lon: -75.07 }, 500), 'several Washingtons in New Jersey: the nearest one');
 await page.evaluate(() => { window.__hp.S.map.center = { lat: 42.23, lon: -71.52 }; });
-r = await search(page, 'Braintree');
-check(/^Showing Braintree, MA\./.test(r.help) && near(r.center, { lat: 42.2049, lon: -71.005 }, 100), '"Braintree" finds the Census’s "Braintree Town", shown as Braintree');
+r = await search(page, 'Agawam');
+check(/^Showing Agawam, MA\./.test(r.help) && near(r.center, { lat: 42.0695, lon: -72.6148 }, 100), '"Agawam" finds the Census’s "Agawam Town", shown as Agawam');
 r = await search(page, 'Port St Lucie FL');
 check(/^Showing Port St\. Lucie, FL\./.test(r.help), '"Port St Lucie" finds Port St. Lucie');
 // A Census answer that arrives after the app gave up doesn't cause an error

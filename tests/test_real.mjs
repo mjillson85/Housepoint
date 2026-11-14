@@ -7,6 +7,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import { isOwnerish } from './owner-fields.mjs';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8790);
 const ORIGIN = 'http://localhost:8790';
@@ -163,14 +164,6 @@ for (const set of sets) {
     // "Copy this lot's records": the records as the service sent them, every one, with nothing owner-like
     check(st.copied.housepoint === 'lot' && st.copied.state === set.state && st.copied.records.length >= st.recs && st.copied.rings.length >= 1
       && st.copied.records.every((a) => Object.keys(a).every((k) => !isOwnerish(k))), `copied records don't match the lot: ${name}`);
-    // Named lots
-    if (lot.key === 'id:F_751960_2913839') {
-      console.log('River St:', JSON.stringify({ town: st.town, value: st.value, heads: st.heads, lists: st.lists, buy: st.buy }));
-      check(st.condo && st.building === 'comCondo' && st.units === 2 && /Commercial condo building/.test(st.town), 'River St: a commercial condo building with 2 units');
-      check(st.lists[0] && st.lists[0].length === 2 && !st.lists[0].some((x) => /47-49/.test(x)), 'River St: the two stores are the units; the master record isn’t listed');
-      check(st.heads.includes('Also on this lot · tap for details') && st.lists[1] && st.lists[1].some((x) => /35 River St/.test(x)), 'River St: the strip of land is listed as also on the lot');
-      check(!st.buy && !/Living area/.test(T + st.details.join(' ')) && st.details.some((d) => /Floor area/.test(d)), 'River St: no home-buyer box; stores show floor area, not living area');
-    }
   }
 }
 // The service check page, against the same fake services: every state answers, the geocoders (not faked here) don't

@@ -31,7 +31,7 @@ const SPOTS = {
     ['Storrs (Mansfield)', 41.8077, -72.2495, 700], ['Salisbury (rural)', 41.9834, -73.4215, 1200], ['Stamford', 41.0534, -73.5387, 350]],
   NJ: [['Hoboken', 40.7440, -74.0324, 300], ['Newark downtown', 40.7357, -74.1724, 350], ['Princeton', 40.3487, -74.6590, 400],
     ['Cape May', 38.9351, -74.9060, 400], ['Sussex County (rural)', 41.1590, -74.7380, 1500], ['Hammonton (farms)', 39.6365, -74.8024, 1200]],
-  FL: [['Miami Brickell', 25.7617, -80.1918, 250], ['West Palm Beach', 26.7153, -80.0534, 350], ['Tequesta', 26.9662, -80.1040, 500],
+  FL: [['Miami Brickell', 25.7617, -80.1918, 250], ['West Palm Beach', 26.7153, -80.0534, 350], ['Sarasota', 27.3364, -82.5307, 400],
     ['Tampa downtown', 27.9506, -82.4572, 300], ['Okeechobee (rural)', 27.2439, -80.8298, 1500], ['The Villages', 28.9005, -81.9750, 500]],
   NC: [['Raleigh Five Points', 35.8085, -78.6430, 300], ['Raleigh downtown', 35.7790, -78.6400, 300], ['Charlotte Dilworth', 35.2050, -80.8500, 300],
     ['Charlotte uptown condos', 35.2270, -80.8440, 250], ['Durham', 35.9940, -78.8986, 350], ['Greensboro', 36.0726, -79.7920, 300],
@@ -110,7 +110,7 @@ const SPOTS = {
   TX_BEXAR: [['Alamo Heights', 29.4870, -98.4650, 250], ['San Antonio King William', 29.4100, -98.5000, 250], ['Stone Oak', 29.6300, -98.4800, 300]],
 };
 // Lots that have shown problems before, found by their MassGIS LOC_ID through the state's own server (indexed there).
-const NAMED = { MA: [['47-49 River St (commercial condo, land and master records)', 'F_751960_2913839']] };
+const NAMED = {};          // lots to always include, by state: [[label, LOC_ID], …] (the commercial condo case is now made up in test_condo.mjs)
 const MA_STATE_PARCELS = 'https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassachusettsPropertyTaxParcels/FeatureServer/1';
 const PER_STATE = 120, PER_KIND = 2, MAX_RECS = 80;
 

@@ -7,6 +7,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import { OWNERISH, KEEP_NAME, isOwnerish } from './owner-fields.mjs';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`, 'utf8');
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 
@@ -122,6 +123,23 @@ const pub = await page.evaluate(() => {
   };
 });
 check(pub.ctSame && !pub.ctOther && pub.mtSame && !pub.mtOther, `a layer found by searching counts only from the same publisher: ${JSON.stringify(pub)}`);
+
+// The values, not just the names: a service whose columns slip (Alaska's Ketchikan rows did) can put a mailing address, a PO box or a
+// deed's wording into an ordinary field. No saved record (or a lot's label) may hold text like that.
+const OWNER_TEXT = /\bP\.?\s*O\.?\s*BOX\b|\bC\/O\b|\bTHENCE\b|\bRECORDED (IN|ON)\b|\bIN VOLUME\b|\bAT PAGE\b|\bSUBJECT TO\b|\bET\s?(AL|UX|VIR)\b|\b(REVOCABLE|LIVING|FAMILY) TRUST\b|\bTRUSTEES?\b|\bESTATE OF\b|\bU\.?\s?S\.? SURVEY\b|\bL\.?L\.?C\b|\bINC\b/i;
+const textHits = [];
+for (const f of fs.readdirSync(`${HP_ROOT}/tests/fixtures`).filter((n) => n.endsWith('.json'))) {
+  const d = JSON.parse(fs.readFileSync(`${HP_ROOT}/tests/fixtures/${f}`, 'utf8'));
+  for (const lot of (d && d.lots) || []) {
+    for (const v of [lot.kind, lot.spot]) if (typeof v === 'string' && OWNER_TEXT.test(v)) textHits.push(`${f} label`);
+    for (const ft of lot.features || []) for (const [k, v] of Object.entries(ft.attributes || {})) if (typeof v === 'string' && OWNER_TEXT.test(v)) textHits.push(`${f} ${k}`);
+  }
+}
+check(!textHits.length, `no saved record holds mailing, deed or owner-like text (${textHits.length ? [...new Set(textHits)].slice(0, 5).join(', ') : 'none'})`);
+// Alaska's use fields keep only land-use words
+const ak = await page.evaluate(() => ['Single Family Resid. with ADU', 'Office Bldg - low rise 1-4 lvls', 'COMM VACANT', 'PO BOX 1234', '99901', 'KETCHIKAN', 'AK', 'BAWDEN ST 100',
+  ' RECORDED IN THE OFFICE OF THE MAGISTRATE', 'VP REAL ESTATE INVESTMENT SERVICES', ' FIRST JUDICIAL DISTRICT'].map((v) => window.__hp.scrubAttrs('AK', { property_use: v }).property_use));
+check(ak.slice(0, 3).every(Boolean) && ak.slice(3).every((v) => v === null), `Alaska keeps use words and drops addresses, box numbers, names and deed text: ${JSON.stringify(ak)}`);
 
 check(!errors.length, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
 await browser.close(); srv.close();

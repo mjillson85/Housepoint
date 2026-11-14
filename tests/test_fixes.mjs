@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const ROOT = `${HP_ROOT}`;
 const srv = http.createServer((q, r) => {
   const u = q.url.split('?')[0]; const f = path.join(ROOT, u === '/' ? 'index.html' : u);
@@ -76,7 +77,7 @@ const newPage = async (errors, w = 390, h = 844) => {
   const chips = await page.$eval('#cardBody .chips', (el) => el.innerText.replace(/\n/g, ' | '));
   console.log('card chips:', chips);
   check(/Oldest of \d+ houses nearby/.test(chips), 'badge shows on the card');
-  check(/Street view/.test(await page.$eval('#cardBody .aerial', (el) => el.innerText)), 'card has a street view link');
+  check(!/Street view/.test(await page.$eval('#cardBody .aerial', (el) => el.innerText)), 'the demo card has no Street view link (its houses are made up)');
   await page.screenshot({ path: 'fix_card.png' });
   // map draws building outlines
   await page.evaluate(() => document.querySelector('.grab').click()); await sleep(300);
@@ -149,7 +150,7 @@ const newPage = async (errors, w = 390, h = 844) => {
 /* D. Florida: USGS photo only; rough tax title */
 {
   const errors = []; const page = await newPage(errors);
-  await page.goto(ORIGIN + '/?demo=1');
+  await page.goto(ORIGIN + '/');                     // not the demo: it shows no photos at all
   const r = await page.evaluate(() => {
     const set = window.__hp.imagerySet({ x0: -50, y0: -25, w: 100, h: 50 }, 780, 390, { inv: (x, y) => [29.9 + y / 110540, -81.3 + x / 96000], fwd: () => [0, 0] });
     const ma = window.__hp.imagerySet({ x0: -50, y0: -25, w: 100, h: 50 }, 780, 390, { inv: (x, y) => [42.36 + y / 110540, -71.06 + x / 82000], fwd: (la, lo) => [(lo + 71.06) * 82000, (la - 42.36) * 110540] });

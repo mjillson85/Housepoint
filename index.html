@@ -349,6 +349,7 @@
   /* save + compare */
   .addrrow { display: flex; align-items: flex-start; gap: 10px; }
   .addrrow .addr { flex: 1; min-width: 0; }
+  .addr:focus { outline: none; }
   .savebtn { flex: none; margin-top: 4px; height: 34px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font-weight: 600; font-size: 13.5px;
     display: inline-flex; align-items: center; gap: 5px; }
   .savebtn svg { width: 17px; height: 17px; }
@@ -458,8 +459,8 @@
 <div id="ar"></div>
 <div id="reticle" class="hidden"></div>
 <div id="scan"></div>
-<div id="liveLabel" class="dim" role="button" tabindex="0" aria-label="Open the full story for this house"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
-<div id="hint" class="hidden"></div>
+<div id="liveLabel" class="dim" role="button" tabindex="0"><div class="a" id="liveA"></div><div class="b" id="liveB"></div><div class="c">Tap for the full story ›</div></div>
+<div id="hint" class="hidden" role="status" aria-live="polite"></div>
 <div id="sim" class="hidden"><span>Compass</span><input type="range" id="simRange" min="0" max="359" value="90"><span id="simVal">90°</span></div>
 <div id="bar" class="hidden">
   <button class="round" id="toMap" aria-label="Map">
@@ -515,21 +516,21 @@
 </div>
 
 <!-- CARD -->
-<div id="sheet"><div class="card">
+<div id="sheet" inert><div class="card">
   <div class="grab" role="button" tabindex="0" aria-label="Close"></div>
   <div id="cardHead"></div>
   <div class="card-scroll" id="cardBody"></div>
   <div class="card-actions">
-    <button id="prevC" aria-label="Previous candidate">‹ Not it</button>
+    <button id="prevC" aria-label="Not it: the house before">‹ Not it</button>
     <button id="shareC" class="main">Share</button>
-    <button id="nextC" aria-label="Next candidate">Not it ›</button>
+    <button id="nextC" aria-label="Not it: the next house">Not it ›</button>
   </div>
 </div></div>
 
 <div id="mapAttr" class="hidden">Imagery: USGS NAIP</div>
 
 <!-- HIGHLIGHTS / HISTORY PANEL -->
-<div id="panel"><div class="card">
+<div id="panel" inert><div class="card">
   <div class="grab" id="panelGrab" role="button" tabindex="0" aria-label="Close"></div>
   <div class="card-scroll" id="panelScroll">
     <div class="tabs"><button id="tabNear" class="on">Around here</button><button id="tabSaved">Saved</button><button id="tabMine">History</button></div>
@@ -547,7 +548,7 @@
 
 <div id="about" class="hidden"><div class="card"><div class="card-scroll" id="aboutBody"></div>
   <div class="card-actions"><button id="aboutClose">Close</button></div></div></div>
-<div id="toast" class="off"></div>
+<div id="toast" class="off" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -596,12 +597,15 @@ const TABS = (() => {
 })();
 const DECL_OVERRIDE = qs.has('decl') ? parseFloat(qs.get('decl')) : NaN;   // e.g. ?decl=0 if a phone already reports true north
 // ?service= swaps in another copy of the Massachusetts parcel service (testing only). Only MassGIS's own ArcGIS account or a
-// .gov site is accepted, so a shared link can't feed the app made-up records.
-const SERVICE_OVERRIDE = (() => {
-  try { const u = new URL(qs.get('service') || ''); const h = u.hostname.toLowerCase();
+// .gov site is accepted, and on the live site only with ?debug too, so a shared link can't feed the app made-up records.
+function serviceOverride(search, host) {
+  const p = new URLSearchParams(search), local = !host || host === 'localhost' || host === '127.0.0.1';
+  if (!local && !p.has('debug')) return null;
+  try { const u = new URL(p.get('service') || ''); const h = u.hostname.toLowerCase();
     return u.protocol === 'https:' && (h.endsWith('.gov') || (h.endsWith('.arcgis.com') && u.pathname.split('/')[1] === MASSGIS_ORG)) ? u.href : null; }
   catch (e) { return null; }
-})();
+}
+const SERVICE_OVERRIDE = serviceOverride(location.search, location.hostname);
 
 /* =========================================================================
    Small helpers
@@ -621,7 +625,7 @@ function toast(msg, ms = 2600) {
 
 function money(v) {
   const n = num(v); if (!n) return null;
-  if (n >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+  if (n >= 999500) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';   // $999,600 is $1M, not "$1,000k"
   if (n >= 1e3) return '$' + Math.round(n / 1e3).toLocaleString('en-US') + 'k';
   return '$' + n.toLocaleString('en-US');
 }
@@ -629,7 +633,7 @@ const moneyFull = (v) => { const n = num(v); return n ? '$' + Math.round(n).toLo
 
 function parseSaleDate(v) {
   if (v == null || v === '') return null;
-  if (typeof v === 'number' && v > 1e11) { const u = new Date(v); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); } // epoch ms, UTC
+  if (typeof v === 'number' && Math.abs(v) > 1e11) { const u = new Date(v); return u.getUTCFullYear() > 1700 ? new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()) : null; } // epoch ms, UTC (before 1970 too)
   // "8/18/2020": Connecticut's layer has sent its sale dates as month/day/year text since 2025
   const mdy = /^\s*(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})\b/.exec(String(v));
   if (mdy) { const y = +mdy[3], m = +mdy[1], d = +mdy[2]; return y > 1700 && y <= THIS_YEAR + 1 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? new Date(y, m - 1, d) : null; }
@@ -809,7 +813,7 @@ function ctKind(d) {
   if (/APART|\bAPTS?\b|^APT/.test(d)) return /FOUR|\b4 ?-? ?UNIT|\b[234] ?-? ?FAM/.test(d) ? 'multi' : 'apartments';
   if (/\bTWO\b|THREE|FOUR|\b[234] ?-? ?FAM|2-4|DUPLEX|MULTI|MFAM|IN-LAW|\b[234] ?UNIT/.test(d)) return 'multi';
   if (/BOARD|BORDING|ROOMING|LODGING|DORM|GROUP HOME|ELDERLY|CONGREGATE/.test(d)) return 'otherRes';
-  if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES|RESID|DWELL|HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
+  if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES(?!T)|RESID|DWELL|HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
   if (/\bIND|MANUF|WAREH|FACTORY|\bMILL\b|STORAGE/.test(d)) return 'industrial';
   if (/COMM|\bCOM\b|RETAIL|OFFICE|STORE|SHOP|CONVENIEN|DEPART|DEALER|BARBER|BEAUTY|DINER|LUNCH|REST|BANK|HOTEL|MOTEL|\bINN\b|GAS|SERVICE|AUTO|GARAGE|MALL|PLAZA|THEAT|CLUB|FRAT|DAY ?CARE|NURSING|MED|DENT|FUNERAL|MORTU|PARKING|PARK LOT|NURSERY|GARDEN|MARINA|\bBUS/.test(d)) return 'commercial';
   return model === '01' ? 'single' : model === '94' ? 'commercial' : 'unknown';
@@ -1664,6 +1668,9 @@ function nyDerive(o) {
   const ry = parseInt(o.FY, 10); o.FY = ry > 2000 ? ry : null;
   o.STYLE = String(o.STYLE ?? '').trim() || null;
 }
+// A value that's only a fraction of market value (New York City's and some towns' assessments, Cook County's incentive classes):
+// the card says so beside it; the floating label and the "Priciest" badge, which can't, leave it out.
+const fractionalValue = (s) => (s.region.id === 'NY' && s.r0.VALUE_KIND !== 'full') || (s.region.id === 'IL' && s.r0.VALUE_KIND === 'assessed');
 const nyValueLabel = (r) => (r && r.VALUE_KIND === 'nyc' ? 'City assessed value (a fraction of market value)'
   : r && r.VALUE_KIND === 'assessed' ? 'Town assessed value (a fraction of market value)' : 'Full market value (state estimate)');
 // The short word for a record's value (share text, the compare table): a region can vary it by record, as New York does.
@@ -1828,6 +1835,7 @@ const tileY = (lat, n) => (1 - Math.log(Math.tan(rad(lat)) + 1 / Math.cos(rad(la
 const tileLat = (y, n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
 // Photo pieces covering a rectangle in local meters: { credit, parts: [{ href, alt, x0, y0, w, h }], naip }.
 function imagerySet(ext, pw, ph, proj = S.proj, maxTiles = 96) {
+  if (DEMO) return { credit: 'Demo: no aerial photo', parts: [], naip: null, key: 'demo' };     // the demo's houses are made up; it fetches nothing
   const [la0, lo0] = proj.inv(ext.x0, ext.y0), [la1, lo1] = proj.inv(ext.x0 + ext.w, ext.y0 + ext.h);
   const [mx0, my0] = merc(la0, lo0), [mx1, my1] = merc(la1, lo1);
   const naip = { href: `${NAIP}?bbox=${mx0.toFixed(2)},${my0.toFixed(2)},${mx1.toFixed(2)},${my1.toFixed(2)}&bboxSR=3857&imageSR=3857&size=${pw},${ph}&format=jpg&f=image`,
@@ -1869,7 +1877,7 @@ function aerialSvg(L) {
   return `<div class="aerial"><svg viewBox="${ext.x0.toFixed(1)} ${top.toFixed(1)} ${ext.w.toFixed(1)} ${ext.h.toFixed(1)}" preserveAspectRatio="xMidYMid slice">
     <g class="imgs">${imageTags(set)}</g>
     <path d="${ringsPath(L.rings)}" fill="rgba(180,67,44,.16)" fill-rule="evenodd" stroke="#f0a48f" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
-  </svg><a class="sv" href="https://www.google.com/maps/@?api=1&amp;map_action=pano&amp;viewpoint=${lat.toFixed(6)},${lon.toFixed(6)}" target="_blank" rel="noopener">Street view ↗</a><span class="attr">${esc(set.credit)}</span></div>`;
+  </svg>${DEMO ? '' : `<a class="sv" href="https://www.google.com/maps/@?api=1&amp;map_action=pano&amp;viewpoint=${lat.toFixed(6)},${lon.toFixed(6)}" target="_blank" rel="noopener">Street view ↗</a>`}<span class="attr">${esc(set.credit)}</span></div>`;
 }
 // A tile that fails tries the backup set; if that fails too, the USGS photo fills in underneath.
 function attachImageryFallback(group, set, credit) {
@@ -2189,6 +2197,29 @@ function akKind(r) {
   if (/RESIDENTIAL|1 FAMILY|SINGLE|\bRES\b|HOMESITE|\bR1\b|\bRR1\b/.test(t)) return r.BLDG_VAL === 0 ? 'vacant' : 'single';   // a home's lot with no building on it
   return 'unknown';
 }
+// Some boroughs' rows arrive shifted, so the two use fields can hold a mailing address, a PO box, a legal description or a name.
+// Only a value made of land-use words (and small numbers, like "Residential 2 Family" or "1-4 lvls") is kept; anything else is
+// dropped the moment it arrives (REGIONS.AK.scrub), so it's never shown, saved or copied.
+const AK_USE_WORDS = new Set(('RESIDENTIAL RESIDENCE RESID RESI RES SINGLE FAMILY MULTI DUPLEX TRIPLEX FOURPLEX APARTMENT APARTMENTS CONDO CONDOMINIUM '
+  + 'TOWNHOUSE TOWNHOME MOBILE MANUFACTURED HOME HOMES HOMESITE CABIN ADU WITH COMMERCIAL COMM INDUSTRIAL IND FLEX MIXED OFFICE BLDG BUILDING '
+  + 'LOW MID HIGH RISE LVLS LEVELS STORY RETAIL STRIP OCCUPANCY STORE DEPARTMENT DISCOUNT SUPERMARKET GROCERY RESTAURANT BAR HOTEL MOTEL LODGE '
+  + 'BANK CAR WASH AUTOMATIC SERVICE STATION GAS GARAGE PARKING MISCELLANEOUS MISC OTHER MEDICAL HOSPITAL CLINIC NURSING CHURCH SCHOOL LIBRARY '
+  + 'THEATER THEATRE MOTION PICTURE WAREHOUSE STORAGE MINI MARINA HANGAR AIRPORT UTILITY UTILITIES MINING FARM AGRICULTURAL AGRICULTURE '
+  + 'RECREATIONAL RECREATION PARK VACANT VAC LAND LOT LOTS TAX PARCEL TRACT NO DATA ACCESSORY ASSEMBLED COOPERATIVE COOP OBY ONLY PUBLIC '
+  + 'PRIVATE STATE CITY BOROUGH MUNICIPAL FEDERAL GOVERNMENT NATIVE ALLOTMENT EXEMPT PARTIAL INSTITUTIONAL COMMUNITY PURPOSE SURVEYED ROADWAY '
+  + 'IMPROVED UNIMPROVED SUBSURFACE GENERAL USE OF AND').split(' '));
+function akUseScrub(v) {
+  const t = String(v ?? '').trim();
+  if (!t || /\d{3,}/.test(t) || !/[A-Za-z]/.test(t)) return null;          // no zip codes, box numbers or addresses
+  const words = t.toUpperCase().match(/[A-Z]+/g) || [];
+  return words.length && words.every((w) => AK_USE_WORDS.has(w)) ? t : null;
+}
+// Who lives in a home and why it's taxed lower is about the owner, so it's cut down the moment it arrives: a homestead becomes a
+// plain yes or no (DC's numbered codes tell seniors and people with disabilities apart), and the words that say so leave a
+// county's tax class and dwelling type (Minnesota's "1b Blind/Disabled Homestead", "Single-Family / Owner Occupied").
+const yesNoHomestead = (v) => (v == null ? v : /^(Y|F)/i.test(String(v).trim()) || /^0*[1-9]\d*$/.test(String(v).trim()) ? 'Y' : 'N');
+const PERSONAL_WORDS = /\b(BLIND|DISABLED|DISABILITY|SENIORS?|ELDERLY|VETERANS?|OWNER[- ]OCCUPIED|NON[- ]OWNER[- ]OCCUPIED)\b/gi;
+const dropPersonal = (v) => (v == null ? v : String(v).replace(PERSONAL_WORDS, '').replace(/\s*\/\s*(?=\/|$)/g, '').replace(/\/\s*\//g, '/').replace(/\s{2,}/g, ' ').replace(/^[\s/-]+|[\s/-]+$/g, '').trim());
 function akUseLabel(r) {
   if (!r) return null;
   const k = akKind(r), u = t2clean(r.USE_DESC);
@@ -2543,11 +2574,27 @@ const txLabel = (r) => { const d = t2clean(r.USE_DESC).toUpperCase(), k = txKind
   return wordsLabel(k, d); };
 
 // Vermont and Alaska records have no street address: the card asks Geoapify (OpenStreetMap) for the address nearest the lot.
+// Nearest addresses already found, kept on this phone (the newest few hundred), so a lot looked at again doesn't use up another of
+// the shared free key's daily lookups.
+const POS_KEY = 'housepoint.nearestAddr.v1', POS_MAX = 300;
+const POS_CACHE = (() => { try { const o = JSON.parse(localStorage.getItem(POS_KEY) || '{}'); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } })();
+function keepPos(k, v) {
+  delete POS_CACHE[k]; POS_CACHE[k] = v;
+  const ks = Object.keys(POS_CACHE); for (const old of ks.slice(0, Math.max(0, ks.length - POS_MAX))) delete POS_CACHE[old];
+  try { localStorage.setItem(POS_KEY, JSON.stringify(POS_CACHE)); } catch (e) { /* storage full or off */ }
+}
+const str0 = (v) => (typeof v === 'string' && v.length < 120 ? v : null);
 function posAddrFor(p) {
   if (p.posAddrP) return p.posAddrP;               // asked once per lot; the card's address and the basic card's town wait on the same answer
   if (!KEYS.geoapify || !p.ringsLL || !p.ringsLL[0]) { p.posAddr = null; return (p.posAddrP = Promise.resolve(null)); }
   p.posAddr = null;
   const r = p.ringsLL[0]; let x = 0, y = 0; for (const [lo, la] of r) { x += lo; y += la; } x /= r.length; y /= r.length;
+  const ck = `${y.toFixed(5)},${x.toFixed(5)}`, hit = POS_CACHE[ck];
+  if (hit && typeof hit === 'object') {                 // found before, on this phone
+    p.posAddr = str0(hit.a); const pl = hit.pl && typeof hit.pl === 'object' ? hit.pl : null;
+    if (pl) p.posPlace = { town: str0(pl.town), county: str0(pl.county), st: str0(pl.st) };
+    return (p.posAddrP = Promise.resolve(p.posAddr));
+  }
   p.posAddrP = (async () => {
     try {
       const j = await getJSON(`https://api.geoapify.com/v1/geocode/reverse?lat=${y.toFixed(6)}&lon=${x.toFixed(6)}&format=json&limit=1&apiKey=${encodeURIComponent(KEYS.geoapify)}`, {}, 8000);
@@ -2562,6 +2609,7 @@ function posAddrFor(p) {
       // the card keeps "Address not listed" for now; a timeout or a busy service is asked again the next time the card opens
       p.posAddrP = undefined; p.posAddr = undefined; return null;
     }
+    keepPos(ck, { a: p.posAddr || null, pl: p.posPlace || null });
     return p.posAddr;
   })();
   return p.posAddrP;
@@ -2915,9 +2963,13 @@ const REGIONS = {
     derive: (o) => {
       // The parcel map's own address (Location) is blank in some towns (Hartford); the assessor's copy (Location_1) has it.
       if (!String(o.SITE_ADDR ?? '').trim() && String(o.SITE_ADDR2 ?? '').trim()) o.SITE_ADDR = o.SITE_ADDR2;
-      const a = num(o.ASSESSED);
-      if (a > 0) o.TOTAL_VAL = Math.round(a / CT_RATIO / 100) * 100;
-      else if (num(o.LAND_VAL) || num(o.BLDG_VAL)) o.TOTAL_VAL = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
+      if (/^\s*greenwhich\s*$/i.test(String(o.CITY ?? ''))) o.CITY = /[a-z]/.test(o.CITY) ? 'Greenwich' : 'GREENWICH';   // the state's layer misspells it
+      // The town's appraisal is assessed at 70%, except where it isn't (Hartford's homes, farm and forest land assessed at their
+      // use value): there the appraisal itself is the figure to show, and the tax note gives the real share.
+      const a = num(o.ASSESSED), ap = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
+      if (a > 0 && ap > 0 && Math.abs(a / ap - CT_RATIO) > 0.03) o.TOTAL_VAL = ap;
+      else if (a > 0) o.TOTAL_VAL = Math.round(a / CT_RATIO / 100) * 100;
+      else if (ap > 0) o.TOTAL_VAL = ap;
       for (const k of ['LS_DATE', 'PRIOR_DATE']) if (typeof o[k] === 'number') o[k] = ymdUTC(o[k]);
       const cy = parseInt(o.COLL_YR, 10); if (cy > 2000) o.FY = cy - 1;   // towns send the October grand list the following spring
     },
@@ -3103,6 +3155,7 @@ const REGIONS = {
       RES_AREA: ['fin_sq_ft'], YEAR_BUILT: ['year_built'], UNITS: ['num_units'], SALE_DATE: ['sale_date'], LS_PRICE: ['sale_value'],
     },
     derive: (o) => mnDerive(o),
+    scrub: { homestead: yesNoHomestead, useclass1: dropPersonal, useclass2: dropPersonal, dwell_type: dropPersonal },
     addrWhere: (a, f) => mnAddrWhere(a, f),
     streetWhere: (st, f) => mnStreetWhere(st, f),
     townFields: ['POST_CITY'],
@@ -3136,6 +3189,7 @@ const REGIONS = {
     },
     extraFields: ['YEAR_BUILT', 'RES_AREA', 'BLD_AREA', 'BEDS', 'BATHS', 'HALF_BATHS', 'NUM_ROOMS', 'STORIES', 'STYLE', 'UNITS', 'QUALIFIED'],
     derive: (o) => dcDerive(o),
+    scrub: { HSTDCODE: yesNoHomestead },
     expand: (feats, sv) => dcExpand(feats, sv), prepare: (sv) => dcTables(sv),
     actualTax: true,
     valueLabel: 'Assessed value', deltaWord: 'assessed', valueWord: 'Assessed', valueTitle: 'Assessed value',
@@ -3163,7 +3217,7 @@ const REGIONS = {
     fields: {
       PROP_ID: ['ACCTID'], SITE_ADDR: ['ADDRESS'], UNIT: ['STRTUNT'], CITY: ['CITY'], TOWN: ['DESCTOWN'], ZIP: ['ZIPCODE'], COUNTY: ['JURSCODE'],
       TOTAL_VAL: ['NFMTTLVL'], LAND_VAL: ['NFMLNDVL'], BLDG_VAL: ['NFMIMPVL'], USE_CODE: ['LU'], USE_DESC: ['DESCLU'], BLDG_DESC: ['DESCBLDG'], STYLE: ['DESCSTYL'],
-      YEAR_BUILT: ['YEARBLT'], BLD_AREA: ['SQFTSTRC'], SALE_DATE: ['TRADATE'], LS_PRICE: ['CONSIDR1'], CONVEY: ['CONVEY1'], OOI: ['OOI'], EXEMPT_CLASS: ['DESCEXCL'],
+      YEAR_BUILT: ['YEARBLT'], BLD_AREA: ['SQFTSTRC'], SALE_DATE: ['TRADATE'], LS_PRICE: ['CONSIDR1'], CONVEY: ['CONVEY1'], EXEMPT_CLASS: ['DESCEXCL'],
       UNITS: ['BLDG_UNITS'], STORIES: ['BLDG_STORY'], RECORD_URL: ['SDATWEBADR'],
     },
     extraFields: ['QUALIFIED', 'MULTI_SALE', 'JURS', 'CONDO_OUTLINE', 'COMMON_GROUNDS'],
@@ -3464,6 +3518,7 @@ const REGIONS = {
     detect: ['PARCEL_ID', 'TOTAL_VALUE', 'PROPERTY_USE'],
     fields: { PROP_ID: ['parcel_id'], USE_CODE: ['property_type'], USE_DESC: ['property_use'], TOTAL_VAL: ['total_value'], LAND_VAL: ['land_value'], BLDG_VAL: ['building_value'], COUNTY: ['local_gov'] },
     derive: (o) => akDerive(o),
+    scrub: { property_type: akUseScrub, property_use: akUseScrub },
     stackedUnits: true, noSales: true, addrByPosition: true, builtByOutline: true,
     valueLabel: 'Assessed value', deltaWord: 'value', valueWord: 'Assessed', valueTitle: 'Assessed value',
     yearLabel: () => '',
@@ -4055,18 +4110,20 @@ const svcFor = (rid) => SVC[rid] || (SVC[rid] = { ready: null });
 const anyServiceUp = () => Object.values(SVC).some((x) => x.layerUrl);
 
 async function getJSON(url, opts = {}, ms = 20000) {
-  // `whole: true` makes the time limit cover the entire answer, not just its first bytes. OpenStreetMap's servers send the
-  // first bytes at once and the rest only when the search finishes, which on a busy server can take minutes.
+  // `ms` is how long to wait for the answer to start. The rest of it then has twice that (at least 30 seconds) to arrive: a
+  // connection that drops partway would otherwise leave "Loading…" up until the app is reloaded. `whole: true` makes `ms` cover
+  // the entire answer instead (OpenStreetMap's servers send the first bytes at once and the rest only when the search finishes).
   const { whole, signal, ...init } = opts;
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  const ctl = new AbortController(); let t = setTimeout(() => ctl.abort(), ms), partway = false;
   if (signal) signal.addEventListener('abort', () => ctl.abort());     // a caller can cancel too
   let r, j;
   try {
-    try { r = await fetch(url, { ...init, signal: ctl.signal }); } finally { if (!whole) clearTimeout(t); }
+    try { r = await fetch(url, { ...init, signal: ctl.signal }); }
+    finally { if (!whole) { clearTimeout(t); t = setTimeout(() => { partway = true; ctl.abort(); }, Math.max(ms * 2, 30000)); } }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     j = await r.json();
   } catch (e) {
-    if (ctl.signal.aborted && !(signal && signal.aborted)) throw new Error(`no answer in ${Math.round(ms / 1000)} seconds`);
+    if (ctl.signal.aborted && !(signal && signal.aborted)) throw new Error(partway ? 'the answer stopped partway (a weak signal?)' : `no answer in ${Math.round(ms / 1000)} seconds`);
     throw e;
   } finally { clearTimeout(t); }
   if (j && j.error) throw new Error(j.error.message || 'Service error');
@@ -4168,7 +4225,7 @@ function initService(region) {
 }
 
 function notifyServiceDown(region) {
-  const msg = `Can’t reach the ${region ? region.name + ' ' : ''}property data right now. If you opened this file directly or inside an app preview, open it from its web address instead.`;
+  const msg = `Can’t reach the ${region ? region.name + ' ' : ''}property records right now. ${location.protocol === 'file:' ? 'Open the app from its web address, not as a file.' : 'Check your signal; it tries again by itself.'}`;
   const h = document.querySelector('#mapHelpTxt'); if (h) h.textContent = msg;
   toast(msg, 7000);
 }
@@ -4715,7 +4772,7 @@ async function townPlace(names, order, fix, onlyOrder = true) {
   const layers = await twTownLayers();
   const up = (x) => String(x || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, '').replace(/\s+/g, ' ').trim();
   // Ways the Census may write a town's name: St./Saint anywhere ("Port St. Lucie"), New Jersey's townships and boroughs by
-  // their plain name, and Massachusetts cities it calls "X Town" (Braintree Town, Weymouth Town).
+  // their plain name, and Massachusetts cities it calls "X Town" (Agawam Town, Watertown Town).
   const variants = (n) => {
     const out = new Set([n]);
     const base = n.replace(/ (TOWNSHIP|TWP\.?|BORO|BOROUGH|CITY|TOWN|VILLAGE)$/, '');
@@ -4747,7 +4804,7 @@ async function townPlace(names, order, fix, onlyOrder = true) {
       if (st === '*') { st = (regionFor(lat, lon) || {}).id; if (!st) continue; }   // a state covered county by county
       const B = up(a.BASENAME || a.NAME), from = byName.get(B) || { prio: 99 };
       let name = titleCase(a.BASENAME || a.NAME || names[0]);
-      if (!/ TOWN$/.test(from.n || '')) name = name.replace(/ Town$/i, '');            // "Braintree Town" → Braintree
+      if (!/ TOWN$/.test(from.n || '')) name = name.replace(/ Town$/i, '');            // "Agawam Town" → Agawam
       found.push({ st, kind, lat, lon, name, prio: from.prio, fix: !!from.fix });
     }
   }));
@@ -4798,6 +4855,27 @@ async function lotNear(lat, lon, texts) {
 /* =========================================================================
    Demo data (?demo=1): a made-up neighborhood for testing without network
    ========================================================================= */
+// What the buying section and the card's tabs show in the demo: made up, in the same shapes the real services give, so the demo
+// sends nothing anywhere (the made-up town has no real schools, census tract or police department).
+const DEMO_BUY = {
+  schools: (lat, lon) => {
+    const at = (dn, de) => ({ lat: lat + dn / 111000, lng: lon + de / (111000 * Math.cos(rad(lat))) });
+    const sch = (name, glo, ghi, gslo, gshi, students, ratio, dn, de) => ({ id: '', name, lea: 'DEMO', leaName: 'Demo Town', glo, ghi, gslo, gshi, students, ratio,
+      charter: false, magnet: false, type: 'Regular School', virtual: '', status: 'Open', year: 'demo', ...at(dn, de) });
+    return { schools: [sch('Demo Town Elementary', 0, 5, 'KG', '05', 412, 12.9, 500, 350), sch('Demo Town Middle School', 6, 8, '06', '08', 538, 12.1, -900, 1300),
+      sch('Demo Town High School', 9, 12, '09', '12', 702, 11.8, 1800, -1500)], districts: [{ id: 'DEMO', name: 'Demo Town', students: 2140, ratio: 12.4, glo: -1, ghi: 12 }] };
+  },
+  hood: () => ({ here: { pop: 4200, income: 98400, value: 612500, occ: 1500, owned: 1065, ownPct: 71, built: 1958, rent: 1820, year: THIS_YEAR - 2 },
+    st: { income: 101300, value: 525800, ownPct: 63, built: 1961, rent: 1690, year: THIS_YEAR - 2 }, tract: { state: '00', county: '000', tract: '000000', name: 'Demo' } }),
+  safety: () => ({ agency: 'Demo Town Police Department', year: THIS_YEAR - 1, violent: { here: 1.8, state: 3.1, months: 12 }, property: { here: 7.4, state: 10.6, months: 12 } }),
+  near: (lat, lon) => {
+    const spots = { Grocery: [['Demo Town Market', 480, 420]], Pharmacy: [['Main Street Pharmacy', -380, 260]], Coffee: [['Chestnut Street Café', 250, -150]],
+      Park: [['Demo Town Common', -300, -380]], Playground: [['Playground', 700, 500]], 'Bus stop': [[null, 120, 60], [null, -200, 350]],
+      Library: [['Demo Town Public Library', 600, -500]], Hospital: [['Demo Town Hospital', 4200, 3600]] };
+    const cats = NEAR_CATS.map((c) => ({ ...c, hits: (spots[c.label] || []).map(([name, dn, de], i) => ({ id: `demo/${c.label}/${i}`, name, la: lat + dn / 111000, lo: lon + de / (111000 * Math.cos(rad(lat))), subway: false })) }));
+    return { cats, restaurants: 18, via: 'demo' };
+  },
+};
 function demoParcels(lat0, lon0) {
   if (demoParcels.cache && demoParcels.cache.key === `${lat0.toFixed(3)},${lon0.toFixed(3)}`) return demoParcels.cache.ps;
   const proj = makeProj(lat0, lon0);
@@ -4874,14 +4952,16 @@ async function ensureData(lat, lon, force = false) {
   if (!force && S.failAt && Date.now() - S.failAt < 20000) throw new Error('waiting before retry');
   S.loading = (async () => {
     try {
-      const lots = await queryParcelsNear(lat, lon);
-      setData(lots, lat, lon); S.failAt = 0;
+      // A backstop: whatever a service does, the load ends (and can be tried again) within a minute and a half.
+      let stop; const limit = new Promise((_, no) => { stop = setTimeout(() => no(new Error('the property records took too long')), 90000); });
+      const lots = await Promise.race([queryParcelsNear(lat, lon), limit]).finally(() => clearTimeout(stop));
+      setData(lots, lat, lon); S.failAt = 0; S.failCount = 0;
       const proj = S.proj;
       // Lots that are building outlines already (the basic card, and its stand-in where a state's records have a gap) need no second fetch
       if (lots.some((p) => !(REGIONS[p.region] || {}).basic)) loadBuildings(lat, lon, lots, proj);
     }
     catch (e) {
-      console.error(e); S.failAt = Date.now();
+      console.error(e); S.failAt = Date.now(); S.failCount = (S.failCount || 0) + 1;
       if (!S.failToastAt || Date.now() - S.failToastAt > 30000) { S.failToastAt = Date.now(); if (anyServiceUp() || DEMO || (regionFor(lat, lon) || {}).basic) toast('Could not load property data. Check your connection.'); }
       throw e;
     }
@@ -5139,8 +5219,9 @@ function findCandidates(lat, lon, heading, sig = aimSigma(), range = MAX_RANGE) 
   // then the shares are scaled back to the same total.
   if (AIM_WIDTH_POW > 0 && score.size > 1) {
     const width = new Map(), half = 3 * sig.sc + 15;
+    const here = lotHere(ox, oy), under = new Set(roofs.filter((b) => inBox(b.bb, ox, oy) && pointInRings(ox, oy, b.rings)));   // the same for every angle
     for (let a = -half; a <= half; a += 1) {
-      const h = rad(heading + a), here = lotHere(ox, oy), under = new Set(roofs.filter((b) => inBox(b.bb, ox, oy) && pointInRings(ox, oy, b.rings)));
+      const h = rad(heading + a);
       const L = aimFirstHit(ox, oy, Math.sin(h), Math.cos(h), roofs, bare, under, here, range);
       if (L) width.set(L, (width.get(L) || 0) + 1);
     }
@@ -5264,7 +5345,7 @@ function badgesFor(L) {
       else if (r <= top(vals.length)) out.push(`#${r} ${best.toLowerCase().replace(/^biggest lot$/, 'biggest lot')} of ${vals.length} nearby`);
     };
     add(near.map((x) => x.s.year).filter(Boolean), s.year, true, 'Oldest', 'house');
-    if (!s.region.assessedOnly) add(near.map((x) => num(x.s.r0.TOTAL_VAL)).filter((v) => v > 0), num(s.r0.TOTAL_VAL), false, 'Priciest', 'house');   // California: Prop 13 values rank by when it sold
+    if (!s.region.assessedOnly && !fractionalValue(s)) add(near.filter((x) => !fractionalValue(x.s)).map((x) => num(x.s.r0.TOTAL_VAL)).filter((v) => v > 0), num(s.r0.TOTAL_VAL), false, 'Priciest', 'house');   // California: Prop 13 values rank by when it sold
     if (!(REGIONS[L.p.region] || {}).basic) add(near.map((x) => lotSqft(x.o)), lotSqft(L), false, 'Biggest lot', 'lot');   // the basic card's "lot" is a building's footprint
   }
   return (L.badges = out.slice(0, 2));
@@ -5320,14 +5401,15 @@ function renderCard(cand, total, idx) {
     const v = num(r.TOTAL_VAL), sale = s.sales[0];
     let saleLine = s.region.noSales ? noSalesLine(s.region) : 'No recorded sale on file';
     if (sale) {
-      const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10));
+      const yrs = Math.max(0, Math.round((Date.now() - sale.d) / 3.156e10)), mos = Math.max(0, Math.round((Date.now() - sale.d) / 2.63e9));
+      const ago = (Date.now() - sale.d) / 3.156e10 < 0.95 ? (mos >= 1 ? ` (${mos} month${mos === 1 ? '' : 's'} ago)` : '') : ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)`;   // a sale 7 months ago isn't "1 yr ago"
       if (sale.p && sale.p >= 10000) {
         const ratio = v ? v / sale.p : null;
         const ch = ratio && !s.multiSale && !s.unqualified && !s.region.noDelta && ratio < 10 && ratio > 0.1 ? Math.round((ratio - 1) * 100) : null;
         const delta = ch === null ? '' : ` · <span class="delta ${ch >= 0 ? 'up' : 'down'}">${ch >= 0 ? '+' : ''}${ch}% vs. sale</span>`;
-        saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''} · ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
+        saleLine = `${s.park ? 'The whole park last sold' : 'Last sold'} <b>${moneyFull(sale.p)}</b>${s.multiSale ? ' (part of a multi-lot sale)' : ''}${s.unqualified ? ' (not a market sale, the records say)' : ''} · ${fmtMonth(sale.d)}${ago}${delta ? delta.replace(' · <span', ` · ${s.region.deltaWord} <span`) : ''}`;
       } else if (s.region.noSalePrice) {
-        saleLine = `Last sold ${fmtMonth(sale.d)}${yrs ? ` (${yrs} yr${yrs === 1 ? '' : 's'} ago)` : ''} · the state’s records don’t list the price`;
+        saleLine = `Last sold ${fmtMonth(sale.d)}${ago} · the state’s records don’t list the price`;
       } else {
         saleLine = `Changed hands ${fmtMonth(sale.d)} (not a market sale)`;
       }
@@ -5435,6 +5517,8 @@ function renderCard(cand, total, idx) {
   $('#nextC').disabled = idx >= total - 1;
   $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
   $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
+  $('#prevC').setAttribute('aria-label', S.mode === 'map' ? 'Back: the house before' : 'Not it: the house before');   // the visible words come first (voice control)
+  $('#nextC').setAttribute('aria-label', S.mode === 'map' ? 'Next door: the next house' : 'Not it: the next house');
 }
 
 /* ---------- The card in tabs (?tabs=1): the same parts as the long card, sorted into Home · Financing · Schools · Nearby · Area.
@@ -5597,7 +5681,7 @@ function shareText(cand) {
   if (s.park) bits.push('Mobile home park');
   const vw = valueWordOf(s.region, r);
   if (!s.condo && num(r.TOTAL_VAL)) bits.push(`${s.park ? `Whole park ${vw.toLowerCase()}` : vw} ${moneyFull(r.TOTAL_VAL)}`);
-  if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}`);
+  if (!s.condo && s.sales[0] && s.sales[0].p >= 10000) bits.push(`Last sold ${moneyFull(s.sales[0].p)} in ${s.sales[0].d.getFullYear()}${s.multiSale ? ' (part of a multi-lot sale)' : s.unqualified ? ' (not a market sale)' : ''}`);
   const tx = estimateTax(s); if (tx && !tx.exempt && !s.condo && tx.lo >= 5) bits.push(tx.actual ? `Property tax ${moneyFull(tx.lo)}/yr` : `Estimated property tax ≈ ${moneyFull(Math.round(tx.lo / 10) * 10)}/yr`);
   const link = houseLink(cand);
   return bits.join('\n') + '\n\nFound with Housepoint' + (link ? `\n${link}` : '');
@@ -5676,6 +5760,7 @@ const ctTown = (r0) => CT_BY_NAME.get(String(r0.CITY || '').toUpperCase().replac
 
 function maTown(r0) {
   const id = num(r0.TOWN_ID);
+  if (DEMO && /^DEMO TOWN$/i.test(String(r0.CITY || '').trim()) && id >= 1 && id <= MA_TOWNS.length) return { ...MA_TOWNS[id - 1], n: 'Demo Town' };   // the demo's houses: a real town's rate, under the made-up town's name
   if (id >= 1 && id <= MA_TOWNS.length) return MA_TOWNS[id - 1];
   const i = MA_BY_NAME.get(String(r0.CITY || '').toUpperCase().replace(/[^A-Z]/g, ''));
   return i == null ? null : MA_TOWNS[i];
@@ -5813,11 +5898,15 @@ function estimateTax(s) {
     const t = recs.map(assessed).filter((v) => v > 0).map((v) => v * town.r / 1000);
     if (!t.length) return null;
     const one = recs.length === 1 ? assessed(recs[0]) : null;
+    // The real share where the town assesses this property at something other than 70% (see the region's derive)
+    const share = one && num(r0.TOTAL_VAL) > 0 ? one / num(r0.TOTAL_VAL) : CT_RATIO, usual = Math.abs(share - CT_RATIO) <= 0.03;
     const notes = [`${town.n}’s FY${CT_TAX_FY} mill rate is <b>${town.r.toFixed(2)}</b>: $${town.r.toFixed(2)} per $1,000 of assessed value. `
-      + (one ? `Connecticut assesses at 70% of the appraisal, so ${moneyFull(one)} here.` : 'Connecticut assesses at 70% of the appraisal.')];
+      + (!one ? 'Connecticut assesses at 70% of the appraisal.'
+        : usual ? `Connecticut assesses at 70% of the appraisal, so ${moneyFull(one)} here.`
+        : `The town assesses this one at ${moneyFull(one)}, ${Math.round(share * 100)}% of its appraisal (most property is assessed at 70%; farm, forest and some city homes less).`)];
     if (s.park) notes.unshift('The park owner’s tax on the whole park. Each home in the park gets its own tax bill too.');
     const gl = num(r0.FY);
-    if (gl && gl !== CT_TAX_GL) notes.push(`This uses the FY${CT_TAX_FY} rate on the October ${gl} value.`);
+    if (gl && gl !== CT_TAX_GL) notes.push(`This uses the FY${CT_TAX_FY} rate (the newest statewide list) on the October ${gl} value. A town that revalued for ${gl} may have changed its rate a lot, so check the town’s own rate.`);
     notes.push('Doesn’t include fire or special district taxes, or exemptions (seniors, veterans and others).');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, notes };
   }
@@ -5858,9 +5947,9 @@ function estimateTax(s) {
     if (recs.length === 1 && useKind(r0, 'DC') === 'exempt') return { exempt: true };
     const t = recs.map((r) => num(r.TAX_LAST)).filter((v) => v > 0);
     if (!t.length) return null;
-    const rate = num(r0.TAX_RATE), home = recs.length === 1 && /^0*[1-9]\d*$/.test(String(r0.HOMESTEAD ?? '').trim());   // a numbered homestead or senior code
+    const rate = num(r0.TAX_RATE), home = recs.length === 1 && /^(Y|0*[1-9]\d*)$/i.test(String(r0.HOMESTEAD ?? '').trim());   // taxed as a homestead (scrubbed to Y on arrival)
     const notes = [`DC’s tax for this tax year (October to September)${rate > 0 && recs.length === 1 ? `, at $${rate.toFixed(2)} per $100 of assessed value` : ''}.`];
-    notes.push(home ? 'The owner lives here and gets the homestead deduction (and senior or disability relief where it applies), which lowers the bill. An owner who doesn’t live here would pay more.'
+    notes.push(home ? 'This bill includes the homestead deduction, which lowers it. A buyer who doesn’t live here would pay more.'
       : 'A buyer who lives here can claim the homestead deduction, which lowers the bill.');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true, title: 'Property tax · this tax year', notes };
   }
@@ -5869,7 +5958,7 @@ function estimateTax(s) {
     if (!t.length) return null;
     const notes = [r0.TAX_NEXT ? `The county marks this figure for ${r0.TAX_NEXT} taxes, so it may be next year’s proposed tax. Special assessments aside.`
       : 'The property tax in the county’s records for this property, special assessments aside.'];
-    if (recs.length === 1 && /^Y/i.test(String(r0.HOMESTEAD || ''))) notes.push('The owner lives here (a homestead), which lowers the bill. An owner who rents it out would likely pay more.');
+    if (recs.length === 1 && /^Y/i.test(String(r0.HOMESTEAD || ''))) notes.push('Taxed as a homestead, which lowers the bill. A buyer who rents it out would likely pay more.');
     else notes.push('A buyer who lives here can claim the homestead exclusion, which lowers the bill for most homes.');
     return { lo: Math.min(...t), hi: Math.max(...t), perUnit: t.length > 1, actual: true, title: r0.TAX_NEXT ? 'Property tax · county’s latest figure' : `Property tax · ${s.fy ? `${s.fy} bill` : 'latest bill'}`, notes };
   }
@@ -6074,7 +6163,7 @@ function floodView(env, what = 'lot') {      // what: 'lot', or 'building' on th
       lines.push(fl.exact ? `Part of the ${what} is in zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : `Zone ${fl.top.shaded ? 'X (shaded)' : fl.top.badge} is nearby`);
     }
   }
-  if (el != null) lines.push(el >= 0 ? `Ground ≈ ${Math.round(el).toLocaleString('en-US')} ft above sea level (middle of the ${what})` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the ${what})`);
+  if (el != null) lines.push(Math.round(el) === 0 ? `Ground ≈ at sea level (middle of the ${what})` : el > 0 ? `Ground ≈ ${Math.round(el).toLocaleString('en-US')} ft above sea level (middle of the ${what})` : `Ground ≈ ${Math.round(-el)} ft below sea level (middle of the ${what})`);
   if (fl && fl.bfe != null) lines.push(`100-year flood level ≈ ${Math.round(fl.bfe)} ft above sea level`);
   return { cls, html: `<div class="zb"><div>${esc(badge)}${small ? `<small>${small}</small>` : ''}</div></div><div><div class="t1">${esc(t1)}</div>${lines.length ? `<div class="t2">${lines.map(esc).join('<br>')}</div>` : ''}</div>` };
 }
@@ -6216,7 +6305,15 @@ function whyFailed(e) {
 // in the page, so only these hosts are asked this way (the page's script rules allow just these too), and only an object counts
 // as an answer.
 // A javascript: link can't come from the app's own code; if one ever got into the page, clicking it does nothing.
-document.addEventListener('click', (e) => { const a = e.target && e.target.closest && e.target.closest('a[href]'); if (a && /^\s*javascript:/i.test(a.getAttribute('href'))) e.preventDefault(); }, true);
+// It goes by the link as the browser reads it (entities like &#9; and SVG's xlink:href included), and allows only web, mail and
+// in-page links.
+document.addEventListener('click', (e) => {
+  const a = e.target && e.target.closest && e.target.closest('a'); if (!a) return;
+  const h = a.href && typeof a.href === 'object' ? a.href.baseVal : a.href || a.getAttribute('href') || a.getAttribute('xlink:href') || '';   // an SVG link's href is an object
+  if (!h) return;
+  let proto = ''; try { proto = new URL(h, location.href).protocol; } catch (err) { proto = 'bad:'; }
+  if (!/^(https?|mailto|tel):$/.test(proto)) e.preventDefault();
+}, true);
 const JSONP_HOSTS = ['data.wprdc.org', 'geocoding.geo.census.gov', 'tigerweb.geo.census.gov'];
 function jsonp(url, param = 'callback', ms = 15000) {
   let host = ''; try { const u = new URL(url); host = u.protocol === 'https:' ? u.host.toLowerCase() : ''; } catch (e) { /* not a URL */ }
@@ -6330,6 +6427,7 @@ async function firstAnswer(tag, urls, need, geom, all, run) {
 const gradeNum = (g) => { const t = String(g ?? '').trim().toUpperCase(); if (t === 'PK') return -1; if (t === 'KG' || t === 'K') return 0; const n = parseInt(t, 10); return n >= 1 && n <= 13 ? n : null; };
 const gradeTxt = (g) => { const n = gradeNum(g); return n == null ? null : n === -1 ? 'PreK' : n === 0 ? 'K' : String(n); };
 async function schoolsFor(lat, lon) {
+  if (DEMO) return DEMO_BUY.schools(lat, lon);
   return nearMemo('sch', lat, lon, 400, async () => {
     const [sres, dres] = await Promise.all([
       firstAnswer('schools', SCHOOL_SVCS, ['SCH_NAME', 'GSLO', 'GSHI'], /Point/i, false, (sl) => queryLayer(sl, lat, lon, 6500, ['NCESSCH', 'SCH_NAME', 'LEAID', 'LEA_NAME',
@@ -6374,14 +6472,14 @@ function schoolsHtml(d, s, lat, lon) {
   const picks = schoolPicks(d, lat, lon);
   if (!d.schools.length && !d.districts.length) return `<div class="bt">Schools</div><div class="bl">No public schools found within 4 miles.</div>`;
   const dist = d.districts.map((x) => `<b>${esc(x.name)}</b>${x.students ? ` · ${nfmt(x.students)} students` : ''}${x.ratio ? ` · ${x.ratio.toFixed(1)} per teacher` : ''}`).join('<br>');
-  const rows = picks.map(({ label, s: x }) => x ? `<div class="brow"><div class="l">${label}</div><div class="m"><a href="https://nces.ed.gov/ccd/schoolsearch/school_detail.asp?ID=${encodeURIComponent(x.id || '')}" target="_blank" rel="noopener">${esc(x.name)}</a>
+  const rows = picks.map(({ label, s: x }) => x ? `<div class="brow"><div class="l">${label}</div><div class="m">${x.id ? `<a href="https://nces.ed.gov/ccd/schoolsearch/school_detail.asp?ID=${encodeURIComponent(x.id)}" target="_blank" rel="noopener">${esc(x.name)}</a>` : `<b>${esc(x.name)}</b>`}
       <small>${[gradeTxt(x.gslo) && gradeTxt(x.gshi) ? `Grades ${gradeTxt(x.gslo)}–${gradeTxt(x.gshi)}` : '', x.students ? `${nfmt(x.students)} students` : '', x.ratio ? `${x.ratio.toFixed(1)} per teacher` : '',
         x.charter ? 'Charter' : '', x.magnet ? 'Magnet' : ''].filter(Boolean).join(' · ')}</small></div><div class="r">${miles(x.d)}</div></div>`
     : `<div class="brow"><div class="l">${label}</div><div class="m"><small>None within 4 miles</small></div></div>`).join('');
   const yr = (d.schools.find((x) => x.year) || {}).year;
   const rc = REPORT_CARDS[stateOf(s.region.id)];
   return `<div class="bt">Schools</div>${dist ? `<div class="bl">District: ${dist}</div>` : ''}<div class="brows">${rows}</div>
-    <div class="bl">The nearest public schools, favoring the home’s own district. The district decides which school a home is actually assigned to. Source: NCES${yr ? `, ${esc(yr)}` : ''}.${rc ? ` Test scores: <a href="${rc}" target="_blank" rel="noopener">state report cards ↗</a>` : ''}</div>`;
+    <div class="bl">The nearest public schools, favoring the home’s own district. The district decides which school a home is actually assigned to. ${DEMO ? 'These schools are made up for the demo.' : `Source: NCES${yr ? `, ${esc(yr)}` : ''}.${rc ? ` Test scores: <a href="${rc}" target="_blank" rel="noopener">state report cards ↗</a>` : ''}`}</div>`;
 }
 
 /* Neighborhood: Census Bureau American Community Survey, 5-year estimates for the census tract, next to the state's. */
@@ -6436,6 +6534,7 @@ async function acsRow(year, forClause, inClause) {
   return out;
 }
 async function neighborhoodFor(lat, lon) {
+  if (DEMO) return DEMO_BUY.hood();
   const t = await nearMemo('tract', lat, lon, 50, () => tractFor(lat, lon));
   return memo(`acs:${t.state}${t.county}${t.tract}`, async () => {
     let err;
@@ -6456,7 +6555,7 @@ function hoodHtml(d, s) {
     row('Typical home built', h.built, st.built, yr), row('Rent', h.rent, st.rent, usd)].join('');
   if (!rows) return `<div class="bt">Neighborhood</div><div class="bl">The Census Bureau has no estimates for this area.</div>`;
   return `<div class="bt">Neighborhood · census tract ${esc(d.tract.name || d.tract.tract)}</div><div class="brows">${rows}</div>
-    <div class="bl">Medians for the roughly ${h.pop ? nfmt(Math.round(h.pop / 100) * 100) : 'few thousand'} people in this census tract, from the Census Bureau’s American Community Survey (${h.year - 4}–${h.year}). Owner-occupied is the share of homes lived in by their owners.</div>`;
+    <div class="bl">Medians for the roughly ${h.pop ? nfmt(Math.round(h.pop / 100) * 100) : 'few thousand'} people in this census tract, from the Census Bureau’s American Community Survey (${h.year - 4}–${h.year}). Owner-occupied is the share of homes lived in by their owners.${DEMO ? ' These figures are made up for the demo.' : ''}</div>`;
 }
 
 /* Safety: crimes the local police department reported to the FBI (Uniform Crime Reporting), per 1,000 residents, next to the state's. */
@@ -6470,7 +6569,11 @@ async function agencyFor(s, lat, lon) {
   });
   const town = normPlace(s.town);
   const local = all.filter((a) => /city|municipal|town/i.test(a.agency_type_name || '') || /police/i.test(a.agency_name || ''));
-  let hit = town && local.find((a) => normPlace(a.agency_name) === town);
+  // A department named for the town: the nearest one, and only if it's within reach (two towns can share a name in one state,
+  // like New Jersey's Washington Townships). One with no location on file counts only if it's the only one by that name.
+  const named = town ? local.filter((a) => normPlace(a.agency_name) === town).map((a) => ({ a, d: num(a.latitude) && num(a.longitude) ? distM(lat, lon, num(a.latitude), num(a.longitude)) : null })) : [];
+  const placed = named.filter((x) => x.d != null).sort((x, y) => x.d - y.d);
+  let hit = placed.length ? (placed[0].d < 25000 ? placed[0].a : null) : named.length === 1 ? named[0].a : null;
   if (!hit) {                                         // nearest police department, then the county sheriff
     const near = (list, maxM) => list.map((a) => ({ a, d: num(a.latitude) && num(a.longitude) ? distM(lat, lon, num(a.latitude), num(a.longitude)) : Infinity }))
       .filter((x) => x.d < maxM).sort((a, b) => a.d - b.d)[0];
@@ -6497,6 +6600,7 @@ function cdeSeries(j, stateName) {
 }
 const CDE_CODES = [['violent-crime', 'property-crime'], ['V', 'P']];
 async function safetyFor(s, lat, lon) {
+  if (DEMO) return DEMO_BUY.safety();
   const ag = await agencyFor(s, lat, lon);
   if (!ag) return null;
   return memo('crime:' + ag.ori, async () => {
@@ -6520,7 +6624,7 @@ function safetyHtml(d, s) {
   const part = d.violent.months < 12 ? ` They reported ${d.violent.months} months of ${d.year}, scaled to a full year.` : '';
   const guess = d.guessed ? ' This is the nearest department in the FBI’s list; it may not be the one that patrols this address.' : '';
   return `<div class="bt">Safety · ${esc(d.agency)}, ${d.year}</div><div class="brows">${row('Violent crime', d.violent)}${row('Property crime', d.property)}</div>
-    <div class="bl">Crimes the department reported to the FBI for its whole town or area, not this street.${part}${guess}</div>`;
+    <div class="bl">Crimes the department reported to the FBI for its whole town or area, not this street.${part}${guess}${DEMO ? ' These figures are made up for the demo.' : ''}</div>`;
 }
 
 /* Nearby: OpenStreetMap places (© OpenStreetMap contributors), straight-line distance. */
@@ -6566,6 +6670,7 @@ async function geoapifyNear(lat, lon) {
   return { cats, restaurants: rc ? (rc.hits.length >= rc.gl ? `${rc.gl}+` : rc.hits.length) : null, via: 'Geoapify' };
 }
 async function nearbyFor(lat, lon) {
+  if (DEMO) return DEMO_BUY.near(lat, lon);
   return nearMemo('near', lat, lon, 150, async () => {
     let geoErr = null;
     if (KEYS.geoapify) { try { return await geoapifyNear(lat, lon); } catch (e) { console.warn('Geoapify', e); geoErr = e.message; } }   // then the volunteer servers
@@ -6618,7 +6723,7 @@ function radarSvg(L, cats, group, via) {
   const z = Math.min(16, Math.max(11, Math.round(Math.log2(40075016.686 * Math.cos(rad((la0 + la1) / 2)) / 256 * k)) + 1));
   const n = 2 ** z, xa = Math.floor((lo0 + 180) / 360 * n), xb = Math.floor((lo1 + 180) / 360 * n), ya = Math.floor(tileY(la1, n)), yb = Math.floor(tileY(la0, n));
   let tiles = '';
-  if ((xb - xa + 1) * (yb - ya + 1) <= 30) for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) {
+  if (!DEMO && (xb - xa + 1) * (yb - ya + 1) <= 30) for (let x = xa; x <= xb; x++) for (let y = ya; y <= yb; y++) {
     const [px0, py0] = proj.fwd(tileLat(y + 1, n), x / n * 360 - 180), [px1, py1] = proj.fwd(tileLat(y, n), (x + 1) / n * 360 - 180);
     tiles += `<image href="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/${z}/${y}/${x}" x="${X(px0)}" y="${Y(py1)}" width="${((px1 - px0) * k + 0.6).toFixed(1)}" height="${((py1 - py0) * k + 0.6).toFixed(1)}" preserveAspectRatio="none"/>`;
   }
@@ -6630,7 +6735,7 @@ function radarSvg(L, cats, group, via) {
       return `<circle cx="${X(x)}" cy="${Y(y)}" r="5" fill="${GROUP[c.g].color}" stroke="#fff" stroke-width="2"><title>${esc((h.name || c.unnamed) + ' · ' + c.label + ' · ' + miles(h.d))}</title></circle>`; }).join('');
   const home = `<circle cx="${X(cx)}" cy="${Y(cy)}" r="7" fill="#b4432c" stroke="#fff" stroke-width="2.5"/>`;
   return `<div class="radar"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Map of nearby places with rings at a quarter, half and one mile">
-    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}<text x="12" y="20" font-size="11" font-weight="700" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">N ↑</text></svg><span class="attr">Map: USGS · Places: OpenStreetMap${via === 'Geoapify' ? ' via Geoapify' : ''}</span></div>`;
+    <g opacity=".5">${tiles}</g><rect width="${W}" height="${H}" fill="#f6f1e7" opacity=".25"/>${rings}${dots}${home}<text x="12" y="20" font-size="11" font-weight="700" fill="#1d1a17" paint-order="stroke" stroke="#f6f1e7" stroke-width="3">N ↑</text></svg><span class="attr">${via === 'demo' ? 'Made-up places' : `Map: USGS · Places: OpenStreetMap${via === 'Geoapify' ? ' via Geoapify' : ''}`}</span></div>`;
 }
 function nearHtml(d, lat, lon, L, group = 'all') {
   const cats = nearCats(d, lat, lon);
@@ -6649,7 +6754,7 @@ function nearHtml(d, lat, lon, L, group = 'all') {
       : `<div class="brow"><div class="m"><small>Nothing of this kind found nearby.</small></div></div>`;
   }
   return `<div class="bt">Nearby</div>${radarSvg(L, cats, group, d.via)}${chips}<div class="brows">${rows}</div>
-    <div class="bl">Walking times assume about 3 mph on streets; past a mile and a half it’s a rough drive time. Distances are straight-line. Places © OpenStreetMap contributors${d.via === 'Geoapify' ? ', powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a>' : ''}; base map USGS.</div>`;
+    <div class="bl">Walking times assume about 3 mph on streets; past a mile and a half it’s a rough drive time. Distances are straight-line. ${d.via === 'demo' ? 'These places are made up for the demo.' : `Places © OpenStreetMap contributors${d.via === 'Geoapify' ? ', powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a>' : ''}; base map USGS.`}</div>`;
 }
 
 /* =========================================================================
@@ -6721,7 +6826,7 @@ function wireCalc(L, s) {
   }
   const draw = (edited) => {
     const c = calcFor(key, s), m = monthlyCost(c);
-    $('#cTotal').innerHTML = c.price > 0 ? `≈ ${dollars(m.total)} <small>a month</small>` : '<small>Enter a price</small>';
+    $('#cTotal').innerHTML = c.price > 0 ? `≈ ${dollars(m.total)} <small>a month${c.taxKind === 'none' ? ', plus property tax' : ''}</small>` : '<small>Enter a price</small>';
     const row = (l, v, sub) => `<div class="brow"><div class="l">${l}</div><div class="m">${sub ? `<small>${sub}</small>` : ''}</div><div class="r">${dollars(v)}</div></div>`;
     $('#cRows').innerHTML = row('Loan payment', m.pi, `${dollars(m.loan)} at ${c.rate}% for ${c.term} years`) + row('Property tax', m.tax, c.taxKind === 'none' ? 'No figure for this property' : '')
       + row('Insurance', m.ins, '') + (m.pmi ? row('Mortgage insurance', m.pmi, 'Under 20% down') : '') + (m.hoa ? row('HOA or condo fee', m.hoa, '') : '');
@@ -6764,7 +6869,8 @@ function saveBtnHtml(key) { const on = isSaved(key); return `<button class="save
 function floodShort(env) {
   const fl = env && env.flood; if (!fl) return null; if (fl.none) return 'Not mapped';
   const c = fl.here; if (c.risk === 'water') return 'Open water';
-  return `${c.badge} · ${{ high: 'high risk', moderate: 'moderate', low: 'minimal', unknown: 'not mapped' }[c.risk] || ''}`;
+  const edge = fl.partial && fl.top && fl.top.risk === 'high' && c.risk !== 'high' ? ` · ${fl.exact ? 'part in' : 'next to'} ${fl.top.shaded ? 'X (shaded)' : fl.top.badge}` : '';   // as the card says
+  return `${c.badge} · ${{ high: 'high risk', moderate: 'moderate', low: 'minimal', unknown: 'not mapped' }[c.risk] || ''}${edge}`;
 }
 function snapshot(L, s) {
   const [lat, lon] = L.proj.inv(L.c[0], L.c[1]), r = s.r0, sale = s.sales.find((q) => q.p >= 10000), t = estimateTax(s), c = calcFor(L.p.key, s);
@@ -6772,7 +6878,7 @@ function snapshot(L, s) {
     use: s.condo ? `${s.typeLabel} · ${s.units} units` : s.typeLabel,
     value: s.condo || s.commonOnly ? null : num(r.TOTAL_VAL), range: s.condo && s.vals.length ? [Math.min(...s.vals), Math.max(...s.vals)] : null, valueWord: valueWordOf(s.region, r),
     sale: sale ? { p: sale.p, d: sale.d.toISOString().slice(0, 10) } : null,
-    tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual }) : null,
+    tax: t ? (t.exempt ? { exempt: true } : { lo: t.lo, hi: t.hi, actual: !!t.actual, ...(t.buyer ? { buyer: t.buyer } : {}) }) : null,
     calc: calcApplies(s) ? { price: c.price, taxYr: c.taxYr, ins: c.ins, hoa: c.hoa } : null,
     living: s.condo || s.park || !s.residential ? null : areaOf(r, true), ppsf: perSqft(s), beds: s.residential && num(r.BEDS) || null, baths: s.residential && num(r.BATHS) ? bathText(r) : null,
     lot: s.region.basic ? null : Math.round(lotSqft(L)), flood: null, school: null, grocery: null, ...(BUY_FACTS.get(L.p.key) || {}) };
@@ -6811,7 +6917,9 @@ function renderSaved() {
   const rows = [
     ['Value', (x) => cell(x.range ? `${money(x.range[0])}–${money(x.range[1])}` : money(x.value), x.range ? 'unit values' : String(x.valueWord || 'Assessed').toLowerCase())],
     ['Last sale', (x) => cell(x.sale ? moneyFull(x.sale.p) : null, x.sale ? x.sale.d.slice(0, 4) : '')],
-    ['Property tax', (x) => cell(x.tax && x.tax.exempt ? 'None' : x.tax ? `${x.tax.actual ? '' : '≈ '}${moneyFull(round10(x.tax.lo))}${x.tax.hi > x.tax.lo + 10 ? '+' : ''}` : null, x.tax && !x.tax.exempt ? (x.tax.actual ? 'last year, per year' : 'estimate, per year') : '')],
+    // Florida: what a new owner would pay (the homestead cap resets on sale), as the card says
+    ['Property tax', (x) => cell(x.tax && x.tax.exempt ? 'None' : x.tax ? `${x.tax.actual ? '' : '≈ '}${moneyFull(round10(x.tax.buyer || x.tax.lo)) || '$0'}${!x.tax.buyer && x.tax.hi > x.tax.lo + 10 ? '+' : ''}` : null,
+      x.tax && !x.tax.exempt ? (x.tax.buyer ? 'a new owner, per year' : x.tax.actual ? 'last year, per year' : 'estimate, per year') : '')],
     ['Monthly cost', (x, m) => cell(m && Number.isFinite(m.total) ? `≈ ${dollars(m.total)}` : null, m && Number.isFinite(m.total) ? `at ${calcPrefs.down}% down, ${calcPrefs.rate}%` : '')],
     ['Built', (x) => cell(x.year)],
     ['Living area', (x) => cell(x.living ? `${Math.round(x.living).toLocaleString('en-US')} ft²` : null)],
@@ -6857,12 +6965,14 @@ function openSheet(cands, idx = 0) {
     saveHistory(seenCand); if (!sharePrep || sharePrep.cand !== seenCand) prepareShare(seenCand);
   }, 2500);
   closePanel();
-  $('#sheet').classList.add('open');
+  const fresh = !$('#sheet').classList.contains('open');
+  $('#sheet').classList.add('open'); $('#sheet').inert = false;
+  if (fresh) requestAnimationFrame(() => { const a = $('#sheet .addr'); if (a) { a.tabIndex = -1; a.focus({ preventScroll: true }); } });   // a screen reader starts at the address
   $('#reticle').classList.add('locked');
   if (S.mode === 'map') { S.map.selectedKey = cands[idx].L.p.key; drawMap(); }
 }
 function closeSheet() {
-  $('#sheet').classList.remove('open'); $('#reticle').classList.remove('locked'); S.locked = false;
+  $('#sheet').classList.remove('open'); $('#sheet').inert = true; $('#reticle').classList.remove('locked'); S.locked = false;
   if (S.mode === 'map') { S.map.selectedKey = null; drawMap(); }
 }
 $('#prevC').onclick = () => { if (S.cIdx > 0) openSheet(S.candidates, S.cIdx - 1); };
@@ -7170,11 +7280,16 @@ function tick(ts) {
   $('#shutter').classList.toggle('fuzzy', !DEMO && (S.acc || 0) > 30);
   uiTurn();
 
+  // A load that failed is tried again by itself, waiting longer each time (20 seconds, then 40, 80, and every two minutes after)
+  if (!DEMO && S.mode === 'point' && S.pos && S.failAt && !S.loading && Date.now() - S.failAt > Math.min(120000, 20000 * 2 ** Math.min(3, (S.failCount || 1) - 1))) {
+    S.failAt = Date.now(); ensureData(S.pos.lat, S.pos.lon, true).catch(() => {});
+  }
   let hint = '';
   if (!S.pos) hint = 'Finding your location…';
   else if (!DEMO && !regionFor(S.pos.lat, S.pos.lon)) hint = `Housepoint covers ${COVERAGE} for now.`;
   else if (S.heading == null) hint = 'Waiting for the compass…';
   else if (S.loading && !S.local.length) hint = 'Loading nearby properties…';
+  else if (!DEMO && S.failAt && !S.local.length) hint = 'Couldn’t load the property records. Tap the button to try again (it also tries by itself).';
   else if (!DEMO && S.center && !S.loading && !S.failAt && !S.local.length) hint = (regionFor(S.pos.lat, S.pos.lon) || {}).basic ? 'No buildings on file here.'
     : `No property records here. ${(regionFor(S.pos.lat, S.pos.lon) || {}).gapNote || `Housepoint covers ${COVERAGE} for now.`}`;
   else if ((camElev() ?? 0) < -55 && !DEMO) hint = 'Hold your phone up, like you’re taking a photo';   // the camera's at the ground
@@ -7223,7 +7338,7 @@ function tick(ts) {
       label.classList.remove('idle');
       if (close) { $('#liveB').textContent = `or ${summarize(alt.L.p).addr} · tap to choose`; label.classList.remove('dim'); S.live = c; S.liveAlt = alt; return; }
       S.liveAlt = null;
-      const val = s.park ? (s.sites ? `Mobile home park · ${s.sites} sites` : 'Mobile home park') : s.condo ? `${s.units} units` : money(s.r0.TOTAL_VAL);
+      const val = s.park ? (s.sites ? `Mobile home park · ${s.sites} sites` : 'Mobile home park') : s.condo ? `${s.units} units` : fractionalValue(s) ? null : money(s.r0.TOTAL_VAL);
       $('#liveB').textContent = c.inside
         ? [val, s.year && !s.park ? `Built ${s.year}` : null, 'You’re on this lot'].filter(Boolean).join(' · ')
         : [s.year && !s.park ? `Built ${s.year}` : null, val, `about ${feet(c.dist)} away`].filter(Boolean).join(' · ');
@@ -7517,13 +7632,18 @@ async function startMapMode(center, msg) {
 
 async function centerMap(lat, lon, selectKey, help) {
   S.map.center = { lat, lon };
+  const seq = centerMap.seq = (centerMap.seq || 0) + 1, current = () => S.mode === 'map' && centerMap.seq === seq;   // not pointing, no newer search
   $('#mapHelpTxt').textContent = 'Loading properties…';
   try { await ensureData(lat, lon, true); }
   catch (e) {
+    if (!current()) return;                                             // switched to pointing, or another search started, while it loaded
     const rg = regionFor(lat, lon);
     if (rg && !rg.basic && !(SVC[rg.id] && SVC[rg.id].layerUrl) && !DEMO) notifyServiceDown(rg); else $('#mapHelpTxt').textContent = rg && rg.basic ? 'Could not load the building outlines here.' : 'Could not load property data here.';
     return;
   }
+  // Switched to pointing (or another search, history or saved house started) while this loaded: don't open a card as if a house
+  // were pointed at, or show the wrong place's help
+  if (!current()) return;
   $('#mapHelpTxt').textContent = help && (DEMO || regionFor(lat, lon)) ? help      // a search result says where you are, even if no lots load right there
     : S.local.length ? (S.local.every((L) => (REGIONS[L.p.region] || {}).basic) ? 'Tap a building to see what’s on file.' : 'Tap any lot to see its story.')
     : !DEMO && (regionFor(lat, lon) || {}).basic ? 'No buildings on file here.'
@@ -7703,11 +7823,19 @@ $('#mapSvg').addEventListener('click', (e) => {
   if (!k) { closeSheet(); return; }
   const L = S.local.find((l) => l.p.key === k); if (L) selectLot(L);
 });
-// drag to pan
+// drag to pan; two fingers pinch to zoom (each finger is tracked, so a second one doesn't jump the map)
 (() => {
-  const svg = $('#mapSvg'); let drag = null, raf = 0;
-  svg.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, moved: false }; });
+  const svg = $('#mapSvg'); let drag = null, raf = 0, pinch = null; const pts = new Map();
+  const later = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawMap(); }); };   // at most once a frame, however fast the pointer reports
+  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  svg.addEventListener('pointerdown', (e) => {
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { pinch = { d: spread(), R: S.map.R }; drag = null; }
+    else if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false };
+  });
   svg.addEventListener('pointermove', (e) => {
+    if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) { if (S.map.center) { S.map.R = clamp(pinch.R * pinch.d / spread(), 40, QUERY_RADIUS); later(); } return; }
     if (!drag || !S.map.center) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) < 6) return;
@@ -7716,9 +7844,11 @@ $('#mapSvg').addEventListener('click', (e) => {
     const [x, y] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
     const [la, lo] = S.proj.inv(x - dx * mPerPx, y + dy * mPerPx);
     S.map.center = { lat: la, lon: lo };
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawMap(); });   // at most once a frame, however fast the pointer reports
+    later();
   });
-  svg.addEventListener('pointerup', () => {
+  const up = (e) => {
+    pts.delete(e.pointerId);
+    if (pinch) { if (pts.size < 2) { pinch = null; drag = null; S.map.justDragged = Date.now(); refreshMapImagery(); drawMap(); } return; }   // the other finger lifting doesn't pan
     if (drag && drag.moved) {
       const [x, y] = S.proj.fwd(S.map.center.lat, S.map.center.lon);
       if (Math.hypot(x, y) > QUERY_RADIUS * 0.55) ensureData(S.map.center.lat, S.map.center.lon, true).then(() => { refreshMapImagery(); drawMap(); }).catch(() => {});
@@ -7726,7 +7856,8 @@ $('#mapSvg').addEventListener('click', (e) => {
       refreshMapImagery(); drawMap();
     }
     drag = null;
-  });
+  };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
 })();
 $('#zin').onclick = () => { S.map.R = Math.max(40, S.map.R / 1.4); refreshMapImagery(); drawMap(); };
 $('#zout').onclick = () => { S.map.R = Math.min(QUERY_RADIUS, S.map.R * 1.4); refreshMapImagery(); drawMap(); };
@@ -7927,7 +8058,7 @@ async function makeShareImage(cand) {
   else if (num(r.TOTAL_VAL)) big = moneyFull(r.TOTAL_VAL);
   g.fillText(big, PAD, y);
   const sale = s.sales.find((q) => q.p >= 10000);
-  if (sale && !s.condo) { y += 54; g.fillStyle = '#6f665b'; g.font = `500 32px ${SANS}`; g.fillText(`${s.park ? 'Whole park sold' : 'Last sold'} ${moneyFull(sale.p)} in ${sale.d.getFullYear()}`, PAD, y); }
+  if (sale && !s.condo) { y += 54; g.fillStyle = '#6f665b'; g.font = `500 32px ${SANS}`; g.fillText(`${s.park ? 'Whole park sold' : 'Last sold'} ${moneyFull(sale.p)} in ${sale.d.getFullYear()}${s.multiSale ? ' (with other lots)' : s.unqualified ? ' (not a market sale)' : ''}`, PAD, y); }
 
   // footer
   g.fillStyle = '#a2988b'; g.font = `500 24px ${SANS}`;
@@ -7990,21 +8121,29 @@ function renderNear() {
 function renderMine() {
   const h = loadHistory();
   if (!h.length) return '<div class="empty">Houses you look up will show here, saved on this phone.</div>';
-  return h.map((x, i) => `<button class="item" data-h="${i}"><div class="badge">${esc(x.year || '—')}</div><div><div class="t1">${esc(x.addr)}</div><div class="t2">${esc([x.town, x.val ? money(x.val) : null, new Date(x.ts).toLocaleDateString()].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
+  return '<button class="item" id="clearHist"><div><div class="t1">Clear this list</div><div class="t2">Removes these houses (and the nearest addresses found for them) from this phone. Saved houses stay.</div></div></button>'
+    + h.map((x, i) => `<button class="item" data-h="${i}"><div class="badge">${esc(x.year || '—')}</div><div><div class="t1">${esc(x.addr)}</div><div class="t2">${esc([x.town, x.val ? money(x.val) : null, new Date(x.ts).toLocaleDateString()].filter(Boolean).join(' · '))}</div></div><span class="chev">›</span></button>`).join('');
 }
 function renderPanel() {
   $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine'); $('#tabSaved').classList.toggle('on', panelTab === 'saved');
   const nSaved = loadSaved().length; $('#tabSaved').textContent = nSaved ? `Saved (${nSaved})` : 'Saved';
   $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : panelTab === 'saved' ? renderSaved() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>';
 }
-function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panelScroll').scrollTop = 0; }
-function closePanel() { $('#panel').classList.remove('open'); }
+function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panel').inert = false; $('#panelScroll').scrollTop = 0; }
+function closePanel() { $('#panel').classList.remove('open'); $('#panel').inert = true; }     // closed and off screen: out of reach of screen readers and Tab
 $('#tabNear').onclick = () => { panelTab = 'near'; renderPanel(); };
 $('#tabMine').onclick = () => { panelTab = 'mine'; renderPanel(); };
 $('#tabSaved').onclick = () => { panelTab = 'saved'; renderPanel(); };
 $('#panelGrab').onclick = closePanel;
 $('#panelBody').addEventListener('click', (e) => {
   if (e.target.closest('#panelAbout')) { openAbout(); return; }
+  const clr = e.target.closest('#clearHist');
+  if (clr) {                       // two taps, so a stray one doesn't wipe the list
+    if (!clr.dataset.sure) { clr.dataset.sure = '1'; clr.querySelector('.t1').textContent = 'Tap again to clear the list'; return; }
+    try { localStorage.removeItem(HKEY); localStorage.removeItem(POS_KEY); } catch (err) { /* storage off */ }
+    for (const k of Object.keys(POS_CACHE)) delete POS_CACHE[k];
+    renderPanel(); toast('History cleared', 1600); return;
+  }
   const rm = e.target.closest('[data-remove]');
   if (rm) { const a = loadSaved(); a.splice(+rm.dataset.remove, 1); storeSaved(a); renderPanel(); return; }
   const op = e.target.closest('[data-open]');
@@ -8135,7 +8274,7 @@ function enableSimCompass() {
 // Demo mode: fixed spot, simulated compass, made-up houses.
 if (DEMO) {
   document.body.insertAdjacentHTML('beforeend', '<a class="demo-flag" href="./">DEMO DATA · EXIT</a>');
-  const lat = 42.0, lon = -71.0;
+  const lat = 42.32, lon = -72.63;           // a made-up neighborhood in western Massachusetts (Massachusetts' rules, nobody's real street)
   S.pos = { lat, lon }; S.acc = 6;
   ensureData(lat, lon, true);
   navigator.geolocation && (navigator.geolocation.watchPosition = () => 0);
@@ -8291,7 +8430,7 @@ if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); 
 
 // test hooks
 window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, phonePose, camElev, arPitch, jsonp, censusSearch, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
-  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
+  AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, serviceOverride, money, floodShort, fractionalValue, parseSaleDate, agencyFor, renderSaved, getJSON, ensureData, POS_CACHE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
   SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, recordSiteFor, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
 })();

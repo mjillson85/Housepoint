@@ -2,6 +2,7 @@
 import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
@@ -57,7 +58,7 @@ await page.evaluate(() => window.__hp.setHeading(15)); await sleep(300);
 await page.click('#shutter'); await sleep(1200);
 const box = await page.$eval('#cardBody .tax', (el) => el.innerText.replace(/\n/g, ' / ')).catch(() => null);
 console.log('card tax box:', box);
-check(box && /Estimated property tax/i.test(box) && /Bridgewater’s FY2026 residential rate is \$12\.03/.test(box), 'card shows the estimate');
+check(box && /Estimated property tax/i.test(box) && /Demo Town’s FY2026 residential rate is \$12\.03/.test(box), 'card shows the estimate');
 await page.screenshot({ path: 'tax_card.png' });
 await page.evaluate(() => document.querySelector('#cardBody').scrollTo(0, 260)); await sleep(200);
 await page.screenshot({ path: 'tax_card2.png' });

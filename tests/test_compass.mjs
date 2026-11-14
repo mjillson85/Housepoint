@@ -5,6 +5,7 @@ import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8782);
 const ORIGIN = 'http://localhost:8782';
@@ -19,7 +20,7 @@ async function newPage(url) {
   page.errors = []; page.on('pageerror', (e) => page.errors.push(e.message));
   await page.setRequestInterception(true);
   page.on('request', (req) => (req.url().startsWith(ORIGIN) ? req.continue() : req.abort()));
-  await page.setGeolocation({ latitude: 42.0, longitude: -71.0, accuracy: 5 });
+  await page.setGeolocation({ latitude: 42.32, longitude: -72.63, accuracy: 5 });
   await page.goto(ORIGIN + url);
   return page;
 }

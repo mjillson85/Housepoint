@@ -7,6 +7,7 @@ import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`);
 const srv = http.createServer((q, r) => { r.writeHead(200, { 'content-type': 'text/html' }); r.end(html); }).listen(8787);
 const ORIGIN = 'http://localhost:8787';
@@ -162,6 +163,7 @@ const resave = await page.evaluate(async () => {
   hp.selectLot(L); await new Promise((r) => setTimeout(r, 300));
   if (hp.loadSaved().some((x) => x.key === L.p.key)) document.querySelector('#saveBtn').click();   // saved above: start unsaved
   L.p.posAddr = undefined; L.p.posAddrP = undefined; L.p.posPlace = undefined;
+  for (const k of Object.keys(hp.POS_CACHE)) delete hp.POS_CACHE[k];             // and not found before on this phone
   hp.selectLot(L);
   document.querySelector('#saveBtn').click();                                   // before the address lookup answers
   const first = (hp.loadSaved().find((x) => x.key === L.p.key) || {}).addr;

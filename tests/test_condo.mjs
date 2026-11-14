@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -32,6 +33,30 @@ console.log('card:', (await page.$eval('#cardBody', el => el.innerText)).split('
 await page.screenshot({ path: 'condo_card.png' });
 const cardTxt = await page.$eval('#cardBody', el => el.innerText);
 console.log(/Latest unit sale \$480k · Mar 2024/.test(cardTxt) && !/\$1 ·/.test(cardTxt) ? 'PASS $1 deed skipped; latest real unit sale shown' : 'FAIL condo sale line: ' + (cardTxt.match(/Latest[^\n]*|No market[^\n]*/) || [''])[0]);
+// A commercial condo building: two store units, the building's master record and a strip of land on the same lot (made up, in the
+// shape a Massachusetts town's records take).
+await page.click('.grab'); await new Promise(r => setTimeout(r, 300));
+const mixed = await page.evaluate(() => {
+  const hp = window.__hp, S = hp.S;
+  const L = S.local.find((l) => l.c[1] > 10 && l.c[1] < 30 && l.c[0] > 0 && l.c[0] < 22);
+  const b = L.p.records[0], c = { CITY: b.CITY, TOWN_ID: b.TOWN_ID, FY: b.FY, LOC_ID: b.LOC_ID, POLY_TYPE: 'FEE', LOT_UNITS: 'Acres', OTHER_VAL: 0, STORIES: '0', NUM_ROOMS: 0 };
+  L.p.records = [
+    { ...c, PROP_ID: 'M_1', SITE_ADDR: '49 MILL ST #1', ADDR_NUM: '49', FULL_STR: 'MILL ST', LOCATION: '1', TOTAL_VAL: 221100, BLDG_VAL: 221100, LAND_VAL: 0, LOT_SIZE: 0, LS_DATE: '20120510', LS_PRICE: 393500, USE_CODE: '3221', YEAR_BUILT: 1954, BLD_AREA: 2000, UNITS: 0, RES_AREA: 2000, STYLE: 'Retail Condo' },
+    { ...c, PROP_ID: 'M_A', SITE_ADDR: '35 MILL ST', ADDR_NUM: '35', FULL_STR: 'MILL ST', TOTAL_VAL: 60000, BLDG_VAL: 0, LAND_VAL: 60000, LOT_SIZE: 0.069, LS_PRICE: 0, USE_CODE: '925V', BLD_AREA: 0, UNITS: 0, RES_AREA: 0, STYLE: 'Vacant Land' },
+    { ...c, PROP_ID: 'M_0', SITE_ADDR: '47-49  MILL ST', ADDR_NUM: '47-49', FULL_STR: 'MILL ST', TOTAL_VAL: 0, BLDG_VAL: 0, LAND_VAL: 0, LOT_SIZE: 0.93, LS_DATE: '20120510', LS_PRICE: 0, USE_CODE: '995', YEAR_BUILT: 1954, BLD_AREA: 0, UNITS: 2, RES_AREA: 0, STYLE: 'Retail Condo' },
+    { ...c, PROP_ID: 'M_2', SITE_ADDR: '47 MILL ST #2', ADDR_NUM: '47', FULL_STR: 'MILL ST', LOCATION: '2', TOTAL_VAL: 861000, BLDG_VAL: 847500, LAND_VAL: 0, OTHER_VAL: 13500, LOT_SIZE: 0, LS_DATE: '20120510', LS_PRICE: 0, USE_CODE: '3221', YEAR_BUILT: 1966, BLD_AREA: 12024, UNITS: 0, RES_AREA: 12000, STYLE: 'Retail Condo' }];
+  L.badges = null;
+  hp.openSheet([{ L, dist: 20, cdist: 20, bearing: 0 }], 0);
+  const lists = [...document.querySelectorAll('#cardBody .units')].map((u) => [...u.querySelectorAll('.unit span:first-child')].map((x) => x.textContent));
+  return { town: document.querySelector('#sheet .town').textContent, heads: [...document.querySelectorAll('#cardBody .units-h')].map((h) => h.textContent), lists,
+    buy: !!document.querySelector('#buyBox'), text: document.querySelector('#cardBody').textContent };   // the units' details too (folded away)
+});
+console.log('mixed lot:', JSON.stringify({ town: mixed.town, heads: mixed.heads, lists: mixed.lists, buy: mixed.buy }));
+const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
+ok(/Commercial condo building/.test(mixed.town) && /^2 units/.test(mixed.heads[0] || ''), 'a commercial condo building with 2 units');
+ok(mixed.lists[0] && mixed.lists[0].length === 2 && !mixed.lists[0].some((x) => /47-49/.test(x)), 'the two stores are the units; the master record isn’t listed');
+ok(mixed.heads.includes('Also on this lot · tap for details') && mixed.lists[1] && mixed.lists[1].some((x) => /35 Mill St/.test(x)), 'the strip of land is listed as also on the lot');
+ok(!mixed.buy && !/Living area/.test(mixed.text) && /Floor area/.test(mixed.text), 'no home-buyer box; stores show floor area, not living area');
 console.log('debug overlay:', await page.$eval('#debug', el => el.innerText.replace(/\n/g, ' / ')));
 // camera/map round trip still works
 await page.click('.grab'); await new Promise(r => setTimeout(r, 400));

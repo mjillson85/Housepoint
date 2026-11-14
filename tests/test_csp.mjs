@@ -7,6 +7,7 @@ import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const html = fs.readFileSync(`${HP_ROOT}/index.html`, 'utf8');
 const files = { '/': html, '/index.html': html, '/privacy.html': fs.readFileSync(`${HP_ROOT}/privacy.html`, 'utf8') };
 const srv = http.createServer((q, r) => {
@@ -53,7 +54,7 @@ async function newPage(url) {
     if (u.startsWith('https://evil.example/')) { page.evilAsked = true; return req.respond({ status: 200, contentType: 'application/javascript', body: `window.__evil=1;${cb}({})` }); }
     return req.abort();
   });
-  await page.setGeolocation({ latitude: 42.0, longitude: -71.0, accuracy: 5 });
+  await page.setGeolocation({ latitude: 42.32, longitude: -72.63, accuracy: 5 });
   await page.goto(ORIGIN + url);
   return page;
 }
@@ -99,6 +100,9 @@ await sleep(300);
 await page.evaluate(() => document.querySelector('#jsl').click()); await sleep(300);
 check(await page.evaluate(() => !window.__ran), 'an inline onerror handler doesn’t run');
 check(await page.evaluate(() => !window.__ran2), 'a javascript: link that got into the page does nothing when clicked');
+await page.evaluate(() => { document.body.insertAdjacentHTML('beforeend', '<a id="jsl2" href="java&#9;script:window.__ran3=1">y</a><svg width="40" height="20"><a id="jsl3" xlink:href="javascript:window.__ran4=1" href="javascript:window.__ran4=1"><text x="2" y="14">z</text></a></svg>'); });
+await page.evaluate(() => { document.querySelector('#jsl2').click(); document.querySelector('#jsl3 text').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); }); await sleep(300);
+check(await page.evaluate(() => !window.__ran3 && !window.__ran4), 'nor does one hidden with an entity (java&#9;script:) or inside an SVG drawing');
 
 // Record links from a service: web addresses only
 const links = await page.evaluate(() => ['https://county.example/rec?id=1', 'http://www.okanogancounty.org/x', 'https://county.example/search?addr=12 OAK ST&o=O\'Neil',

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const HP_ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');   // the folder with index.html
+process.chdir(`${HP_ROOT}/tests`);   // screenshots land in tests/ (ignored by git), wherever the test is run from
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 const html = fs.readFileSync(path.join(HP_ROOT, 'index.html'), 'utf8');
 const exists = (f) => fs.existsSync(path.join(HP_ROOT, f)) && fs.statSync(path.join(HP_ROOT, f)).size > 0;
@@ -30,6 +31,9 @@ check(await override('https://evil.example/?x=.arcgis.com/') === null, '?service
 check(await override('https://services1.arcgis.com/someoneelse/arcgis/rest/services/Parcels/FeatureServer') === null, '?service= on someone else’s ArcGIS account is ignored');
 check(await override('https://records.example.us/arcgis/rest/services/Parcels/FeatureServer') === null && await override('https://gov.example.com/x') === null, '?service= on a look-alike government address is ignored');
 check(await override('https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Parcels/FeatureServer') !== null && await override('https://gis.example.gov/arcgis/rest/services/Parcels/FeatureServer') !== null, '?service= on MassGIS’s own account or a .gov site still works for testing');
+const live = await page.evaluate(() => { const f = window.__hp.serviceOverride, svc = '?service=' + encodeURIComponent('https://gis.example.gov/arcgis/rest/services/Parcels/FeatureServer');
+  return { plain: f(svc, 'mjillson85.github.io'), debug: f(svc + '&debug=1', 'mjillson85.github.io') }; });
+check(live.plain === null && live.debug !== null, `on the live site ?service= works only with ?debug too (${JSON.stringify(live)})`);
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');
 await browser.close();
