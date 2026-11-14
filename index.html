@@ -596,11 +596,11 @@ const TABS = (() => {
   } catch (e) { return qs.get('tabs') === '1'; }   // private mode: this visit only
 })();
 const DECL_OVERRIDE = qs.has('decl') ? parseFloat(qs.get('decl')) : NaN;   // e.g. ?decl=0 if a phone already reports true north
-// ?service= swaps in another copy of the Massachusetts parcel service (testing only). Only MassGIS's own ArcGIS account or a
-// .gov site is accepted, and on the live site only with ?debug too, so a shared link can't feed the app made-up records.
+// ?service= swaps in another copy of the Massachusetts parcel service, for testing on this computer only: it's ignored on the live
+// site, so a shared link can't feed the app made-up records. Only MassGIS's own ArcGIS account or a .gov site is accepted.
 function serviceOverride(search, host) {
   const p = new URLSearchParams(search), local = !host || host === 'localhost' || host === '127.0.0.1';
-  if (!local && !p.has('debug')) return null;
+  if (!local) return null;
   try { const u = new URL(p.get('service') || ''); const h = u.hostname.toLowerCase();
     return u.protocol === 'https:' && (h.endsWith('.gov') || (h.endsWith('.arcgis.com') && u.pathname.split('/')[1] === MASSGIS_ORG)) ? u.href : null; }
   catch (e) { return null; }
@@ -813,7 +813,7 @@ function ctKind(d) {
   if (/APART|\bAPTS?\b|^APT/.test(d)) return /FOUR|\b4 ?-? ?UNIT|\b[234] ?-? ?FAM/.test(d) ? 'multi' : 'apartments';
   if (/\bTWO\b|THREE|FOUR|\b[234] ?-? ?FAM|2-4|DUPLEX|MULTI|MFAM|IN-LAW|\b[234] ?UNIT/.test(d)) return 'multi';
   if (/BOARD|BORDING|ROOMING|LODGING|DORM|GROUP HOME|ELDERLY|CONGREGATE/.test(d)) return 'otherRes';
-  if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES(?!T)|RESID|DWELL|HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
+  if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES(?!T|ORT|EAR|ERV|CUE)|RESID|DWELL|(?:\bTOWN|\b)HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
   if (/\bIND|MANUF|WAREH|FACTORY|\bMILL\b|STORAGE/.test(d)) return 'industrial';
   if (/COMM|\bCOM\b|RETAIL|OFFICE|STORE|SHOP|CONVENIEN|DEPART|DEALER|BARBER|BEAUTY|DINER|LUNCH|REST|BANK|HOTEL|MOTEL|\bINN\b|GAS|SERVICE|AUTO|GARAGE|MALL|PLAZA|THEAT|CLUB|FRAT|DAY ?CARE|NURSING|MED|DENT|FUNERAL|MORTU|PARKING|PARK LOT|NURSERY|GARDEN|MARINA|\bBUS/.test(d)) return 'commercial';
   return model === '01' ? 'single' : model === '94' ? 'commercial' : 'unknown';
@@ -2207,19 +2207,29 @@ const AK_USE_WORDS = new Set(('RESIDENTIAL RESIDENCE RESID RESI RES SINGLE FAMIL
   + 'THEATER THEATRE MOTION PICTURE WAREHOUSE STORAGE MINI MARINA HANGAR AIRPORT UTILITY UTILITIES MINING FARM AGRICULTURAL AGRICULTURE '
   + 'RECREATIONAL RECREATION PARK VACANT VAC LAND LOT LOTS TAX PARCEL TRACT NO DATA ACCESSORY ASSEMBLED COOPERATIVE COOP OBY ONLY PUBLIC '
   + 'PRIVATE STATE CITY BOROUGH MUNICIPAL FEDERAL GOVERNMENT NATIVE ALLOTMENT EXEMPT PARTIAL INSTITUTIONAL COMMUNITY PURPOSE SURVEYED ROADWAY '
-  + 'IMPROVED UNIMPROVED SUBSURFACE GENERAL USE OF AND').split(' '));
+  + 'IMPROVED UNIMPROVED SUBSURFACE GENERAL USE OF AND UNIT UNITS SHOP SHOPS PLEX').split(' '));
 function akUseScrub(v) {
   const t = String(v ?? '').trim();
-  if (!t || /\d{3,}/.test(t) || !/[A-Za-z]/.test(t)) return null;          // no zip codes, box numbers or addresses
-  const words = t.toUpperCase().match(/[A-Z]+/g) || [];
-  return words.length && words.every((w) => AK_USE_WORDS.has(w)) ? t : null;
+  if (!t || /\d{3,}/.test(t) || !/[A-Za-z]/.test(t) || /^\d/.test(t)) return null;          // no zip codes, box numbers or addresses
+  if (/\b(LOT|LOTS|TRACT|BLOCK|BLK|PARCEL|SURVEY|SEC|SECTION)\s*#?\s*\d/i.test(t)) return null;    // a legal description's lot or tract number
+  const words = t.toUpperCase().match(/[A-Z]+\d*/g) || [];
+  return words.length && words.every((w) => AK_USE_WORDS.has(w) || /^R{1,2}\d$/.test(w)) ? t : null;   // R1, RR1: residential zones
 }
 // Who lives in a home and why it's taxed lower is about the owner, so it's cut down the moment it arrives: a homestead becomes a
 // plain yes or no (DC's numbered codes tell seniors and people with disabilities apart), and the words that say so leave a
 // county's tax class and dwelling type (Minnesota's "1b Blind/Disabled Homestead", "Single-Family / Owner Occupied").
 const yesNoHomestead = (v) => (v == null ? v : /^(Y|F)/i.test(String(v).trim()) || /^0*[1-9]\d*$/.test(String(v).trim()) ? 'Y' : 'N');
-const PERSONAL_WORDS = /\b(BLIND|DISABLED|DISABILITY|SENIORS?|ELDERLY|VETERANS?|OWNER[- ]OCCUPIED|NON[- ]OWNER[- ]OCCUPIED)\b/gi;
-const dropPersonal = (v) => (v == null ? v : String(v).replace(PERSONAL_WORDS, '').replace(/\s*\/\s*(?=\/|$)/g, '').replace(/\/\s*\//g, '/').replace(/\s{2,}/g, ' ').replace(/^[\s/-]+|[\s/-]+$/g, '').trim());
+const PERSONAL_WORDS = /\b(BLIND|DISABLED|DISABILITY|HANDICAPPED|PARAPLEGIC|SENIOR CITIZENS?|SENIORS?|SR CITIZENS?|ELDERLY|AGED|VETERANS?|WIDOWS?|WIDOWERS?|SURVIVING SPOUSES?|NON[- ]OWNER[- ]OCCUPIED|OWNER[- ]OCCUPIED)\b/gi;
+const dropPersonal = (v) => {
+  if (v == null) return v;
+  let t = String(v);
+  if (PERSONAL_WORDS.test(t)) t = t.replace(/^\s*1b\b\s*/i, '');      // Minnesota's class 1b is the blind and disabled homestead: its code says it too
+  PERSONAL_WORDS.lastIndex = 0;
+  return t.replace(PERSONAL_WORDS, ' ').split('/').map((x) => x.replace(/\s{2,}/g, ' ').trim()).filter(Boolean).join('/').replace(/^[\s-]+|[\s-]+$/g, '').trim();
+};
+// Maryland's exemption class: only the classes of institutions (state, county, town, school board, federal, public, nonprofit,
+// religious) are kept; an exemption for a person (a disabled veteran's, say) is dropped.
+const mdExemptClass = (v) => (v == null ? v : /^(STA|MUN|JUR|FED|CNT|BOE|PUB|NPF|PVT)\b/i.test(String(v).trim()) ? dropPersonal(v) : null);
 function akUseLabel(r) {
   if (!r) return null;
   const k = akKind(r), u = t2clean(r.USE_DESC);
@@ -2967,7 +2977,7 @@ const REGIONS = {
       // The town's appraisal is assessed at 70%, except where it isn't (Hartford's homes, farm and forest land assessed at their
       // use value): there the appraisal itself is the figure to show, and the tax note gives the real share.
       const a = num(o.ASSESSED), ap = (num(o.LAND_VAL) || 0) + (num(o.BLDG_VAL) || 0);
-      if (a > 0 && ap > 0 && Math.abs(a / ap - CT_RATIO) > 0.03) o.TOTAL_VAL = ap;
+      if (a > 0 && ap > 0 && a / ap < CT_RATIO - 0.03) o.TOTAL_VAL = ap;      // above 70% is just outbuildings the land + building leave out
       else if (a > 0) o.TOTAL_VAL = Math.round(a / CT_RATIO / 100) * 100;
       else if (ap > 0) o.TOTAL_VAL = ap;
       for (const k of ['LS_DATE', 'PRIOR_DATE']) if (typeof o[k] === 'number') o[k] = ymdUTC(o[k]);
@@ -3222,6 +3232,7 @@ const REGIONS = {
     },
     extraFields: ['QUALIFIED', 'MULTI_SALE', 'JURS', 'CONDO_OUTLINE', 'COMMON_GROUNDS'],
     derive: (o) => mdDerive(o),
+    scrub: { DESCEXCL: mdExemptClass },
     expand: (feats, sv) => mdExpand(feats, sv), prepare: (sv) => mdPointFields(sv),
     // Streets and water are outlines on this layer too (Baltimore's right-of-way is one 36 km² outline): never asked for.
     lotWhere: "(ACCTID IS NULL OR ACCTID NOT IN ('ROW','WATER','RAIL','RR','HYDRO'))",
@@ -3649,7 +3660,7 @@ const REGIONS = {
     // in the layer too, and are never asked for.
     services: ['https://services1.arcgis.com/XxHmL09eFqJWI0gE/arcgis/rest/services/ParcelsPublic/FeatureServer/0'],
     detect: ['PARCEL_ID', 'MARKET_LAND', 'LANDUSE'],
-    fields: { PROP_ID: ['PARCEL_ID'], SITE_ADDR: ['ADDRESS'], USE_DESC: ['LANDUSE'], TYPE_DESC: ['PROPERTY_TYPE_DESC'], UNITS: ['UNITS', 'Housing_Unit_Counts'],
+    fields: { PROP_ID: ['PARCEL_ID'], SITE_ADDR: ['ADDRESS'], USE_DESC: ['LANDUSE'], UNITS: ['UNITS', 'Housing_Unit_Counts'],
       YEAR_BUILT: ['YEAR_BUILT'], BATHS: ['TOTALBATHS'], BEDS: ['TOTALBEDSABOVE'], BEDS_LOW: ['TOTALBEDSBELOW'], LAND_VAL: ['MARKET_LAND'], BLDG_VAL: ['MARKET_BUILDING'],
       SALE_DATE: ['SALE_DATE'], LS_PRICE: ['SALE_PRICE'] },
     derive: (o) => { o.CITY = 'Bismarck'; const b = (num(o.BEDS) || 0) + (num(o.BEDS_LOW) || 0); o.BEDS = b > 0 ? b : null; delete o.BEDS_LOW; },
@@ -4110,18 +4121,23 @@ const svcFor = (rid) => SVC[rid] || (SVC[rid] = { ready: null });
 const anyServiceUp = () => Object.values(SVC).some((x) => x.layerUrl);
 
 async function getJSON(url, opts = {}, ms = 20000) {
-  // `ms` is how long to wait for the answer to start. The rest of it then has twice that (at least 30 seconds) to arrive: a
-  // connection that drops partway would otherwise leave "Loading…" up until the app is reloaded. `whole: true` makes `ms` cover
-  // the entire answer instead (OpenStreetMap's servers send the first bytes at once and the rest only when the search finishes).
+  // `ms` is how long to wait for the answer to start. After that it can take as long as it needs while it keeps coming, but if
+  // nothing more arrives for 20 seconds (or `ms`, if longer) it's given up as stopped partway: a connection that drops would
+  // otherwise leave "Loading…" up until the app is reloaded. `whole: true` makes `ms` cover the entire answer instead
+  // (OpenStreetMap's servers send the first bytes at once and the rest only when the search finishes).
   const { whole, signal, ...init } = opts;
   const ctl = new AbortController(); let t = setTimeout(() => ctl.abort(), ms), partway = false;
   if (signal) signal.addEventListener('abort', () => ctl.abort());     // a caller can cancel too
+  const quiet = () => { clearTimeout(t); t = setTimeout(() => { partway = true; ctl.abort(); }, Math.max(ms, 20000)); };
   let r, j;
   try {
-    try { r = await fetch(url, { ...init, signal: ctl.signal }); }
-    finally { if (!whole) { clearTimeout(t); t = setTimeout(() => { partway = true; ctl.abort(); }, Math.max(ms * 2, 30000)); } }
+    try { r = await fetch(url, { ...init, signal: ctl.signal }); } finally { if (!whole) quiet(); }
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    j = await r.json();
+    if (!whole && r.body && r.body.getReader && typeof TextDecoder !== 'undefined') {     // read it as it comes, so each piece resets the wait
+      const reader = r.body.getReader(), dec = new TextDecoder(); let text = '';
+      for (;;) { const { done, value } = await reader.read(); if (done) break; text += dec.decode(value, { stream: true }); quiet(); }
+      j = JSON.parse(text + dec.decode());
+    } else j = await r.json();
   } catch (e) {
     if (ctl.signal.aborted && !(signal && signal.aborted)) throw new Error(partway ? 'the answer stopped partway (a weak signal?)' : `no answer in ${Math.round(ms / 1000)} seconds`);
     throw e;
@@ -4942,6 +4958,8 @@ function setData(parcels, lat, lon) {
   });
 }
 
+// After a failed load: 20 seconds, then 40, 80, and every two minutes after
+const retryWait = () => Math.min(120000, 20000 * 2 ** Math.min(3, (S.failCount || 1) - 1));
 async function ensureData(lat, lon, force = false) {
   if (!force && S.center && S.proj) {
     const [x, y] = S.proj.fwd(lat, lon);
@@ -4949,11 +4967,11 @@ async function ensureData(lat, lon, force = false) {
   }
   // A load already running is reused, unless this one must happen (the map moved somewhere else): then it waits its turn.
   while (S.loading) { if (!force) return S.loading; await S.loading.catch(() => {}); }
-  if (!force && S.failAt && Date.now() - S.failAt < 20000) throw new Error('waiting before retry');
+  if (!force && S.failAt && Date.now() - S.failAt < retryWait()) throw new Error('waiting before retry');
   S.loading = (async () => {
     try {
-      // A backstop: whatever a service does, the load ends (and can be tried again) within a minute and a half.
-      let stop; const limit = new Promise((_, no) => { stop = setTimeout(() => no(new Error('the property records took too long')), 90000); });
+      // A backstop: whatever a service does, the load ends (and can be tried again) within three minutes (a big area loads in pages).
+      let stop; const limit = new Promise((_, no) => { stop = setTimeout(() => no(new Error('the property records took too long')), 180000); });
       const lots = await Promise.race([queryParcelsNear(lat, lon), limit]).finally(() => clearTimeout(stop));
       setData(lots, lat, lon); S.failAt = 0; S.failCount = 0;
       const proj = S.proj;
@@ -6308,7 +6326,7 @@ function whyFailed(e) {
 // It goes by the link as the browser reads it (entities like &#9; and SVG's xlink:href included), and allows only web, mail and
 // in-page links.
 document.addEventListener('click', (e) => {
-  const a = e.target && e.target.closest && e.target.closest('a'); if (!a) return;
+  const a = e.target && e.target.closest && e.target.closest('a, area'); if (!a) return;
   const h = a.href && typeof a.href === 'object' ? a.href.baseVal : a.href || a.getAttribute('href') || a.getAttribute('xlink:href') || '';   // an SVG link's href is an object
   if (!h) return;
   let proto = ''; try { proto = new URL(h, location.href).protocol; } catch (err) { proto = 'bad:'; }
@@ -6569,11 +6587,11 @@ async function agencyFor(s, lat, lon) {
   });
   const town = normPlace(s.town);
   const local = all.filter((a) => /city|municipal|town/i.test(a.agency_type_name || '') || /police/i.test(a.agency_name || ''));
-  // A department named for the town: the nearest one, and only if it's within reach (two towns can share a name in one state,
-  // like New Jersey's Washington Townships). One with no location on file counts only if it's the only one by that name.
+  // A department named for the town. Two towns can share a name in one state (New Jersey's Washington Townships): then the nearer
+  // one, and only if it's within reach. One by that name is the one, wherever its office is (a big city's).
   const named = town ? local.filter((a) => normPlace(a.agency_name) === town).map((a) => ({ a, d: num(a.latitude) && num(a.longitude) ? distM(lat, lon, num(a.latitude), num(a.longitude)) : null })) : [];
   const placed = named.filter((x) => x.d != null).sort((x, y) => x.d - y.d);
-  let hit = placed.length ? (placed[0].d < 25000 ? placed[0].a : null) : named.length === 1 ? named[0].a : null;
+  let hit = named.length === 1 ? named[0].a : placed.length && placed[0].d < 25000 ? placed[0].a : null;   // two by that name: the nearer, if it's near
   if (!hit) {                                         // nearest police department, then the county sheriff
     const near = (list, maxM) => list.map((a) => ({ a, d: num(a.latitude) && num(a.longitude) ? distM(lat, lon, num(a.latitude), num(a.longitude)) : Infinity }))
       .filter((x) => x.d < maxM).sort((a, b) => a.d - b.d)[0];
@@ -7281,7 +7299,7 @@ function tick(ts) {
   uiTurn();
 
   // A load that failed is tried again by itself, waiting longer each time (20 seconds, then 40, 80, and every two minutes after)
-  if (!DEMO && S.mode === 'point' && S.pos && S.failAt && !S.loading && Date.now() - S.failAt > Math.min(120000, 20000 * 2 ** Math.min(3, (S.failCount || 1) - 1))) {
+  if (!DEMO && S.mode === 'point' && S.pos && S.failAt && !S.loading && Date.now() - S.failAt > retryWait()) {
     S.failAt = Date.now(); ensureData(S.pos.lat, S.pos.lon, true).catch(() => {});
   }
   let hint = '';
@@ -7297,7 +7315,7 @@ function tick(ts) {
   // further than fuzzy GPS moves it (30° off at 50 m is 25 m sideways, a house or two over), so it's the more useful thing to fix.
   else if (compassPoor()) hint = 'Compass is off. Wave your phone in a figure 8, away from cars and metal.';
   else if (S.acc > 35) hint = 'GPS is fuzzy right now. Results may be off.';
-  $('#hint').textContent = hint;
+  if ($('#hint').textContent !== hint) $('#hint').textContent = hint;     // only on a change, so a screen reader hears it once
 
   drawRadar();
   if (DEBUG) {
@@ -7494,7 +7512,7 @@ function shortKind(s) {
 function arChipHtml(L) {
   const s = summarize(L.p), m = lotMetrics(L);
   const top = s.park ? 'Park' : s.year ? String(s.year) : s.approxYear ? `~${s.approxYear}` : (s.condo || s.commonOnly) ? (s.building === 'comCondo' ? 'Units' : 'Condos') : shortKind(s);
-  const sub = s.park ? (s.sites ? `${s.sites} sites` : 'Mobile homes') : (s.condo || s.commonOnly) ? `${s.units} units` : (money(s.r0.TOTAL_VAL) || '');
+  const sub = s.park ? (s.sites ? `${s.sites} sites` : 'Mobile homes') : (s.condo || s.commonOnly) ? `${s.units} units` : fractionalValue(s) ? '' : (money(s.r0.TOTAL_VAL) || '');
   const dot = ageColor(m.year, L.p.region);
   return `<span class="y">${dot ? `<i style="background:${dot}"></i>` : ''}${esc(top)}</span>${sub ? `<span class="m">${esc(sub)}</span>` : ''}`;
 }
@@ -7829,6 +7847,7 @@ $('#mapSvg').addEventListener('click', (e) => {
   const later = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; drawMap(); }); };   // at most once a frame, however fast the pointer reports
   const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
   svg.addEventListener('pointerdown', (e) => {
+    if (e.isPrimary) { pts.clear(); pinch = null; }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 2) { pinch = { d: spread(), R: S.map.R }; drag = null; }
     else if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, moved: false };

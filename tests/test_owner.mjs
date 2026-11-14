@@ -126,7 +126,10 @@ check(pub.ctSame && !pub.ctOther && pub.mtSame && !pub.mtOther, `a layer found b
 
 // The values, not just the names: a service whose columns slip (Alaska's Ketchikan rows did) can put a mailing address, a PO box or a
 // deed's wording into an ordinary field. No saved record (or a lot's label) may hold text like that.
-const OWNER_TEXT = /\bP\.?\s*O\.?\s*BOX\b|\bC\/O\b|\bTHENCE\b|\bRECORDED (IN|ON)\b|\bIN VOLUME\b|\bAT PAGE\b|\bSUBJECT TO\b|\bET\s?(AL|UX|VIR)\b|\b(REVOCABLE|LIVING|FAMILY) TRUST\b|\bTRUSTEES?\b|\bESTATE OF\b|\bU\.?\s?S\.? SURVEY\b|\bL\.?L\.?C\b|\bINC\b/i;
+// (A property's own address with its state and zip is fine; a mailing address shows up as a PO box, "C/O" or "ATTN".)
+const OWNER_TEXT = new RegExp(['\\bP\\.?\\s*O\\.?\\s*BOX\\b', '\\bC/O\\b', '\\bCARE OF\\b', '\\bATTN\\b', '\\bTHENCE\\b', '\\bRECORDED (IN|ON)\\b', '\\bIN VOLUME\\b', '\\bAT PAGE\\b',
+  '\\bPLAT BOOK\\b', '\\bSUBJECT TO\\b', '\\bET\\s?(AL|UX|VIR)\\b', '\\bTRUSTS?\\b', '\\bTRUSTEES?\\b', '\\bTTEES?\\b', '\\bLIFE ESTATE\\b', '\\bHEIRS\\b', '\\bESTATE OF\\b',
+  '\\bU\\.?\\s?S\\.? SURVEY\\b', '\\bL\\.?L\\.?C\\b', '\\bINC\\b', '\\bCORP\\b', '\\bLTD\\b', '\\bLLP\\b', '\\bBLO?C?K\\.?\\s*\\d'].join('|'), 'i');
 const textHits = [];
 for (const f of fs.readdirSync(`${HP_ROOT}/tests/fixtures`).filter((n) => n.endsWith('.json'))) {
   const d = JSON.parse(fs.readFileSync(`${HP_ROOT}/tests/fixtures/${f}`, 'utf8'));
@@ -137,9 +140,18 @@ for (const f of fs.readdirSync(`${HP_ROOT}/tests/fixtures`).filter((n) => n.ends
 }
 check(!textHits.length, `no saved record holds mailing, deed or owner-like text (${textHits.length ? [...new Set(textHits)].slice(0, 5).join(', ') : 'none'})`);
 // Alaska's use fields keep only land-use words
-const ak = await page.evaluate(() => ['Single Family Resid. with ADU', 'Office Bldg - low rise 1-4 lvls', 'COMM VACANT', 'PO BOX 1234', '99901', 'KETCHIKAN', 'AK', 'BAWDEN ST 100',
-  ' RECORDED IN THE OFFICE OF THE MAGISTRATE', 'VP REAL ESTATE INVESTMENT SERVICES', ' FIRST JUDICIAL DISTRICT'].map((v) => window.__hp.scrubAttrs('AK', { property_use: v }).property_use));
-check(ak.slice(0, 3).every(Boolean) && ak.slice(3).every((v) => v === null), `Alaska keeps use words and drops addresses, box numbers, names and deed text: ${JSON.stringify(ak)}`);
+const ak = await page.evaluate(() => ['Single Family Resid. with ADU', 'Office Bldg - low rise 1-4 lvls', 'COMM VACANT', 'R1', 'Multi-Family 5+ units', 'PO BOX 1234', '99901', 'KETCHIKAN', 'AK', 'BAWDEN ST 100',
+  ' RECORDED IN THE OFFICE OF THE MAGISTRATE', 'VP REAL ESTATE INVESTMENT SERVICES', ' FIRST JUDICIAL DISTRICT', 'LOT 4 TRACT 2', '12 PARK'].map((v) => window.__hp.scrubAttrs('AK', { property_use: v }).property_use));
+check(ak.slice(0, 5).every(Boolean) && ak.slice(5).every((v) => v === null), `Alaska keeps use words and drops addresses, box numbers, names and deed text: ${JSON.stringify(ak)}`);
+
+// Minnesota, DC and Maryland: whether an owner lives there, or is blind, disabled, a senior or a veteran, is cut down on arrival
+const st = await page.evaluate(() => { const h = window.__hp;
+  return { mn: ['1b Blind/Disabled Homestead', 'Senior Citizen Homestead', 'Single-Family / Owner Occupied', '1a/1b/4bb Residential Single Unit'].map((v) => h.scrubAttrs('MN', { useclass1: v }).useclass1),
+    hs: ['Yes', 'No', 'Fractional'].map((v) => h.scrubAttrs('MN', { homestead: v }).homestead), dc: ['1', '5', '0', ''].map((v) => h.scrubAttrs('DC', { HSTDCODE: v }).HSTDCODE),
+    md: ['JUR Housing Authority', 'DIS Disabled Veteran', 'BLD Blind'].map((v) => h.scrubAttrs('MD', { DESCEXCL: v }).DESCEXCL) }; });
+check(st.mn[0] === 'Homestead' && st.mn[1] === 'Homestead' && st.mn[2] === 'Single-Family' && st.mn[3] === '1a/1b/4bb Residential Single Unit'
+  && st.hs.join() === 'Y,N,Y' && st.dc.join() === 'Y,Y,N,N' && st.md[0] === 'JUR Housing Authority' && st.md[1] === null && st.md[2] === null,
+  `homestead is a yes or no, and personal status words are dropped: ${JSON.stringify(st)}`);
 
 check(!errors.length, `no page errors${errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''}`);
 await browser.close(); srv.close();

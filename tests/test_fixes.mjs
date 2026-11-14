@@ -95,7 +95,7 @@ const newPage = async (errors, w = 390, h = 844) => {
   const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
   const BLD = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Building_Structures/FeatureServer/0';
   const FIELDS = ['OBJECTID', 'LOC_ID', 'POLY_TYPE', 'SITE_ADDR', 'CITY', 'TOWN_ID', 'FY', 'TOTAL_VAL', 'LS_DATE', 'LS_PRICE', 'USE_CODE', 'YEAR_BUILT', 'RES_AREA', 'UNITS'];
-  const lat0 = 42.3, lon0 = -71.2, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
+  const lat0 = 42.27, lon0 = -71.8, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
   const ll = (b, x, y) => [b[0] + x / kx, b[1] + y / ky];
   const rect = (b, x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => ll(b, x, y));
   let base = null; const seen = { tiles: 0, naip: 0, bld: 0 };

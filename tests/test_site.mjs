@@ -33,7 +33,7 @@ check(await override('https://records.example.us/arcgis/rest/services/Parcels/Fe
 check(await override('https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Parcels/FeatureServer') !== null && await override('https://gis.example.gov/arcgis/rest/services/Parcels/FeatureServer') !== null, '?service= on MassGIS’s own account or a .gov site still works for testing');
 const live = await page.evaluate(() => { const f = window.__hp.serviceOverride, svc = '?service=' + encodeURIComponent('https://gis.example.gov/arcgis/rest/services/Parcels/FeatureServer');
   return { plain: f(svc, 'mjillson85.github.io'), debug: f(svc + '&debug=1', 'mjillson85.github.io') }; });
-check(live.plain === null && live.debug !== null, `on the live site ?service= works only with ?debug too (${JSON.stringify(live)})`);
+check(live.plain === null && live.debug === null, `on the live site ?service= is ignored, ?debug or not (${JSON.stringify(live)})`);
 check(!errors.length, 'no page errors ' + errors.join('; '));
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASSED');
 await browser.close();

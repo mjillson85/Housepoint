@@ -62,7 +62,7 @@ const variants = await page.evaluate(async (OWN, KEEP) => {
     noOutSR: { ...base, outFields: have.join(','), returnGeometry: 'true', resultRecordCount: '400', distance: '6500', units: 'esriSRUnit_Meter' },
     star: { ...base, outFields: '*', returnGeometry: 'false', distance: '6500', units: 'esriSRUnit_Meter' },
     smallDistance: { ...base, outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400', distance: '2000', units: 'esriSRUnit_Meter' },
-    envelope: { geometry: '-71.25,42.19,-71.10,42.30', geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' },
+    envelope: { geometry: '-72.70,42.28,-72.55,42.39', geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', f: 'json', outFields: have.join(','), returnGeometry: 'true', outSR: '4326', resultRecordCount: '400' },
     where: { where: "LSTATE = 'MA'", outFields: 'SCH_NAME', returnGeometry: 'false', resultRecordCount: '3', f: 'json' },
   };
   const out = { fields: names.join(','), maxRecordCount: meta.maxRecordCount, capabilities: meta.capabilities, adv: meta.advancedQueryCapabilities, missing: want.filter((n) => !up.has(n)) };

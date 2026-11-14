@@ -101,7 +101,7 @@ enum Parcels {
 
     // MARK: demo neighborhood (for the simulator, Apple's reviewers, and trying it anywhere)
 
-    static let demoCenter = LL(lat: 42.0, lon: -71.0)
+    static let demoCenter = LL(lat: 42.32, lon: -72.63)   // western Massachusetts, as on the web
 
     static func demo(around c: LL = demoCenter) -> [Parcel] {
         let proj = Proj(c.lat, c.lon)

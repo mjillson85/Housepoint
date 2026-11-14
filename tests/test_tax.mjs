@@ -16,14 +16,14 @@ const r = await page.evaluate(() => {
   const one = (region, rec) => est({ region, r0: rec, recs: [rec], commonOnly: false });
   return {
     towns: MA_TOWNS.length, counties: FL_COUNTIES.length,
-    byId: [35, 49, 73, 104, 351].map((i) => MA_TOWNS[i - 1].n + ' ' + MA_TOWNS[i - 1].r),
+    byId: [35, 49, 71, 104, 351].map((i) => MA_TOWNS[i - 1].n + ' ' + MA_TOWNS[i - 1].r),
     flById: [23, 58, 65, 77].map((i) => FL_COUNTIES[i - 11].n + ' ' + FL_COUNTIES[i - 11].r),
     salemByName: one(MA, { CITY: 'SALEM', USE_CODE: '1010', TOTAL_VAL: 1200000 }),
     bostonById: one(MA, { TOWN_ID: 35, CITY: 'JAMAICA PLAIN', USE_CODE: '101', TOTAL_VAL: 800000 }),
     exempt: one(MA, { TOWN_ID: 35, USE_CODE: '903', TOTAL_VAL: 5e6 }),
     commercial: one(MA, { TOWN_ID: 35, USE_CODE: '3400', TOTAL_VAL: 5e6 }),
     noTown: one(MA, { CITY: 'NOWHERE', USE_CODE: '101', TOTAL_VAL: 5e5 }),
-    condo: est({ region: MA, commonOnly: false, r0: { TOWN_ID: 73, USE_CODE: '102' }, recs: [{ TOWN_ID: 73, USE_CODE: '102', TOTAL_VAL: 400000 }, { TOWN_ID: 73, USE_CODE: '102', TOTAL_VAL: 520000 }] }),
+    condo: est({ region: MA, commonOnly: false, r0: { TOWN_ID: 71, USE_CODE: '102' }, recs: [{ TOWN_ID: 71, USE_CODE: '102', TOTAL_VAL: 400000 }, { TOWN_ID: 71, USE_CODE: '102', TOTAL_VAL: 520000 }] }),
     flHomestead: one(FL, { COUNTY: 65, USE_CODE: '0001', TOTAL_VAL: 450000, TV_NSD: 250000, TV_SD: 275000 }),
     flNoTV: one(FL, { COUNTY: 65, USE_CODE: '0001', TOTAL_VAL: 450000 }),
     flRental: one(FL, { COUNTY: 58, USE_CODE: '0001', TOTAL_VAL: 400000, TV_NSD: 400000, TV_SD: 400000 }),
@@ -39,14 +39,14 @@ check(/Revere’s FY2022 records/.test(r.staleText) && /google\.com\/search\?q=R
 check(r.oldTown && r.oldTown.notes.some((n) => /FY2026 rate on the town’s FY2022 value \(the newest the state has\), so it’s likely low/.test(n)), 'tax estimate says it’s likely low on an old value');
 check(r.towns === 351 && r.counties === 67, 'tables complete (351 towns, 67 counties)');
 console.log('  town ids:', r.byId.join(' | '), '\n  county ids:', r.flById.join(' | '));
-check(r.byId.join('|') === 'Boston 12.4|Cambridge 6.67|Dedham 12.3|Aquinnah 6.87|Yarmouth 6.97', 'town ids map to the right towns');
+check(r.byId.join('|') === 'Boston 12.4|Cambridge 6.67|Danvers 10.65|Aquinnah 6.87|Yarmouth 6.97', 'town ids map to the right towns');
 check(r.flById.join('|') === 'Miami-Dade 18.4427|Orange 21.3187|Saint Johns 13.0651|Washington 14.5767', 'county numbers map to the right counties');
 check(Math.round(r.salemByName.lo) === 12936, `Salem by name: $1.2M × 10.78 = ${Math.round(r.salemByName.lo)}`);
 check(Math.round(r.bostonById.lo) === 9920 && r.bostonById.notes.some((n) => /residential exemption/.test(n)), 'Boston by town id (neighborhood name ignored) + exemption note');
 check(r.exempt && r.exempt.exempt, 'tax-exempt use code');
 check(r.commercial === null, 'no estimate for business property');
 check(r.noTown === null, 'no estimate when the town is unknown');
-check(r.condo.perUnit && Math.round(r.condo.lo) === 4920 && Math.round(r.condo.hi) === 6396, 'condo units: per-unit range');
+check(r.condo.perUnit && Math.round(r.condo.lo) === 4260 && Math.round(r.condo.hi) === 5538, 'condo units: per-unit range');
 check(Math.round(r.flHomestead.lo) === 3416 && Math.round(r.flHomestead.buyer) === 5376, `FL homestead: ${Math.round(r.flHomestead.lo)}, new owner ${Math.round(r.flHomestead.buyer)}`);
 check(Math.round(r.flNoTV.lo) === 5879 && /before any exemptions/.test(r.flNoTV.notes[0]) && !r.flNoTV.buyer, 'FL without taxable value: labeled before exemptions');
 check(!r.flRental.buyer && Math.round(r.flRental.lo) === 8527, 'FL with no homestead savings: no new-owner line');

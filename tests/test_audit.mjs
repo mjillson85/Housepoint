@@ -21,7 +21,8 @@ page.on('request', (req) => {
   if (u.startsWith(ORIGIN)) return req.continue();
   if (u.startsWith('https://api.usa.gov/crime/fbi/cde/agency/byStateAbbr/NJ')) return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
     body: JSON.stringify({ BERGEN: [{ ori: 'NJ0029400', agency_name: 'Washington Township Police Department', agency_type_name: 'City', latitude: 40.99, longitude: -74.06 }],
-      GLOUCESTER: [{ ori: 'NJ0082100', agency_name: 'Washington Township Police Department', agency_type_name: 'City', latitude: 39.75, longitude: -75.07 }] }) });
+      GLOUCESTER: [{ ori: 'NJ0082100', agency_name: 'Washington Township Police Department', agency_type_name: 'City', latitude: 39.75, longitude: -75.07 }],
+      ESSEX: [{ ori: 'NJ0071400', agency_name: 'Newark Police Department', agency_type_name: 'City', latitude: 40.73, longitude: -74.17 }] }) });
   return req.abort();
 });
 await page.goto(ORIGIN + '/');
@@ -33,11 +34,13 @@ const r = await page.evaluate(async () => {
   const hartford = ct({ CITY: 'HARTFORD', ASSESSED: 110950, LAND_VAL: 50000, BLDG_VAL: 251900 });
   const usual = ct({ CITY: 'WETHERSFIELD', ASSESSED: 70000, LAND_VAL: 40000, BLDG_VAL: 60000 });
   const misspelled = ct({ CITY: 'GREENWHICH', ASSESSED: 700000, LAND_VAL: 600000, BLDG_VAL: 400000 });
+  const outbuildings = ct({ CITY: 'WETHERSFIELD', ASSESSED: 75000, LAND_VAL: 40000, BLDG_VAL: 60000 });     // 75% of land + building: a barn the two leave out
   const est = (rec) => hp.estimateTax({ region: CT, r0: rec, recs: [rec], commonOnly: false });
   const hartTax = est({ ...hartford, USE_DESC: 'Three Family' }), greenTax = est({ ...misspelled, USE_DESC: 'Single Family' });
   const kind = (d) => hp.useKind({ USE_DESC: d, USE_CODE: '' }, 'CT');
-  // Safety: the Gloucester County house gets Gloucester County's department
+  // Safety: the Gloucester County house gets Gloucester County's department; a town with one department gets it however far away
   const ag = await hp.agencyFor({ region: { id: 'NJ' }, town: 'Washington Township' }, 39.76, -75.06).catch((e) => ({ err: e.message }));
+  const far = await hp.agencyFor({ region: { id: 'NJ' }, town: 'Newark' }, 40.0, -75.06).catch((e) => ({ err: e.message }));
   // A New York City value is a fraction of market value: not on the label or in the priciest badge
   const nyc = hp.fractionalValue({ region: { id: 'NY' }, r0: { VALUE_KIND: 'nyc' } }), nyFull = hp.fractionalValue({ region: { id: 'NY' }, r0: { VALUE_KIND: 'full' } });
   // The saved comparison: a Florida homestead with nothing taxable now shows what a buyer would pay; a lot partly in AE says so
@@ -48,7 +51,7 @@ const r = await page.evaluate(async () => {
   const edge = hp.floodShort({ flood: { here: { badge: 'X', risk: 'low' }, partial: true, exact: true, top: { badge: 'AE', risk: 'high' } } });
   return {
     hartford: hartford.TOTAL_VAL, usual: usual.TOTAL_VAL, city: misspelled.CITY, hartNote: hartTax && hartTax.notes[0], green: !!greenTax,
-    rest: kind('RESTAURANT'), res: kind('RESIDENTIAL'), ag: ag && (ag.ori || ag.err), nyc, nyFull,
+    rest: kind('RESTAURANT'), res: kind('RESIDENTIAL'), others: ['RESORT', 'RESEARCH LAB', 'RESERVOIR', 'WAREHOUSE', 'FIREHOUSE', 'TOWNHOUSE'].map(kind), out: outbuildings.TOTAL_VAL, far: far && (far.ori || far.err), ag: ag && (ag.ori || ag.err), nyc, nyFull,
     saved, edge,
     money: [hp.money(999600), hp.money(1234000), hp.money(845300)],
     pre1970: hp.parseSaleDate(-157766400000) && hp.parseSaleDate(-157766400000).getFullYear(),
@@ -59,7 +62,10 @@ console.log(JSON.stringify(r, null, 1).slice(0, 1500));
 check(r.hartford === 301900 && r.usual === 100000, `Connecticut: the town’s own appraisal where it doesn’t assess at 70% (${r.hartford}), assessed ÷ 0.7 where it does (${r.usual})`);
 check(/assesses this one at \$110,950, 37% of its appraisal/.test(r.hartNote || '') && !/Connecticut assesses at 70%/.test(r.hartNote || ''), 'the tax note gives the real share');
 check(r.city === 'GREENWICH' && r.green, 'Greenwich spelled right, and its tax found');
+check(r.others.slice(0, 5).every((k) => k !== 'single') && r.others[5] === 'single', `resorts, research, reservoirs, warehouses and firehouses aren’t homes; townhouses are (${r.others.join(', ')})`);
+check(r.out === 107100, `outbuildings over 70% keep assessed ÷ 0.7 (${r.out})`);
 check(r.rest === 'commercial' && r.res === 'single', `Connecticut restaurants aren’t homes (${r.rest}, ${r.res})`);
+check(r.far === 'NJ0071400', `a town’s only department, even far from the house (${r.far})`);
 check(r.ag === 'NJ0082100', `a town name two places share: the nearer department (${r.ag})`);
 check(r.nyc === true && r.nyFull === false, 'New York City’s fractional value is kept off the label and badge');
 check(/≈ \$9,740/.test(r.saved) && /a new owner, per year/.test(r.saved) && !/null/.test(r.saved) && /\$0/.test(r.saved), 'saved comparison: a buyer’s Florida tax, and $0 instead of “null”');

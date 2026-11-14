@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MA_SVC = 'https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Massachusetts_Property_Tax_Parcels/FeatureServer';
 const FIELDS = ['OBJECTID', 'LOC_ID', 'POLY_TYPE', 'SITE_ADDR', 'CITY', 'TOWN_ID', 'FY', 'TOTAL_VAL', 'LAND_VAL', 'LS_DATE', 'LS_PRICE', 'USE_CODE', 'YEAR_BUILT', 'RES_AREA', 'STYLE', 'STORIES', 'NUM_ROOMS', 'UNITS'];
 const fails = []; const check = (ok, msg) => { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
-const lat0 = 42.12, lon0 = -71.3, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
+const lat0 = 42.1, lon0 = -72.59, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
 const ring = (x0, y0, x1, y1, b) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => [b[0] + x / kx, b[1] + y / ky]);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 await browser.defaultBrowserContext().overridePermissions(ORIGIN, ['geolocation']);
