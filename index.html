@@ -216,61 +216,6 @@
   .card-actions button.main { background: var(--ink); color: var(--paper); }
   .card-actions button:disabled { opacity: .4; }
 
-  /* ---------- the new look, on trial (body.calm; the old look is untouched) ---------- */
-  body.calm #gpsPill, body.calm #hdgPill, body.calm #arPill { display: none; }   /* trouble shows in the hint line instead */
-  body.calm .why { display: none; }                                             /* plain words, not service errors */
-  .cv-facts { font-size: 13.5px; margin-top: 6px; }
-  .cv-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 12px 0 2px; padding-top: 11px; border-top: 1px solid var(--line); }
-  .cv-nums > div { min-width: 0; padding: 0 8px; border-left: 1px solid var(--line); }
-  .cv-nums > div:first-child { padding-left: 0; border-left: 0; }
-  .cv-nums .k, .cv-nums .s { font-size: 12px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cv-nums .v { font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-  .cv-fl { display: flex; align-items: baseline; gap: 8px; margin: 10px 0 4px; font-size: 13.5px; font-weight: 500; color: var(--mute); }
-  .cv-fl::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line); transform: translateY(-1px); }
-  .cv-fl.low { color: var(--moss); } .cv-fl.low::before { background: var(--moss); }
-  .cv-fl.moderate { color: #7a4f0f; } .cv-fl.moderate::before { background: #b7791f; }
-  .cv-fl.high { color: var(--brick-2); } .cv-fl.high::before { background: var(--brick); }
-  .cv-fl small { font-size: 12px; font-weight: 400; color: var(--mute); }
-  .cv-rows { margin: 14px 0 4px; background: #fffaf1; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
-  .cv-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 9px 12px 9px 14px; text-align: left; color: var(--ink); }
-  .cv-row + .cv-row { border-top: 1px solid var(--line); }
-  .cv-row .ic { flex: none; width: 36px; height: 36px; border-radius: 12px; background: var(--paper-2); color: var(--brick-2); display: grid; place-items: center; }
-  .cv-row .ic svg { width: 20px; height: 20px; }
-  .cv-row .tx { flex: 1; min-width: 0; }
-  .cv-row .t1 { display: block; font-size: 15.5px; font-weight: 600; }
-  .cv-row .t2 { display: block; font-size: 13px; color: var(--mute); margin-top: 1px; }
-  #sheet.cv-hub .card, #sheet.cv-pg .card { height: calc(88vh - 10px); height: calc(88dvh - 10px); }
-  #sheet.cv-hub .card-scroll, #sheet.cv-pg .card-scroll { flex: 1; }
-  .cv-row .chev { flex: none; color: var(--mute); font-size: 20px; line-height: 1; }
-  .cv-src { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 2px 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--mute); text-align: left; }
-  .cv-src svg { flex: none; width: 17px; height: 17px; }
-  .cv-src b { color: var(--brick); font-weight: 600; }
-  .cv-back { display: flex; align-items: center; gap: 4px; height: 44px; margin-left: -6px; padding: 0 8px 0 6px; font-size: 14px; font-weight: 500; color: var(--mute); max-width: 100%; }
-  .cv-back span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cv-title { font-family: var(--serif); font-weight: 700; font-size: 27px; line-height: 1.15; margin: 0 0 4px; }
-  .cv-kv { margin: 10px 0 4px; }
-  .cv-kv div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
-  .cv-kv div span:first-child { color: var(--mute); }
-  .cv-kv div span:last-child { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-  .cv-note { font-size: 12.5px; color: var(--mute); line-height: 1.45; margin: 8px 0; }
-  .cv-page .value, .cv-page .flood, .cv-page .tax { margin-top: 8px; }
-  body.calm #cardBody .cv-hub-only .aerial { aspect-ratio: 3 / 1; margin-top: 10px; }
-  /* which parts show: the small card (peek), the overview (hub), or one section (pg) */
-  #sheet.cv-peek .cv-hub-only, #sheet.cv-peek .cv-page,
-  #sheet.cv-hub .cv-peek-only, #sheet.cv-hub .cv-page,
-  #sheet.cv-pg .cv-head, #sheet.cv-pg .cv-peek-only, #sheet.cv-pg .cv-hub-only, #sheet.cv-pg .cv-both, #sheet.cv-pg .cv-page:not(.on) { display: none; }
-  #fullC { display: none; }
-  .set-h { font-size: 12px; color: var(--mute); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; margin: 18px 2px 4px; }
-  .set-row .sw { flex: none; margin-left: auto; width: 44px; height: 26px; border-radius: 13px; background: rgba(29,26,23,.22); position: relative; transition: background .15s; }
-  .set-row .sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
-  .set-row .sw.on { background: var(--moss); }
-  .set-row .sw.on::after { transform: translateX(18px); }
-  #sheet.cv-peek #prevC { flex: 0 0 46px; padding: 0; }
-  #sheet.cv-peek #prevC:disabled, #sheet.cv-peek #prevC .pt { display: none; }
-  #sheet.cv-peek #nextC { order: 1; }
-  #sheet.cv-peek #shareC { order: 2; flex: 0 0 auto; padding: 0 16px; background: var(--paper-2); color: var(--ink); }
-  #sheet.cv-peek #fullC { display: flex; order: 3; flex: 1.3; }
-
   /* ---------- map mode ---------- */
   #mapView { position: fixed; inset: 0; z-index: 8; background: #ece4d3; }
   #mapSvg { width: 100%; height: 100%; display: block; touch-action: none; }
@@ -551,7 +496,6 @@
     <button id="prevC" aria-label="Previous candidate">‹ Not it</button>
     <button id="shareC" class="main">Share</button>
     <button id="nextC" aria-label="Next candidate">Not it ›</button>
-    <button id="fullC" class="main">Full story ›</button>
   </div>
 </div></div>
 
@@ -632,25 +576,6 @@ const rad = (d) => d * Math.PI / 180;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const THIS_YEAR = new Date().getFullYear();
-
-// The new look is on trial behind a switch: the list panel's "New look" row, or a link with ?look=new (or ?look=old).
-// The choice is kept on this phone. Off, the app is exactly as it was.
-const LOOK_KEY = 'housepoint.look';
-let calm = false;
-function setLook(on, keep = true) {
-  calm = !!on; document.body.classList.toggle('calm', calm);
-  if (keep) try { localStorage.setItem(LOOK_KEY, calm ? 'new' : 'old'); } catch (e) { /* private mode */ }
-}
-(() => {
-  const q = new URLSearchParams(location.search).get('look');
-  if (q === 'new' || q === 'old') {        // applied once and taken off the address, so the switch decides after that
-    setLook(q === 'new');
-    try { const u = new URL(location.href); u.searchParams.delete('look'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) { /* fine */ }
-    return;
-  }
-  let v = null; try { v = localStorage.getItem(LOOK_KEY); } catch (e) { /* private mode */ }
-  setLook(v === 'new', false);
-})();
 
 function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.classList.remove('off');
@@ -5315,147 +5240,6 @@ function lotText(L) {
   return `${(Math.round(sqft / (sqft < 10000 ? 10 : 100)) * (sqft < 10000 ? 10 : 100)).toLocaleString('en-US')} ft²`;
 }
 
-/* =========================================================================
-   The new look (on trial, behind the switch above): the card opens small, with the address, three numbers and the flood
-   line, and the rest sits in a few sections one tap away. It rearranges the card renderCard has just built (the same
-   elements move, so the flood, buying, unit and address updates still land where they look), so the old look is untouched.
-   ========================================================================= */
-const CV = { view: 'peek', page: null, keep: false };      // 'peek', 'hub' or 'pg' (one section: CV.page)
-const CV_ICON = {
-  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.2c-.5-.8-1.4-1.2-2.5-1.2-1.5 0-2.6.8-2.6 2s1 1.7 2.6 2 2.7.8 2.7 2-1.2 2-2.7 2c-1.2 0-2.2-.5-2.7-1.3M12 6.5V8M12 16v1.5"/></svg>',
-  house: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5M10.5 20v-5h3v5"/></svg>',
-  flood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c3 3.6 5.5 6.6 5.5 9.9a5.5 5.5 0 0 1-11 0c0-3.3 2.5-6.3 5.5-9.9z"/></svg>',
-  buy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></svg>',
-  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>',
-};
-// Grid cells that are about money go to the Money section; the rest describe the house.
-const CV_MONEY_CELL = /per ft²|Land value|market estimate/i;
-// The three numbers on the small card: the value, the last sale and the tax where the record has them, else the building.
-function calmNums(s, L) {
-  const r = s.r0, out = [], v = num(r.TOTAL_VAL), t = estimateTax(s);
-  if (s.commonOnly) out.push(['Condo building', s.units > 1 ? `${s.units} units` : 'Condo', '']);
-  else if (s.condo && s.vals.length) {
-    const lo = Math.min(...s.vals), hi = Math.max(...s.vals);
-    out.push([`${s.units} units`, lo === hi ? money(lo) : `${money(lo)}–${money(hi).slice(1)}`, valueWordOf(s.region, r)]);
-  } else if (!s.region.noValues && v) out.push([valueWordOf(s.region, r), money(v), (s.fy && s.region.yearLabel(s.fy)) || '']);
-  const sale = s.sales.find((q) => q.p >= 10000);
-  if (sale && !s.commonOnly) out.push([s.condo ? 'Latest unit sale' : 'Last sold', money(sale.p), fmtMonth(sale.d)]);
-  if (t && t.exempt) out.push(['Tax', 'None', 'tax-exempt']);
-  else if (t && t.hi >= 1) {
-    const R = t.actual ? Math.round : round10;
-    out.push([t.actual ? 'Tax' : 'Tax (est.)', t.perUnit && R(t.hi) !== R(t.lo) ? `${money(R(t.lo))}–${money(R(t.hi)).slice(1)}` : moneyFull(R(t.hi)),
-      t.perUnit ? 'per unit, a year' : 'a year']);
-  }
-  const area = areaOf(r, s.residential);
-  if (area && !s.condo && !s.park) out.push([s.residential ? 'Living area' : 'Floor area', `${Math.round(area).toLocaleString('en-US')} ft²`, '']);
-  if (!s.region.basic) out.push(['Lot', lotText(L), '']);
-  const ob = L.p.bldg; if (ob && ob.sqft) out.push([ob.n > 1 ? 'Main building' : 'Footprint', `${ob.sqft.toLocaleString('en-US')} ft²`, ob.n > 1 ? `${ob.n} buildings` : '']);
-  return out.slice(0, 3);
-}
-function calmCard(L, s) {
-  const body = $('#cardBody'), r = s.r0, kids = [...body.children], key = L.p.key;
-  const pick = (sel) => kids.filter((el) => el.matches(sel));
-  const head = pick('.eyebrow, .addrrow, .town'), chips = pick('.chips')[0], aerial = pick('.aerial')[0];
-  const moneyEls = pick('.park, .value, .stale, .tax'), flood = pick('#floodBox')[0], grid = pick('.grid')[0];
-  const unitEls = pick('.units-h, .units'), buy = pick('#buyBox')[0], rec = pick('.rec-link')[0], note = pick('.note')[0], copy = pick('.copyrec')[0];
-  const known = new Set([...head, chips, aerial, ...moneyEls, flood, grid, ...unitEls, buy, rec, note, copy].filter(Boolean));
-  const extra = kids.filter((el) => !known.has(el));          // anything this doesn't know about yet stays reachable, under Money
-  const ae = body.querySelector('.addr'), addr = (ae && ae.textContent) || s.addr;
-
-  // The grid splits: the money cells go to Money as a list, the rest stay a grid in The house.
-  const cells = grid ? [...grid.children].map((c) => [c.querySelector('.k').textContent, c.querySelector('.v').textContent]).filter(([k]) => k) : [];
-  const moneyCells = cells.filter(([k]) => CV_MONEY_CELL.test(k)), houseCells = cells.filter(([k]) => !CV_MONEY_CELL.test(k));
-  while (houseCells.length % 3) houseCells.push(['', '']);
-  const facts = chips ? [...chips.children].filter((c) => !c.matches('.fun, .star')).map((c) => c.textContent).join(' · ') : '';
-  const nums = calmNums(s, L);
-  const short = (k, v) => ({ Rooms: `${v} rooms`, Bedrooms: `${v} bed`, Baths: `${v} bath`, Stories: `${v} stories`, Lot: `${v} lot`, Units: `${v} units`,
-    Buildings: `${v} buildings`, 'Home sites': `${v} home sites`, Footprint: `${v} footprint`, 'Main building': `${v} main building` }[k] || v);
-  const houseSum = houseCells.filter(([k]) => k).slice(0, 3).map(([k, v]) => short(k, v)).join(' · ') || (s.units > 1 ? `${s.units} units` : 'What’s on the record');
-
-  const v = num(r.TOTAL_VAL), sale = s.sales.find((q) => q.p >= 10000), t = estimateTax(s);
-  let moneySum = '';
-  if (v && sale && !s.condo && !s.park && !s.multiSale && !s.unqualified && !s.region.noDelta && v / sale.p < 10 && v / sale.p > 0.1) {
-    const ch = Math.round((v / sale.p - 1) * 100), w = s.region.deltaWord || 'value';
-    moneySum = `${w[0].toUpperCase() + w.slice(1)} ${ch >= 0 ? '+' : ''}${ch}% vs. the ${sale.d.getFullYear()} sale`;
-  }
-  if (!moneySum && moneyCells.length) moneySum = moneyCells.slice(0, 2).map(([k, x]) => `${k} ${x}`).join(' · ');
-  if (!moneySum && t && !t.exempt && t.hi >= 1) moneySum = `Tax about ${moneyFull(round10(t.hi))} a year`;
-  if (!moneySum && sale) moneySum = `Last sold ${money(sale.p)} · ${fmtMonth(sale.d)}`;
-  if (!moneySum && s.condo && s.vals.length) moneySum = `Values for ${s.vals.length} unit${s.vals.length === 1 ? '' : 's'}`;
-  if (!moneySum && v) moneySum = `${valueWordOf(s.region, r)} ${money(v)}`;
-  if (!moneySum) moneySum = s.commonOnly ? 'Unit values aren’t published here' : 'No value on record';
-  const recordOnly = !!s.region.noValues;
-  if (recordOnly) { const ve = moneyEls.find((el) => el.matches('.value')), vv = ve && ve.querySelector('.v'); moneySum = (vv && vv.textContent) || 'Where to find it'; }
-  let buySum = 'For sale, schools, neighborhood, safety and nearby';
-  if (buy && calcApplies(s)) { const m = monthlyCost(calcFor(key, s)); if (m && m.total > 0) buySum = `≈ ${dollars(m.total)} a month · schools, safety, nearby`; }
-
-  const row = (pg, title, sum) => `<button class="cv-row" data-cv="${pg}"><span class="ic">${CV_ICON[pg]}</span><span class="tx"><span class="t1">${esc(title)}</span><span class="t2 cv-sum-${pg}">${esc(sum)}</span></span><span class="chev" aria-hidden="true">›</span></button>`;
-  const pages = { money: recordOnly ? 'Property record' : 'Money', house: 'The house', flood: 'Flood and ground', buy: 'Thinking of buying?', sources: 'Sources' };
-  const page = (pg) => `<section class="cv-page" data-page="${pg}"><button class="cv-back" data-cv="hub" data-from="${pg}" aria-label="Back to ${esc(addr)}"><span aria-hidden="true">‹</span><span>${esc(addr)}</span></button><h2 class="cv-title">${esc(pages[pg])}</h2></section>`;
-  const where = s.region.noValues ? 'Where these facts come from.' : `${esc(valueWordOf(s.region, r))} values are for taxes, not a market estimate.`;
-  body.innerHTML = `<div class="cv-head"></div>
-    ${facts ? `<div class="cv-facts cv-peek-only">${esc(facts)}</div>` : ''}
-    <div class="cv-hub-only cv-media"></div>
-    ${nums.length ? `<div class="cv-nums cv-both">${nums.map(([k, x, sub]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(x)}</div><div class="s">${esc(sub || ' ')}</div></div>`).join('')}</div>` : ''}
-    ${flood ? '<div class="cv-fl cv-peek-only">Checking flood maps…</div>' : ''}
-    <div class="cv-rows cv-hub-only">${row('money', pages.money, moneySum)}${row('house', pages.house, houseSum)}${flood ? row('flood', pages.flood, 'Checking flood maps…') : ''}${buy ? row('buy', pages.buy, buySum) : ''}</div>
-    <button class="cv-src cv-hub-only" data-cv="sources">${CV_ICON.info}<span>${where} <b>Sources</b></span></button>
-    ${page('money')}${page('house')}${flood ? page('flood') : ''}${buy ? page('buy') : ''}${page('sources')}`;
-  const put = (pg, els) => { const sec = body.querySelector(`.cv-page[data-page="${pg}"]`); for (const el of els) if (el) sec.appendChild(el); };
-  body.querySelector('.cv-head').append(...head);
-  body.querySelector('.cv-media').append(...[chips, aerial].filter(Boolean));
-  put('money', moneyEls);
-  if (moneyCells.length) body.querySelector('.cv-page[data-page="money"]').insertAdjacentHTML('beforeend', `<div class="cv-kv">${moneyCells.map(([k, x]) => `<div><span>${esc(k)}</span><span>${esc(x)}</span></div>`).join('')}</div>`);
-  if (buy && calcApplies(s)) body.querySelector('.cv-page[data-page="money"]').insertAdjacentHTML('beforeend', `<div class="cv-rows">${row('buy', 'Monthly cost if you bought it', buySum.split(' · ')[0])}</div>`);
-  put('money', extra);
-  if (recordOnly) put('money', [rec]);
-  if (grid) { grid.innerHTML = houseCells.map(([k, x]) => `<div><div class="k">${esc(k)}</div><div class="v">${esc(x)}</div></div>`).join(''); if (houseCells.length) put('house', [grid]); }
-  put('house', unitEls);
-  if (!recordOnly) put('house', [rec]);
-  if (flood) { put('flood', [flood]); body.querySelector('.cv-page[data-page="flood"]').insertAdjacentHTML('beforeend', '<p class="cv-note">From FEMA’s flood maps: a guide, not an official flood determination. Ground elevation from USGS.</p>'); }
-  if (buy) put('buy', [buy]);
-  put('sources', [note, copy]);
-  calmView(CV.page && !body.querySelector(`.cv-page[data-page="${CV.page}"]`) ? 'hub' : CV.view, CV.page);
-  calmFit();
-}
-// A long number (a condo's value range, a big building's area) gets smaller to fit its column, rather than cut off.
-function calmFit() {
-  for (const el of document.querySelectorAll('#cardBody .cv-nums .v')) {
-    el.style.fontSize = '';
-    for (let px = 20; el.scrollWidth > el.clientWidth + 1 && px >= 13; px--) el.style.fontSize = px + 'px';
-  }
-}
-function calmView(view, pg) {
-  const sh = $('#sheet');
-  if (!calm || !$('#cardBody .cv-head')) { sh.classList.remove('cv-peek', 'cv-hub', 'cv-pg'); return; }
-  CV.view = view; CV.page = view === 'pg' ? pg : null;
-  sh.classList.toggle('cv-peek', view === 'peek'); sh.classList.toggle('cv-hub', view === 'hub'); sh.classList.toggle('cv-pg', view === 'pg');
-  for (const sec of document.querySelectorAll('#cardBody .cv-page')) sec.classList.toggle('on', view === 'pg' && sec.dataset.page === pg);
-  $('#cardBody').scrollTop = 0;
-  if (view !== 'pg') calmFit();
-}
-// The flood line and the Flood row, once the flood maps answer.
-function calmFlood(env) {
-  const fl = env && env.flood, c = fl && !fl.none ? fl.here : null, el = $('#cardBody .cv-fl'), row = $('#cardBody .cv-sum-flood');
-  const v = floodView(env), t1 = (/<div class="t1">([^<]*)</.exec(v.html) || [])[1] || '';
-  const line = !fl ? 'Flood map didn’t load' : fl.none ? 'No FEMA flood map here' : c.risk === 'water' ? 'Open water' : `Zone ${c.badge} · ${t1.toLowerCase()}`;
-  if (el) { el.className = 'cv-fl cv-peek-only ' + v.cls; el.innerHTML = `<span>${esc(line)}${fl && !fl.none ? ' <small>· FEMA map, not official</small>' : ''}</span>`; }
-  if (row) row.textContent = [line, env.elev != null ? `ground at ${Math.round(env.elev).toLocaleString('en-US')} ft` : ''].filter(Boolean).join(' · ');
-}
-$('#cardBody').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-cv]'); if (!b || !calm) return;
-  e.preventDefault();
-  const pg = b.dataset.cv, view = pg === 'hub' ? 'hub' : 'pg'; calmView(view, pg);
-  if (pg === 'buy') calmOpenBuy();
-  const to = view === 'pg' ? $('#cardBody .cv-page.on .cv-back') : $(`#cardBody .cv-hub-only[data-cv="${b.dataset.from || ''}"], #cardBody .cv-hub-only [data-cv="${b.dataset.from || ''}"]`) || $('#cardBody .cv-rows.cv-hub-only .cv-row');
-  if (to) to.focus({ preventScroll: true });
-});
-function calmOpenBuy() {
-  const box = $('#buyBox'), a = wireBuy.calm; if (!box || !a || box.dataset.k !== a[0].p.key || box.dataset.opened) return;
-  box.dataset.opened = '1'; openBuy(a[0], a[1]);
-}
-$('#fullC').onclick = () => { calmView('hub'); const r = $('#cardBody .cv-rows.cv-hub-only .cv-row'); if (r) r.focus({ preventScroll: true }); };
-
 function renderCard(cand, total, idx) {
   const L = cand.L, s = summarize(L.p), r = s.r0;
   const style = r.STYLE ? titleCase(r.STYLE) : null;
@@ -5564,7 +5348,6 @@ function renderCard(cand, total, idx) {
     ${webUrl(r.RECORD_URL) ? `<a class="rec-link" href="${esc(webUrl(r.RECORD_URL))}" target="_blank" rel="noopener">${esc(s.region.recordLinkText || 'County assessor’s page for this property')} ›</a>` : ''}
     <div class="note">${s.addrApprox ? (s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ') : ''}${esc(s.region.source(s.fy))} Flood zone from FEMA flood maps (not an official determination); elevation from USGS. Owner names are never shown.</div>
     ${DEMO ? '' : '<button class="copyrec" id="copyRec">Card look wrong? Copy this lot’s records</button>'}`;
-  if (calm) calmCard(L, s); else calmView();
   attachImageryFallback($('#cardBody .imgs'), aerialSvg.last, $('#cardBody .attr'));
   paintFlood(L);
   wireBuy(L, s);
@@ -5574,7 +5357,6 @@ function renderCard(cand, total, idx) {
       if (a) patchPlace(L.p);                                                                   // Saved and history, even if the card has moved on
       const el = $('#cardBody .addr'); if (!a || !el || el.dataset.k !== L.p.key) return;   // the card has moved on
       el.textContent = a;
-      document.querySelectorAll('#cardBody .cv-back').forEach((bk) => { bk.setAttribute('aria-label', `Back to ${a}`); bk.lastElementChild.textContent = a; });   // the new look
       const n = $('#cardBody .note'); if (n) n.insertAdjacentText('afterbegin', s.region.basic ? 'The address is the nearest one on OpenStreetMap. ' : 'The address is the nearest one on OpenStreetMap; the state’s record doesn’t list one. ');
     });
   }
@@ -5608,7 +5390,7 @@ function renderCard(cand, total, idx) {
   }));
   $('#prevC').disabled = idx <= 0;
   $('#nextC').disabled = idx >= total - 1;
-  $('#prevC').innerHTML = `<span aria-hidden="true">‹</span><span class="pt">${S.mode === 'map' ? ' Back' : ' Not it'}</span>`;
+  $('#prevC').textContent = S.mode === 'map' ? '‹ Back' : '‹ Not it';
   $('#nextC').textContent = S.mode === 'map' ? 'Next door ›' : 'Not it ›';
 }
 
@@ -6192,9 +5974,7 @@ function buyBoxHtml(L) {
 }
 // Once opened, the panel loads by itself on every home's card (that's the point of opening it once). It says so, and turns off here:
 // back to the button, and nothing sent for a house until it's tapped again.
-const buyHead = () => calm
-  ? '<div class="buy-auto">Looked up when you open this section, using the house’s map location (see the privacy notes).</div>'   // the new look: only on asking
-  : `<div class="buy-h">Thinking of buying?</div>${buyAuto ? '<div class="buy-auto">Loads by itself on each home’s card, sending the house’s map location to the services in the privacy notes. <button class="buy-off" data-buyoff>Turn off</button></div>' : ''}`;
+const buyHead = () => `<div class="buy-h">Thinking of buying?</div>${buyAuto ? '<div class="buy-auto">Loads by itself on each home’s card, sending the house’s map location to the services in the privacy notes. <button class="buy-off" data-buyoff>Turn off</button></div>' : ''}`;
 function buyOff(L, s) {
   buyAuto = false; try { localStorage.removeItem(BUY_KEY); } catch (e) { /* fine */ }
   if (wireBuy.io) { wireBuy.io.disconnect(); wireBuy.io = null; }
@@ -6203,11 +5983,6 @@ function buyOff(L, s) {
 }
 function wireBuy(L, s) {
   if (wireBuy.io) { wireBuy.io.disconnect(); wireBuy.io = null; }
-  if (calm) {               // the new look: nothing until its section is open
-    wireBuy.calm = [L, s]; const box = $('#buyBox'); if (box) box.innerHTML = '';
-    if (CV.view === 'pg' && CV.page === 'buy') calmOpenBuy();
-    return;
-  }
   if (buyAuto) {
     // Wait until it's on screen: flipping past houses with "Not it" shouldn't fire a dozen requests each.
     const box = $('#buyBox'); if (!box) return;
@@ -6902,7 +6677,6 @@ function paintFlood(L) {
     const box = $('#floodBox'); if (!box || box.dataset.k !== key) return;   // the card has moved on
     const v = floodView(env, (REGIONS[L.p.region] || {}).basic ? 'building' : 'lot');
     box.className = 'flood ' + v.cls; box.innerHTML = v.html;
-    if (calm) calmFlood(env);
     patchSaved(key, { flood: floodShort(env) });
   });
 }
@@ -6912,7 +6686,6 @@ function paintFlood(L) {
    ========================================================================= */
 function openSheet(cands, idx = 0) {
   S.candidates = cands; S.cIdx = idx; S.locked = true;
-  if (!CV.keep) { CV.view = 'peek'; CV.page = null; } CV.keep = false;    // the new look: "Not it" stays on the same section
   renderCard(cands[idx], cands.length, idx);
   // Only houses you actually looked at go in "Your houses", not every "Not it" on the way.
   clearTimeout(openSheet.hist); const seenCand = cands[idx];
@@ -6930,8 +6703,8 @@ function closeSheet() {
   $('#sheet').classList.remove('open'); $('#reticle').classList.remove('locked'); S.locked = false;
   if (S.mode === 'map') { S.map.selectedKey = null; drawMap(); }
 }
-$('#prevC').onclick = () => { if (S.cIdx > 0) { CV.keep = true; openSheet(S.candidates, S.cIdx - 1); } };
-$('#nextC').onclick = () => { if (S.cIdx < S.candidates.length - 1) { CV.keep = true; openSheet(S.candidates, S.cIdx + 1); } };
+$('#prevC').onclick = () => { if (S.cIdx > 0) openSheet(S.candidates, S.cIdx - 1); };
+$('#nextC').onclick = () => { if (S.cIdx < S.candidates.length - 1) openSheet(S.candidates, S.cIdx + 1); };
 $('#shareC').onclick = async () => {
   const cand = S.candidates[S.cIdx];
   saveHistory(cand);
@@ -7145,8 +6918,7 @@ function startPointMode(tapped = false) {
     startPointMode.tipped = true;
     const tip = (n) => setTimeout(() => {
       if (n < 3 && !$('#toast').classList.contains('off')) return tip(n + 1);
-      if (calm) S.tipPending = true;              // shown under the aim circle once nothing more important is
-      else toast('Aim the circle at a house, then tap the button. Wrong house? Tap “Not it”.', 4200);
+      toast('Aim the circle at a house, then tap the button. Wrong house? Tap “Not it”.', 4200);
     }, n ? 2500 : 1200);
     tip(0);
   }
@@ -7200,8 +6972,6 @@ function tick(ts) {
   // further than fuzzy GPS moves it (30° off at 50 m is 25 m sideways, a house or two over), so it's the more useful thing to fix.
   else if (compassPoor()) hint = 'Compass is off. Wave your phone in a figure 8, away from cars and metal.';
   else if (S.acc > 35) hint = 'GPS is fuzzy right now. Results may be off.';
-  if (!hint && calm && S.tipPending) { S.tipPending = false; S.tipUntil = performance.now() + 6000; }
-  if (!hint && calm && performance.now() < (S.tipUntil || 0)) hint = 'Aim the circle at a house, then tap the button';
   $('#hint').textContent = hint;
 
   drawRadar();
@@ -8015,12 +7785,7 @@ function renderMine() {
 function renderPanel() {
   $('#tabNear').classList.toggle('on', panelTab === 'near'); $('#tabMine').classList.toggle('on', panelTab === 'mine'); $('#tabSaved').classList.toggle('on', panelTab === 'saved');
   const nSaved = loadSaved().length; $('#tabSaved').textContent = nSaved ? `Saved (${nSaved})` : 'Saved';
-  $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : panelTab === 'saved' ? renderSaved() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>' + settingsHtml();
-}
-// The panel's switches: the new look on trial, and (in the new look, where point mode has no pill for it) the floating labels.
-function settingsHtml() {
-  const sw = (id, on, t1, t2) => `<button class="item set-row" id="${id}" role="switch" aria-checked="${on}"><div><div class="t1">${t1}</div><div class="t2">${t2}</div></div><span class="sw${on ? ' on' : ''}" aria-hidden="true"></span></button>`;
-  return `<div class="set-h">Settings</div>${sw('lookSw', calm, 'New look (on trial)', 'A smaller card, with the details in sections. Turn off to go back.')}${calm ? sw('labelsSw', AR.on, 'Floating labels', 'Names over the other houses in view') : ''}`;
+  $('#panelBody').innerHTML = (panelTab === 'near' ? renderNear() : panelTab === 'saved' ? renderSaved() : renderMine()) + '<button class="item about-link" id="panelAbout"><div><div class="t1">About &amp; sources</div><div class="t2">Where the facts come from, and privacy</div></div><span class="chev">›</span></button>';
 }
 function openPanel(tab) { panelTab = tab || panelTab; closeSheet(); renderPanel(); $('#panel').classList.add('open'); $('#panelScroll').scrollTop = 0; }
 function closePanel() { $('#panel').classList.remove('open'); }
@@ -8030,8 +7795,6 @@ $('#tabSaved').onclick = () => { panelTab = 'saved'; renderPanel(); };
 $('#panelGrab').onclick = closePanel;
 $('#panelBody').addEventListener('click', (e) => {
   if (e.target.closest('#panelAbout')) { openAbout(); return; }
-  if (e.target.closest('#lookSw')) { setLook(!calm); renderPanel(); return; }
-  if (e.target.closest('#labelsSw')) { $('#arPill').click(); renderPanel(); return; }
   const rm = e.target.closest('[data-remove]');
   if (rm) { const a = loadSaved(); a.splice(+rm.dataset.remove, 1); storeSaved(a); renderPanel(); return; }
   const op = e.target.closest('[data-open]');
@@ -8317,7 +8080,7 @@ async function runHealth() {
 if (qs.get('health') === '1' && !DEMO) { show($('#start'), false); runHealth(); }
 
 // test hooks
-window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, phonePose, camElev, arPitch, jsonp, censusSearch, setLook, calmView, CV, isCalm: () => calm, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
+window.__hp = { S, regionFor, regionsNear, regionsIn, declinationAt, basicStateAt, KEYS, cdeSeries, normPlace, schoolPicks, makeShareImage, openPanel, renderNear, loadHistory, findCandidates, summarize, setHeading: (h) => { S.hbuf = []; pushHeading(h); S.gotOrientation = true; }, openSheet, startMapMode, centerMap, compassFromEuler, renderCard, setBuildings, queryBuildingsNear, loadBuildings, phonePose, camElev, arPitch, jsonp, censusSearch, badgesFor, imagerySet, openAbout, estimateTax, MA_TOWNS, FL_COUNTIES,
   AR, arFrame, mapScale, floodView, floodClass, envFor, camFocalPx, viewFovDeg, drawMap, parseMoney, dollars, NOT_A_HOME, loadSaved, staleRecord, staleHtml, SERVICE_OVERRIDE, get sharePrep() { return sharePrep; },
   CAM, startCamera, stopCamera, startPointMode, parseQuery, knownTown, searchAddress, COMPASS_POOR, compassPoor, arScan, houseLink, shareText, perSqft, feet, SHARED,
   SVC, lotNear, lotForAddress, REGIONS, initService, buildParcels, scrubAttrs, samePublisher, townAt, riAssessorUrl, recordSiteFor, calcDefaults, normalizeRecord, maStateSearch, maTownId, MA_STATE_HEALTH, useKind, classifyLot, arChipHtml, snapshot, selectLot, lotRecordsJson, schoolsFor, neighborhoodFor, safetyFor, nearbyFor, findLayer, SCHOOL_SVCS, DISTRICT_SVCS, mdTownKey, get wakeLock() { return WAKE.lock; } };
