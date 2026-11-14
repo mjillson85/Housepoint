@@ -456,12 +456,12 @@ check(!page.errors.length, 'no page errors ' + page.errors.join('; '));
 // 9b. A GPS fix while on the map doesn't swap the map's lots for the ones around the phone
 {
   const gp = await newPage('/');
-  await gp.setGeolocation({ latitude: 42.24, longitude: -71.17, accuracy: 8 });
+  await gp.setGeolocation({ latitude: 42.39, longitude: -72.52, accuracy: 8 });
   await gp.click('#goPoint'); await sleep(5500);            // no compass here: the app switches to the map by itself
   const m0 = await gp.evaluate(() => window.__hp.S.mode);
   reset();
   r = await search(gp, '12 Elm Street, Hopkinton, MA');
-  await gp.setGeolocation({ latitude: 42.2402, longitude: -71.1702, accuracy: 8 }); await sleep(1500);
+  await gp.setGeolocation({ latitude: 42.3902, longitude: -72.5202, accuracy: 8 }); await sleep(1500);
   const c = await gp.evaluate(() => ({ data: window.__hp.S.center, map: window.__hp.S.map.center }));
   check(m0 === 'map' && near(c.map, H, 100) && near(c.data, H, 400), `on the map, a new GPS fix leaves the searched place’s lots alone (${JSON.stringify(c)})`);
   // A slow search doesn't yank the map back after you've gone somewhere else

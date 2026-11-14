@@ -51,7 +51,8 @@ const r = await page.evaluate(async () => {
   const edge = hp.floodShort({ flood: { here: { badge: 'X', risk: 'low' }, partial: true, exact: true, top: { badge: 'AE', risk: 'high' } } });
   return {
     hartford: hartford.TOTAL_VAL, usual: usual.TOTAL_VAL, city: misspelled.CITY, hartNote: hartTax && hartTax.notes[0], green: !!greenTax,
-    rest: kind('RESTAURANT'), res: kind('RESIDENTIAL'), others: ['RESORT', 'RESEARCH LAB', 'RESERVOIR', 'WAREHOUSE', 'FIREHOUSE', 'TOWNHOUSE'].map(kind), out: outbuildings.TOTAL_VAL, far: far && (far.ori || far.err), ag: ag && (ag.ori || ag.err), nyc, nyFull,
+    rest: kind('RESTAURANT'), res: kind('RESIDENTIAL'), others: ['RESORT', 'RESEARCH LAB', 'RESERVOIR', 'WAREHOUSE', 'FIREHOUSE', 'FIRE HOUSE', 'COURT HOUSE', 'TOWNHOUSE', 'TOWN HOUSE'].map(kind),
+    chip: [hp.arChipHtml({ p: { records: [{ TOTAL_VAL: 66000, VALUE_KIND: 'nyc', YEAR_BUILT: 1925, USE_CODE: '01' }], region: 'NY', key: 'k' }, c: [0, 0], rings: [] })].map((h) => /\$66k/.test(h))[0], out: outbuildings.TOTAL_VAL, far: far && (far.ori || far.err), ag: ag && (ag.ori || ag.err), nyc, nyFull,
     saved, edge,
     money: [hp.money(999600), hp.money(1234000), hp.money(845300)],
     pre1970: hp.parseSaleDate(-157766400000) && hp.parseSaleDate(-157766400000).getFullYear(),
@@ -62,7 +63,8 @@ console.log(JSON.stringify(r, null, 1).slice(0, 1500));
 check(r.hartford === 301900 && r.usual === 100000, `Connecticut: the town’s own appraisal where it doesn’t assess at 70% (${r.hartford}), assessed ÷ 0.7 where it does (${r.usual})`);
 check(/assesses this one at \$110,950, 37% of its appraisal/.test(r.hartNote || '') && !/Connecticut assesses at 70%/.test(r.hartNote || ''), 'the tax note gives the real share');
 check(r.city === 'GREENWICH' && r.green, 'Greenwich spelled right, and its tax found');
-check(r.others.slice(0, 5).every((k) => k !== 'single') && r.others[5] === 'single', `resorts, research, reservoirs, warehouses and firehouses aren’t homes; townhouses are (${r.others.join(', ')})`);
+check(r.others.slice(0, 7).every((k) => k !== 'single') && r.others[7] === 'single' && r.others[8] === 'single', `resorts, research, reservoirs, warehouses, fire and court houses aren’t homes; townhouses are (${r.others.join(', ')})`);
+check(r.chip === false, 'the floating tag leaves New York City’s fractional value off');
 check(r.out === 107100, `outbuildings over 70% keep assessed ÷ 0.7 (${r.out})`);
 check(r.rest === 'commercial' && r.res === 'single', `Connecticut restaurants aren’t homes (${r.rest}, ${r.res})`);
 check(r.far === 'NJ0071400', `a town’s only department, even far from the house (${r.far})`);

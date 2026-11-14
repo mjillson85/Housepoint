@@ -800,7 +800,7 @@ function ctKind(d) {
   const model = (/\bMDL-?(\d\d)\b/.exec(d) || [])[1];
   d = d.replace(/\s*\bMDL-?\S*.*$/, '').trim();
   if (/UTIL|RAIL|\bRR\b|TELE|CELL|TOWER|PIPE|\bWATER CO/.test(d)) return 'other';
-  if (/EXEMPT|EXMPT|^EX\b|\bEC\b|CHURCH|RELIG|CHARIT|MUNIC|TOWN OWN|CITY OWN|^TOWN\b|^CITY\b|^ST-|\bSTATE\b|FEDERAL|US GOV|GOVT|CEMET|SCHOO|COLLEGE|UNIV|HOSP|LIBR|EDUC|PUBLIC|NON ?-?PROFIT|HOUSING AUTH|\bPILOT\b/.test(d)) return 'exempt';
+  if (/EXEMPT|EXMPT|^EX\b|\bEC\b|CHURCH|RELIG|CHARIT|MUNIC|TOWN OWN|CITY OWN|^TOWN\b(?! ?HOUSE)|^CITY\b|^ST-|\bSTATE\b|FEDERAL|US GOV|GOVT|CEMET|SCHOO|COLLEGE|UNIV|HOSP|LIBR|EDUC|PUBLIC|NON ?-?PROFIT|HOUSING AUTH|\bPILOT\b/.test(d)) return 'exempt';
   if (/CONDO|\bCND\b|\bCOND\b/.test(d) || model === '06') {
     if (/MASTER|\bMAIN\b|ASSOC|COMMON|C\/E/.test(d)) return 'condoMaster';
     if (/COMM|\bCOM\b|\bCM\b|\bRTL\b|RETAIL|\bOFF\b|OFFICE|\bIND|\bBUS|PROF|MED|STORE|GARAGE|BOAT|MARINA|SLIP|PARK/.test(d)) return 'comCondo';
@@ -813,6 +813,7 @@ function ctKind(d) {
   if (/APART|\bAPTS?\b|^APT/.test(d)) return /FOUR|\b4 ?-? ?UNIT|\b[234] ?-? ?FAM/.test(d) ? 'multi' : 'apartments';
   if (/\bTWO\b|THREE|FOUR|\b[234] ?-? ?FAM|2-4|DUPLEX|MULTI|MFAM|IN-LAW|\b[234] ?UNIT/.test(d)) return 'multi';
   if (/BOARD|BORDING|ROOMING|LODGING|DORM|GROUP HOME|ELDERLY|CONGREGATE/.test(d)) return 'otherRes';
+  if (/\b(FIRE|COURT|CLUB|PUMP|OPERA|MEETING|GUARD|BOAT|GATE|POOL|ICE|GREEN|WARE|LIGHT|POWER|SCHOOL|ALMS|STATION|TOLL|BATH|PACKING|SLAUGHTER) ?HOUSE/.test(d)) return 'other';   // not a home
   if (/SINGLE|ONE FAM|\b1 ?-? ?FAM|\bSFR?\b|\bSGL|^RES(?!T|ORT|EAR|ERV|CUE)|RESID|DWELL|(?:\bTOWN|\b)HOUSE|COTTAGE|SEASONAL/.test(d)) return 'single';
   if (/\bIND|MANUF|WAREH|FACTORY|\bMILL\b|STORAGE/.test(d)) return 'industrial';
   if (/COMM|\bCOM\b|RETAIL|OFFICE|STORE|SHOP|CONVENIEN|DEPART|DEALER|BARBER|BEAUTY|DINER|LUNCH|REST|BANK|HOTEL|MOTEL|\bINN\b|GAS|SERVICE|AUTO|GARAGE|MALL|PLAZA|THEAT|CLUB|FRAT|DAY ?CARE|NURSING|MED|DENT|FUNERAL|MORTU|PARKING|PARK LOT|NURSERY|GARDEN|MARINA|\bBUS/.test(d)) return 'commercial';
@@ -2219,13 +2220,14 @@ function akUseScrub(v) {
 // plain yes or no (DC's numbered codes tell seniors and people with disabilities apart), and the words that say so leave a
 // county's tax class and dwelling type (Minnesota's "1b Blind/Disabled Homestead", "Single-Family / Owner Occupied").
 const yesNoHomestead = (v) => (v == null ? v : /^(Y|F)/i.test(String(v).trim()) || /^0*[1-9]\d*$/.test(String(v).trim()) ? 'Y' : 'N');
-const PERSONAL_WORDS = /\b(BLIND|DISABLED|DISABILITY|HANDICAPPED|PARAPLEGIC|SENIOR CITIZENS?|SENIORS?|SR CITIZENS?|ELDERLY|AGED|VETERANS?|WIDOWS?|WIDOWERS?|SURVIVING SPOUSES?|NON[- ]OWNER[- ]OCCUPIED|OWNER[- ]OCCUPIED)\b/gi;
+const PERSONAL_WORDS = /\b(BLIND|DISABLED|DISABILITY|HANDICAPPED|PARAPLEGIC|SENIOR CITIZENS?|SENIORS?|SR CITIZENS?|ELDERLY|AGED|VETERANS?|VETS?|DAV|WIDOWED|WIDOWS?|WIDOWERS?|SURVIVING SPOUSES?|NON[- ]OWNER[- ]OCCUPIED|OWNER[- ]OCCUPIED)(['’]S)?\b/gi;
 const dropPersonal = (v) => {
   if (v == null) return v;
   let t = String(v);
-  if (PERSONAL_WORDS.test(t)) t = t.replace(/^\s*1b\b\s*/i, '');      // Minnesota's class 1b is the blind and disabled homestead: its code says it too
+  if (/^\s*1b\s*$/i.test(t)) return '';                               // Minnesota's class 1b is the blind and disabled homestead: its code says it too
+  if (PERSONAL_WORDS.test(t)) t = t.replace(/^\s*1b\b\s*/i, '');
   PERSONAL_WORDS.lastIndex = 0;
-  return t.replace(PERSONAL_WORDS, ' ').split('/').map((x) => x.replace(/\s{2,}/g, ' ').trim()).filter(Boolean).join('/').replace(/^[\s-]+|[\s-]+$/g, '').trim();
+  return t.replace(PERSONAL_WORDS, ' ').replace(/\(\s*\)/g, ' ').split('/').map((x) => x.replace(/\s{2,}/g, ' ').trim()).filter(Boolean).join('/').replace(/^[\s-]+|[\s-]+$/g, '').trim();
 };
 // Maryland's exemption class: only the classes of institutions (state, county, town, school board, federal, public, nonprofit,
 // religious) are kept; an exemption for a person (a disabled veteran's, say) is dropped.
