@@ -437,6 +437,7 @@
   .arc.far .m { display: none; }
   #arPill.off { opacity: .6; }
   body.mapmode .demo-flag { left: auto; right: 14px; transform: none; top: calc(76px + var(--safe-t)); }
+  #dbgCopy { position: fixed; right: 12px; top: calc(160px + var(--safe-t)); z-index: 46; height: 44px; padding: 0 14px; border-radius: 12px; background: rgba(0,0,0,.72); color: #9ff59a; font: 600 13px var(--sans); }
   #debug { position: fixed; left: 8px; top: calc(160px + var(--safe-t)); z-index: 45; background: rgba(0,0,0,.72); color: #9ff59a; font: 11px/1.45 ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 8px; pointer-events: none; white-space: pre; max-width: 70vw; }
 </style>
 </head>
@@ -6995,19 +6996,25 @@ function onOrientation(e) {
   let h = null;
   if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
     h = e.webkitCompassHeading; S.orientSource = 'ios';
-    // An iPhone's heading is its compass-corrected alpha: where the phone's top points (WebKit's own description). That's where
-    // the camera looks only when it's upright with no lean to either side: on its side the top points left or right of the
-    // camera, a small sideways lean near upright swings it a long way, and tipped back past upright it flips round. So the
-    // camera's direction is worked out from the tilt, as Android's reading already is. Lying flat, the camera points at the
-    // ground, so the top's direction is kept.
-    const pose = phonePose(e.beta, e.gamma);
-    if (pose && pose !== 'flat') h = compassFromEuler(360 - h, e.beta, e.gamma);
+    // Used as the iPhone gives it. (Nov 2026: working the camera's direction out from the tilt instead, on the theory that
+    // the iPhone gives where the phone's top points, made pointing jump around upright and point the wrong way on its side
+    // on a real phone, so the iPhone's own heading already follows the camera there. ?debug=1 can copy the raw readings.)
     if (typeof e.webkitCompassAccuracy === 'number') pushCompassAcc(e.webkitCompassAccuracy);
   } else if ((e.absolute || e.type === 'deviceorientationabsolute') && e.alpha != null) {
     h = compassFromEuler(e.alpha, e.beta, e.gamma); S.orientSource = 'abs';
   } else return;
   S.beta = e.beta; S.gamma = e.gamma; S.gotOrientation = true;
   S.rawHeading = h;
+  if (DEBUG) {        // the last ~10 seconds of raw readings, five a second, for "Copy readings"
+    const now = performance.now(); S.sensLog = S.sensLog || [];
+    if (!S.sensLog.length || now - S.sensLog[S.sensLog.length - 1].t >= 200) {
+      const so = screen.orientation && Number.isFinite(screen.orientation.angle) ? screen.orientation.angle : window.orientation;
+      S.sensLog.push({ t: Math.round(now), src: S.orientSource, ios: e.webkitCompassHeading == null ? null : +(+e.webkitCompassHeading).toFixed(1),
+        acc: e.webkitCompassAccuracy == null ? null : Math.round(e.webkitCompassAccuracy), a: e.alpha == null ? null : +e.alpha.toFixed(1), b: e.beta == null ? null : +e.beta.toFixed(1),
+        g: e.gamma == null ? null : +e.gamma.toFixed(1), scr: so ?? null, pose: phonePose(e.beta, e.gamma), cam: camElev() == null ? null : Math.round(camElev()), used: +norm(h).toFixed(1) });
+      if (S.sensLog.length > 50) S.sensLog.shift();
+    }
+  }
   pushHeading(norm(h + declinationAt(S.pos)));
 }
 async function startSensors() {
@@ -7172,7 +7179,15 @@ function tick(ts) {
   drawRadar();
   if (DEBUG) {
     let el = document.getElementById('debug');
-    if (!el) { el = document.createElement('div'); el.id = 'debug'; document.body.appendChild(el); }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'debug'; document.body.appendChild(el);
+      // Copy the last ~10 seconds of raw compass and tilt readings, to paste into a bug report
+      const cb = document.createElement('button'); cb.id = 'dbgCopy'; cb.textContent = 'Copy readings'; document.body.appendChild(cb);
+      cb.onclick = async () => {
+        const txt = `Housepoint compass readings · ${navigator.userAgent}\n` + (S.sensLog || []).map((x) => JSON.stringify(x)).join('\n');
+        try { await navigator.clipboard.writeText(txt); toast(`Copied ${(S.sensLog || []).length} readings`); } catch (e) { toast('Couldn’t copy here'); }
+      };
+    }
     const top = S.pos && S.heading != null && S.local.length ? findCandidates(S.pos.lat, S.pos.lon, S.heading)[0] : null;
     el.textContent = [
       `src ${S.orientSource || '—'}  raw ${S.rawHeading == null ? '—' : S.rawHeading.toFixed(1)}°  acc ${S.compassAcc == null ? '—' : S.compassAcc < 0 ? 'needs calibrating' : '±' + Math.round(S.compassAcc) + '°'}${S.rawCompassAcc == null ? '' : ` (now ${Math.round(S.rawCompassAcc)})`}${compassPoor() ? ' POOR' : ''}`,
